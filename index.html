@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Panel – Jowiland</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0a0c10;--surface:#13171f;--surface2:#181d27;--border:#1f2733;
+      --accent:#5b8dee;--accent2:#3a6fd8;
+      --danger:#e05555;--success:#3ecf8e;--warn:#f5a623;
+      --purple:#a78bfa;--text:#dde3f0;--muted:#5a6680;
+      --radius:10px;--font:'Segoe UI',system-ui,sans-serif;
+    }
+    body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+
+    /* LOGIN */
+    #login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+    .login-wrap{width:100%;max-width:380px}
+    .login-logo{text-align:center;margin-bottom:28px}
+    .login-logo .mark{background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:14px;display:inline-grid;font-size:26px;height:54px;place-items:center;width:54px;margin-bottom:12px}
+    .login-logo h1{font-size:20px;font-weight:700}
+    .login-logo p{color:var(--muted);font-size:13px;margin-top:3px}
+    .login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px}
+    .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+    .field label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+    .field input,.field select{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:14px;padding:11px 14px;outline:none;font-family:var(--font);transition:border-color .2s;width:100%}
+    .field input:focus,.field select:focus{border-color:var(--accent)}
+    .field select option{background:var(--surface)}
+    #login-err{background:rgba(224,85,85,.1);border:1px solid var(--danger);border-radius:var(--radius);color:var(--danger);font-size:13px;margin-top:12px;padding:10px 14px;display:none}
+
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:var(--radius);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;padding:10px 16px;transition:opacity .15s,transform .1s}
+    .btn:active{transform:scale(.97)}.btn:disabled{opacity:.4;cursor:not-allowed}
+    .btn-primary{background:var(--accent);color:#fff;width:100%;font-size:14px;padding:12px}
+    .btn-primary:hover:not(:disabled){background:var(--accent2)}
+    .btn-auto{width:auto!important}
+    .btn-sm{padding:7px 12px;font-size:12px}
+    .btn-success{background:var(--success);color:#0a1f14}
+    .btn-danger{background:var(--danger);color:#fff}
+    .btn-warn{background:#2a2010;color:var(--warn);border:1px solid rgba(245,166,35,.3)}
+    .btn-warn:hover{background:rgba(245,166,35,.15)}
+    .btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+    .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+    /* APP LAYOUT */
+    #app{display:none;min-height:100vh}
+    .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;left:0;overflow-y:auto;position:fixed;top:0;width:215px}
+    .sb-logo{align-items:center;border-bottom:1px solid var(--border);display:flex;gap:10px;padding:18px 16px}
+    .sb-logo .mark{background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:8px;color:#fff;font-size:16px;height:32px;width:32px;display:grid;place-items:center;flex-shrink:0}
+    .sb-logo span{font-size:14px;font-weight:700}
+    .nav{padding:10px 8px;flex:1}
+    .nav-section{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.12em;padding:12px 10px 5px;text-transform:uppercase}
+    .nav-item{align-items:center;border-radius:8px;color:var(--muted);cursor:pointer;display:flex;font-size:13px;font-weight:500;gap:9px;margin-bottom:2px;padding:9px 10px;transition:background .15s,color .15s;user-select:none}
+    .nav-item:hover{background:var(--surface2);color:var(--text)}
+    .nav-item.active{background:rgba(91,141,238,.14);color:var(--accent)}
+    .nav-item .ico{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+    .sb-footer{border-top:1px solid var(--border);padding:14px 12px}
+    .sb-user{align-items:center;display:flex;gap:9px;margin-bottom:10px}
+    .avatar{align-items:center;border-radius:50%;color:#fff;display:flex;font-size:13px;font-weight:700;height:32px;justify-content:center;width:32px;flex-shrink:0}
+    .av-admin{background:linear-gradient(135deg,var(--accent),var(--accent2))}
+    .av-inspector{background:linear-gradient(135deg,var(--success),#1a7a50)}
+    .sb-info .sname{font-size:13px;font-weight:600;line-height:1.3}
+    .sb-info .srole{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
+    .role-admin{color:var(--accent)}.role-inspector{color:var(--success)}
+
+    /* MAIN */
+    .main{margin-left:215px;padding:28px 32px;min-height:100vh}
+    .page{display:none}.page.active{display:block}
+    .ph{align-items:center;display:flex;justify-content:space-between;margin-bottom:22px;gap:12px;flex-wrap:wrap}
+    .ph-left h2{font-size:20px;font-weight:700}
+    .ph-left p{color:var(--muted);font-size:13px;margin-top:3px}
+
+    /* STATS */
+    .stats{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:22px}
+    .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+    .stat .slabel{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+    .stat .sval{font-size:28px;font-weight:700}
+    .c-accent{color:var(--accent)}.c-success{color:var(--success)}.c-warn{color:var(--warn)}.c-purple{color:var(--purple)}
+
+    /* TABLE */
+    .tcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+    .ttoolbar{align-items:center;border-bottom:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;padding:14px 16px;flex-wrap:wrap}
+    .ttoolbar-title{font-size:14px;font-weight:600}
+    .search{align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:8px;display:flex;gap:7px;padding:7px 12px}
+    .search input{background:none;border:none;color:var(--text);font-family:var(--font);font-size:13px;outline:none;width:180px}
+    .search input::placeholder{color:var(--muted)}
+    table{border-collapse:collapse;width:100%}
+    thead{background:var(--surface2)}
+    th{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;padding:10px 14px;text-align:left;text-transform:uppercase;white-space:nowrap}
+    td{border-top:1px solid var(--border);font-size:13px;padding:11px 14px;vertical-align:middle}
+    tr:hover td{background:rgba(255,255,255,.015)}
+    .empty{color:var(--muted);font-size:13px;padding:40px;text-align:center}
+
+    /* BADGES */
+    .badge{border-radius:6px;display:inline-block;font-size:10px;font-weight:700;padding:3px 8px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+    .cargo-checkbox{width:18px;height:18px;cursor:pointer;accent-color:#5b8dee}
+    .b-admin{background:rgba(91,141,238,.18);color:var(--accent)}
+    .b-inspector{background:rgba(62,207,142,.18);color:var(--success)}
+    .b-user{background:rgba(167,139,250,.18);color:var(--purple)}
+    .b-active{background:rgba(62,207,142,.12);color:var(--success)}
+    .b-inactive{background:rgba(224,85,85,.12);color:var(--danger)}
+
+    /* POINTS CONTROLS */
+    .pts-row{align-items:center;display:flex;gap:6px}
+    .pts-val{font-size:15px;font-weight:700;color:var(--warn);min-width:36px;text-align:center}
+    .pbtn{align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;display:inline-flex;font-size:15px;font-weight:700;height:27px;justify-content:center;transition:all .15s;width:27px;user-select:none;line-height:1}
+    .pbtn.plus:hover{background:rgba(62,207,142,.15);border-color:var(--success);color:var(--success)}
+    .pbtn.minus:hover{background:rgba(224,85,85,.15);border-color:var(--danger);color:var(--danger)}
+
+    /* MODAL */
+    .overlay{align-items:center;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);display:none;inset:0;justify-content:center;padding:20px;position:fixed;z-index:100}
+    .overlay.open{display:flex}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;max-height:90vh;overflow-y:auto;padding:28px;width:100%;max-width:440px}
+    .modal h3{font-size:17px;font-weight:700;margin-bottom:18px}
+    .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+    .modal-err{background:rgba(224,85,85,.1);border:1px solid var(--danger);border-radius:8px;color:var(--danger);font-size:12px;margin-top:8px;padding:9px 12px;display:none}
+    .pin-box{background:var(--bg);border:1px solid var(--accent);border-radius:var(--radius);font-family:monospace;font-size:24px;font-weight:700;letter-spacing:.3em;padding:14px;text-align:center;color:var(--accent);margin:4px 0 2px}
+    .pin-hint{color:var(--muted);font-size:11px;text-align:center;margin-bottom:12px}
+    .divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+    .field-hint{color:var(--muted);font-size:11px;margin-top:3px}
+
+    /* CONFIRM */
+    #confirm-ov{align-items:center;background:rgba(0,0,0,.8);display:none;inset:0;justify-content:center;position:fixed;z-index:150}
+    #confirm-ov.open{display:flex}
+    .cbox{background:var(--surface);border:1px solid var(--danger);border-radius:14px;max-width:360px;padding:28px;text-align:center;width:90%}
+    .cbox h4{font-size:16px;margin-bottom:8px}
+    .cbox p{color:var(--muted);font-size:13px;margin-bottom:24px}
+    .cactions{display:flex;gap:8px;justify-content:center}
+
+    /* TOAST */
+    .toast{align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:10px;bottom:20px;box-shadow:0 8px 28px rgba(0,0,0,.6);display:flex;font-size:13px;font-weight:500;gap:8px;opacity:0;padding:11px 16px;position:fixed;right:20px;transform:translateY(8px);transition:opacity .3s,transform .3s;z-index:200;max-width:320px}
+    .toast.show{opacity:1;transform:translateY(0)}
+    .toast.ok{border-color:var(--success)}.toast.err{border-color:var(--danger)}
+
+    .spinner{animation:spin 1s linear infinite;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;height:13px;width:13px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    @media(max-width:680px){
+      .sidebar{display:none}
+      .main{margin-left:0;padding:16px}
+      /* Mejoras para móviles */
+      body{font-size:14px}
+      .login-wrap{max-width:100%}
+      .login-card{padding:20px}
+      .field input,.field select,.btn{min-height:44px;font-size:16px}
+      .tcard{overflow-x:auto}
+      .stats{grid-template-columns:repeat(2,1fr)}
+      .search input{width:120px}
+      th,td{padding:9px 10px;font-size:12px}
+      /* Config page responsive */
+      #page-config .field > div{
+        flex-direction:column;
+        align-items:stretch;
+      }
+      #page-config .field > div > div{
+        width:100%;
+      }
+      #page-config .field input{
+        width:100% !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-wrap">
+    <div class="login-logo">
+      <div class="mark">⚡</div>
+      <h1>Jowiland</h1>
+      <p>Panel de gestión</p>
+    </div>
+    <div class="login-card">
+      <div class="field"><label>Email</label><input type="email" id="l-email" placeholder="tu@email.com" autocomplete="email"/></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="l-pass" placeholder="••••••••"/></div>
+      <button class="btn btn-primary" id="l-btn" onclick="doLogin()">Ingresar al panel</button>
+      <div id="login-err"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="mark">⚡</div>
+      <span>Jowiland</span>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">General</div>
+      <div class="nav-item active" onclick="goPage('dashboard')"><span class="ico">📊</span>Dashboard</div>
+      <div class="nav-section">Cuentas</div>
+      <div class="nav-item" onclick="goPage('users')"><span class="ico">👥</span>Ver cuentas</div>
+      <!-- Este item se muestra/oculta por JS según el rol -->
+      <div class="nav-item" id="nav-crear" onclick="openCreate()" style="display:none"><span class="ico">➕</span>Crear cuenta</div>
+      <div class="nav-section">Puntos</div>
+      <div class="nav-item" onclick="goPage('points')"><span class="ico">⭐</span>Gestión de puntos</div>
+      <div class="nav-item" onclick="goPage('config')"><span class="ico">⚙️</span>Configurar Puntos</div>
+    </nav>
+    <div class="sb-footer">
+      <div class="sb-user">
+        <div class="avatar av-admin" id="sb-av">A</div>
+        <div class="sb-info">
+          <div class="sname" id="sb-name">—</div>
+          <div class="srole role-admin" id="sb-role">admin</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="width:100%" onclick="doLogout()">🚪 Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="ph"><div class="ph-left"><h2>Dashboard</h2><p>Resumen general</p></div></div>
+      <div class="stats">
+        <div class="stat"><div class="slabel">Total cuentas</div><div class="sval c-accent" id="st-total">—</div></div>
+        <div class="stat" id="st-insp-card"><div class="slabel">Inspectores</div><div class="sval c-success" id="st-insp">—</div></div>
+        <div class="stat" id="st-users-card"><div class="slabel">Usuarios</div><div class="sval c-purple" id="st-users">—</div></div>
+        <div class="stat"><div class="slabel">Puntos entregados</div><div class="sval c-warn" id="st-pts">—</div></div>
+      </div>
+      <div class="tcard">
+        <div class="ttoolbar"><span class="ttoolbar-title">🏆 Top por puntos</span></div>
+        <table>
+          <thead><tr><th>#</th><th>Nombre</th><th>Rol</th><th>Puntos</th></tr></thead>
+          <tbody id="dash-tbody"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CUENTAS -->
+    <div class="page" id="page-users">
+      <div class="ph">
+        <div class="ph-left"><h2>Cuentas</h2><p>Todos los usuarios registrados</p></div>
+        <div id="ph-crear-btn"></div><!-- Se inyecta el botón si es admin -->
+      </div>
+      <div class="tcard">
+        <div class="ttoolbar">
+          <div class="search"><span>🔍</span><input type="text" placeholder="Buscar por nombre…" oninput="filterU(this.value)"/></div>
+          <select id="role-filter" onchange="filterByRole(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none">
+            <option value="">Todos los roles</option>
+            <option value="inspector">Inspector</option>
+            <option value="user">Usuario</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Rol</th>
+              <th>PIN</th>
+              <th>Rango</th>
+              <th>Cargos</th>
+              <th>Estado</th>
+              <th>Puntos</th>
+              <th id="th-acciones">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody"><tr><td colspan="8" class="empty">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PUNTOS -->
+    <div class="page" id="page-points">
+      <div class="ph"><div class="ph-left"><h2>Gestión de puntos</h2><p>Sumá o restá puntos a moderadores</p></div></div>
+      <div class="tcard">
+        <div class="ttoolbar">
+          <div class="search"><span>🔍</span><input type="text" placeholder="Buscar moderador…" oninput="filterP(this.value)"/></div>
+        </div>
+        <table>
+          <thead><tr><th>Nombre</th><th>Rol</th><th>Puntos actuales</th><th>Ajustar</th></tr></thead>
+          <tbody id="pts-tbody"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CONFIGURAR PUNTOS -->
+    <div class="page" id="page-config">
+      <div class="ph"><div class="ph-left"><h2>Configurar Puntos</h2><p>Ajustá el tiempo para el decremento automático de puntos</p></div></div>
+      <div class="card">
+        <div class="field">
+          <label>Tiempo para restar 1 punto (total)</label>
+          <div style="display:flex;gap:12px;align-items:center;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:12px;color:var(--muted);">Horas</label>
+              <input type="number" id="config-hours" min="0" placeholder="0" style="width:100px;text-align:center;">
+            </div>
+            <span style="font-size:24px;font-weight:bold;">:</span>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label style="font-size:12px;color:var(--muted);">Minutos</label>
+              <input type="number" id="config-minutes" min="0" max="59" placeholder="0" style="width:100px;text-align:center;">
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Resumen</label>
+          <div style="padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
+            <p id="config-summary">Cada <strong>0h 0m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>0h 0m</strong>)</p>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="config-save" onclick="saveConfig()" style="width:100%;margin-top:8px;">💾 Guardar Configuración</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL CREAR/EDITAR -->
+<div class="overlay" id="modal-ov">
+  <div class="modal">
+    <h3 id="modal-title">Crear cuenta</h3>
+
+    <div class="field">
+      <label>Nombre completo</label>
+      <input type="text" id="m-name" placeholder="Nombre del moderador"/>
+    </div>
+
+    <div class="field">
+      <label>Rol</label>
+      <select id="m-role" onchange="onRoleChange(this.value)">
+        <option value="user">Usuario – solo ve sus puntos (acceso por PIN)</option>
+        <option value="inspector">Inspector – suma/resta puntos (acceso por email)</option>
+        <option value="admin">Admin – acceso completo (acceso por email)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Rango</label>
+      <select id="m-rango">
+        <option value="Centinela">Centinela</option>
+        <option value="Admin">Admin</option>
+        <option value="Owner">Owner</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Cargos</label>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;background:var(--bg);padding:12px;border-radius:8px;border:1px solid var(--border)">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
+          <input type="checkbox" class="cargo-checkbox" value="Inspector">
+          <span style="font-size:14px">Inspector</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
+          <input type="checkbox" class="cargo-checkbox" value="Mod">
+          <span style="font-size:14px">Mod</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
+          <input type="checkbox" class="cargo-checkbox" value="Colaborador">
+          <span style="font-size:14px">Colaborador</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
+          <input type="checkbox" class="cargo-checkbox" value="MC team">
+          <span style="font-size:14px">MC team</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
+          <input type="checkbox" class="cargo-checkbox" value="Dev">
+          <span style="font-size:14px">Dev</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Campos para inspector/admin -->
+    <div id="email-section">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="m-email" placeholder="correo@ejemplo.com" autocomplete="off"/>
+      </div>
+      <div class="field" id="pass-field">
+        <label>Contraseña</label>
+        <input type="password" id="m-pass" placeholder="Mínimo 6 caracteres" autocomplete="new-password"/>
+        <div class="field-hint">Solo se usa al crear. No se puede cambiar desde acá después.</div>
+      </div>
+    </div>
+
+    <!-- PIN para usuarios -->
+    <div id="pin-section" style="display:none">
+      <div class="pin-box" id="pin-val">——</div>
+      <div class="pin-hint">PIN generado automáticamente. Compartíselo al usuario.</div>
+      <button class="btn btn-ghost btn-sm" style="margin-bottom:10px" onclick="regenPin()">🔄 Generar otro PIN</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="field">
+      <label>Estado</label>
+      <select id="m-status">
+        <option value="active">Activo</option>
+        <option value="inactive">Inactivo</option>
+      </select>
+    </div>
+
+    <div class="modal-err" id="modal-err"></div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary btn-auto" id="m-save" onclick="saveAccount()">Crear cuenta</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div id="confirm-ov">
+  <div class="cbox">
+    <h4>¿Eliminar cuenta?</h4>
+    <p id="confirm-msg">Esta acción no se puede deshacer.</p>
+    <div class="cactions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-yes">Sí, eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
+  createUserWithEmailAndPassword, updateProfile
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+import {
+  getFirestore, collection, doc, setDoc, getDoc, getDocs,
+  updateDoc, deleteDoc, serverTimestamp, query, orderBy
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+
+const cfg = {
+  apiKey:"AIzaSyAIqxYEo-flmj1KKz3f0x1CnKG8KoUMBrM",
+  authDomain:"jowiland-2.firebaseapp.com",
+  projectId:"jowiland-2",
+  storageBucket:"jowiland-2.firebasestorage.app",
+  messagingSenderId:"301719973403",
+  appId:"1:301719973403:web:827b9a8df3e17ad74992be"
+};
+
+// Reutilizar app si ya existe
+const app  = getApps().length ? getApp() : initializeApp(cfg, "main");
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// ── ESTADO GLOBAL ─────────────────────────────────────────────
+let allUsers     = [];
+let myRole       = null;
+let myUid        = null;
+let editUid      = null;
+let filterText   = "";
+let filterRoleV  = "";
+let filterPText  = "";
+let currentConfig = { hours: 24, minutes: 0 }; // Valor por defecto
+
+// ── AUTH ──────────────────────────────────────────────────────
+onAuthStateChanged(auth, async user => {
+  if (!user) { showLogin(); return; }
+
+  try {
+    const snap = await getDoc(doc(db, "users", user.uid));
+    if (!snap.exists()) {
+      showToast("Tu cuenta no tiene perfil en el sistema.", "err");
+      await signOut(auth); return;
+    }
+    const d = snap.data();
+    if (d.role !== "admin" && d.role !== "inspector") {
+      showToast("Acceso denegado: solo admins e inspectores.", "err");
+      await signOut(auth); return;
+    }
+    if (d.status === "inactive") {
+      showToast("Tu cuenta está inactiva.", "err");
+      await signOut(auth); return;
+    }
+    myRole = d.role;
+    myUid  = user.uid;
+    await bootApp(user, d);
+  } catch(e) {
+    showToast("Error al verificar sesión: " + e.message, "err");
+  }
+});
+
+window.doLogin = async () => {
+  const email = document.getElementById("l-email").value.trim();
+  const pass  = document.getElementById("l-pass").value;
+  const btn   = document.getElementById("l-btn");
+  const err   = document.getElementById("login-err");
+  err.style.display = "none";
+  if (!email || !pass) { err.textContent="Completá los dos campos."; err.style.display="block"; return; }
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Ingresando…';
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch(e) {
+    err.textContent = friendlyErr(e.code);
+    err.style.display = "block";
+    btn.disabled = false;
+    btn.textContent = "Ingresar al panel";
+  }
+};
+
+document.getElementById("l-pass").addEventListener("keydown", e => { if(e.key==="Enter") window.doLogin(); });
+window.doLogout = () => signOut(auth);
+
+// ── BOOT ──────────────────────────────────────────────────────
+async function bootApp(user, data) {
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("app").style.display = "block";
+
+  const name = data.name || user.email;
+  document.getElementById("sb-name").textContent = name;
+  document.getElementById("sb-role").textContent = data.role;
+  document.getElementById("sb-role").className = "srole role-" + data.role;
+  const av = document.getElementById("sb-av");
+  av.textContent = name.charAt(0).toUpperCase();
+  av.className = "avatar av-" + data.role;
+
+  // Mostrar elementos solo para admin
+  if (myRole === "admin") {
+    document.getElementById("nav-crear").style.display = "flex";
+    document.getElementById("ph-crear-btn").innerHTML =
+      '<button class="btn btn-primary btn-auto" onclick="openCreate()">➕ Crear cuenta</button>';
+  } else {
+    // Inspector: ocultar columna acciones
+    document.getElementById("th-acciones").style.display = "none";
+    document.getElementById("st-insp-card").style.display = "none";
+    document.getElementById("st-users-card").style.display = "none";
+  }
+  
+  // Cargar configuración de puntos
+  await loadConfig();
+  await loadUsers();
+}
+
+function showLogin() {
+  document.getElementById("login-screen").style.display = "flex";
+  document.getElementById("app").style.display = "none";
+}
+
+// ── CONFIGURACIÓN DE DECREMENTO DE PUNTOS ───────────────────────────────────────────
+async function loadConfig() {
+  try {
+    const snap = await getDoc(doc(db, "settings", "pointDecrement"));
+    if (snap.exists()) {
+      currentConfig = snap.data();
+    }
+    // Cargar valores en los inputs
+    document.getElementById("config-hours").value = currentConfig.hours || 24;
+    document.getElementById("config-minutes").value = currentConfig.minutes || 0;
+    updateConfigSummary();
+  } catch (e) {
+    console.error("Error loading config:", e);
+  }
+}
+
+function updateConfigSummary() {
+  const hours = parseInt(document.getElementById("config-hours").value) || 0;
+  const minutes = parseInt(document.getElementById("config-minutes").value) || 0;
+  const totalMinutes = hours * 60 + minutes;
+  const intervalMinutes = totalMinutes / 10; // Dividimos 1 punto en 10 partes de 0.1
+  
+  // Convertir intervalMinutes a horas y minutos para mostrar
+  const intervalHours = Math.floor(intervalMinutes / 60);
+  const intervalMins = Math.round(intervalMinutes % 60);
+  
+  document.getElementById("config-summary").innerHTML = 
+    `Cada <strong>${hours}h ${minutes}m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>${intervalHours}h ${intervalMins}m</strong>)`;
+}
+
+window.saveConfig = async () => {
+  const hours = parseInt(document.getElementById("config-hours").value) || 0;
+  const minutes = parseInt(document.getElementById("config-minutes").value) || 0;
+  
+  if (hours === 0 && minutes === 0) {
+    showToast("Ingresá un tiempo válido!", "err");
+    return;
+  }
+  
+  currentConfig = { hours, minutes, updatedAt: serverTimestamp() };
+  try {
+    await setDoc(doc(db, "settings", "pointDecrement"), currentConfig);
+    showToast("✅ Configuración guardada!", "ok");
+  } catch (e) {
+    showToast("Error al guardar: " + e.message, "err");
+  }
+}
+
+// Agregar event listeners para actualizar el resumen en tiempo real
+document.getElementById("config-hours").addEventListener("input", updateConfigSummary);
+document.getElementById("config-minutes").addEventListener("input", updateConfigSummary);
+
+// ── PÁGINAS ───────────────────────────────────────────────────
+window.goPage = id => {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+  document.getElementById("page-" + id).classList.add("active");
+  const ni = document.querySelector(`.nav-item[onclick="goPage('${id}')"]`);
+  if (ni) ni.classList.add("active");
+};
+
+// ── CARGAR USUARIOS ───────────────────────────────────────────
+async function loadUsers() {
+  try {
+    const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+    allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    renderAll();
+  } catch(e) {
+    console.error(e);
+    showToast("Error al cargar: " + e.message, "err");
+  }
+}
+
+function renderAll() {
+  renderDash();
+  renderUsersTable(filteredUsers());
+  renderPointsTable(filteredPoints());
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+function renderDash() {
+  document.getElementById("st-total").textContent = allUsers.length;
+  document.getElementById("st-insp").textContent  = allUsers.filter(u => u.role==="inspector").length;
+  document.getElementById("st-users").textContent = allUsers.filter(u => u.role==="user").length;
+  document.getElementById("st-pts").textContent   = allUsers.reduce((s,u) => s+(u.points||0), 0);
+
+  const top = [...allUsers].sort((a,b) => (b.points||0)-(a.points||0)).slice(0, 8);
+  const tb = document.getElementById("dash-tbody");
+  if (!top.length) { tb.innerHTML='<tr><td colspan="4" class="empty">Sin datos aún.</td></tr>'; return; }
+  tb.innerHTML = top.map((u,i) => `
+    <tr>
+      <td style="color:var(--muted);font-weight:700;width:30px">${i+1}</td>
+      <td><b>${esc(u.name||"—")}</b></td>
+      <td>${roleBadge(u.role)}</td>
+      <td><b style="color:var(--warn);font-size:15px">${u.points||0}</b></td>
+    </tr>`).join("");
+}
+
+// ── TABLA USUARIOS ────────────────────────────────────────────
+function filteredUsers() {
+  let list = allUsers;
+  if (filterText) list = list.filter(u => (u.name||"").toLowerCase().includes(filterText)||(u.email||"").toLowerCase().includes(filterText));
+  if (filterRoleV) list = list.filter(u => u.role === filterRoleV);
+  return list;
+}
+
+window.filterU = v => { filterText = v.toLowerCase(); renderUsersTable(filteredUsers()); };
+window.filterByRole = v => { filterRoleV = v; renderUsersTable(filteredUsers()); };
+
+function renderUsersTable(list) {
+  const tb = document.getElementById("users-tbody");
+  if (!list.length) { tb.innerHTML='<tr><td colspan="8" class="empty">Sin resultados.</td></tr>'; return; }
+  const isAdmin = myRole === "admin";
+  tb.innerHTML = list.map(u => `
+    <tr>
+      <td><b>${esc(u.name||"—")}</b><br><span style="color:var(--muted);font-size:11px">${esc(u.email||"")}</span></td>
+      <td>${roleBadge(u.role)}</td>
+      <td>${u.pin ? `<code style="background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:13px;padding:3px 8px;letter-spacing:.1em">${u.pin}</code>` : '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${esc(u.rango||"—")}</td>
+      <td>${(u.cargos||[]).map(c => `<span class="badge">${esc(c)}</span>`).join(" ") || '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${statusBadge(u.status)}</td>
+      <td><b style="color:var(--warn)">${u.points||0}</b></td>
+      <td>${isAdmin ? `
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-warn btn-sm" onclick="openEdit('${u.uid}')">✏️ Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="askDelete('${u.uid}','${esc(u.name||"")}')">🗑️</button>
+        </div>` : '<span style="color:var(--muted)">—</span>'}</td>
+    </tr>`).join("");
+}
+
+// ── TABLA PUNTOS ──────────────────────────────────────────────
+function filteredPoints() {
+  let list = allUsers.filter(u => u.role !== "admin");
+  if (filterPText) list = list.filter(u => (u.name||"").toLowerCase().includes(filterPText));
+  return list;
+}
+
+window.filterP = v => { filterPText = v.toLowerCase(); renderPointsTable(filteredPoints()); };
+
+function renderPointsTable(list) {
+  const tb = document.getElementById("pts-tbody");
+  if (!list.length) { tb.innerHTML='<tr><td colspan="4" class="empty">Sin moderadores.</td></tr>'; return; }
+  tb.innerHTML = list.map(u => `
+    <tr>
+      <td><b>${esc(u.name||"—")}</b></td>
+      <td>${roleBadge(u.role)}</td>
+      <td><span class="pts-val" id="pv-${u.uid}">${u.points||0}</span></td>
+      <td>
+        <div class="pts-row">
+          <button class="pbtn minus" onclick="adjPts('${u.uid}',-1)">−</button>
+          <button class="pbtn plus"  onclick="adjPts('${u.uid}',+1)">+</button>
+          <button class="btn btn-ghost btn-sm" onclick="promptPts('${u.uid}')">± Ingresar</button>
+        </div>
+      </td>
+    </tr>`).join("");
+}
+
+// ── PUNTOS ────────────────────────────────────────────────────
+window.adjPts = async (uid, delta) => {
+  const u = allUsers.find(x => x.uid===uid);
+  if (!u) return;
+  const nv = Math.max(0, (u.points||0) + delta);
+  try {
+    await updateDoc(doc(db,"users",uid), { points: nv });
+    u.points = nv;
+    const el = document.getElementById("pv-"+uid);
+    if (el) el.textContent = nv;
+    renderDash();
+    showToast((delta>0?"➕":"➖") + " " + Math.abs(delta) + " pt a " + (u.name||"usuario"), "ok");
+  } catch(e) { showToast("Error: "+e.message,"err"); }
+};
+
+window.promptPts = uid => {
+  const u = allUsers.find(x => x.uid===uid);
+  if (!u) return;
+  const raw = prompt(`Ajustar puntos de ${u.name||"usuario"} (actual: ${u.points||0})\n\nEscribí positivo para sumar o negativo para restar.\nEj: 5 suma 5 puntos | -3 resta 3 puntos`);
+  if (raw===null) return;
+  const n = parseInt(raw, 10);
+  if (isNaN(n)) return showToast("Número inválido.","err");
+  adjPts(uid, n);
+};
+
+// ── MODAL ─────────────────────────────────────────────────────
+window.openCreate = () => {
+  editUid = null;
+  document.getElementById("modal-title").textContent = "Crear cuenta";
+  document.getElementById("m-name").value = "";
+  document.getElementById("m-email").value = "";
+  document.getElementById("m-pass").value = "";
+  document.getElementById("m-role").value = "user";
+  document.getElementById("m-rango").value = "Centinela";
+  // Limpiar checkboxes de cargos
+  document.querySelectorAll(".cargo-checkbox").forEach(cb => cb.checked = false);
+  document.getElementById("m-role").disabled = false;
+  document.getElementById("m-status").value = "active";
+  document.getElementById("m-save").textContent = "Crear cuenta";
+  document.getElementById("modal-err").style.display = "none";
+  document.getElementById("pass-field").style.display = "flex";
+  showPinSection("user");
+  document.getElementById("modal-ov").classList.add("open");
+};
+
+window.openEdit = uid => {
+  const u = allUsers.find(x => x.uid===uid);
+  if (!u) return;
+  editUid = uid;
+  document.getElementById("modal-title").textContent = "Editar cuenta";
+  document.getElementById("m-name").value   = u.name   || "";
+  document.getElementById("m-email").value  = u.email  || "";
+  document.getElementById("m-role").value   = u.role   || "user";
+  document.getElementById("m-rango").value  = u.rango  || "Centinela";
+  // Marcar checkboxes de cargos
+  const userCargos = u.cargos || [];
+  document.querySelectorAll(".cargo-checkbox").forEach(cb => {
+    cb.checked = userCargos.includes(cb.value);
+  });
+  document.getElementById("m-role").disabled = false;
+  document.getElementById("m-status").value = u.status || "active";
+  document.getElementById("m-pass").value   = "";
+  document.getElementById("m-save").textContent = "Guardar cambios";
+  document.getElementById("modal-err").style.display = "none";
+  // Al editar no mostramos campo contraseña
+  document.getElementById("pass-field").style.display = "none";
+  if (u.role==="user") {
+    document.getElementById("pin-val").textContent = u.pin || genPin();
+    document.getElementById("pin-section").style.display = "block";
+    document.getElementById("email-section").style.display = "none";
+  } else {
+    document.getElementById("pin-section").style.display = "none";
+    document.getElementById("email-section").style.display = "block";
+  }
+  document.getElementById("modal-ov").classList.add("open");
+};
+
+window.onRoleChange = role => {
+  showPinSection(role);
+  if (!editUid) document.getElementById("pass-field").style.display = "flex";
+};
+
+function showPinSection(role) {
+  if (role==="user") {
+    document.getElementById("pin-val").textContent = genPin();
+    document.getElementById("pin-section").style.display = "block";
+    document.getElementById("email-section").style.display = "none";
+  } else {
+    document.getElementById("pin-section").style.display = "none";
+    document.getElementById("email-section").style.display = "block";
+  }
+}
+
+window.regenPin = () => { document.getElementById("pin-val").textContent = genPin(); };
+window.closeModal = () => document.getElementById("modal-ov").classList.remove("open");
+
+function setModalErr(msg) {
+  const el = document.getElementById("modal-err");
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+window.saveAccount = async () => {
+  const name   = document.getElementById("m-name").value.trim();
+  const email  = document.getElementById("m-email").value.trim();
+  const pass   = document.getElementById("m-pass").value;
+  const role   = document.getElementById("m-role").value;
+  const rango  = document.getElementById("m-rango").value;
+  // Obtener cargos desde checkboxes
+  const cargos = Array.from(document.querySelectorAll(".cargo-checkbox:checked")).map(cb => cb.value);
+  const status = document.getElementById("m-status").value;
+  const pin    = document.getElementById("pin-val").textContent;
+  const btn    = document.getElementById("m-save");
+
+  document.getElementById("modal-err").style.display = "none";
+
+  if (!name) return setModalErr("El nombre es obligatorio.");
+
+  if (!editUid) {
+    // Validar al crear
+    if ((role==="admin"||role==="inspector") && !email) return setModalErr("Inspector/Admin necesitan email.");
+    if ((role==="admin"||role==="inspector") && pass.length<6) return setModalErr("La contraseña debe tener al menos 6 caracteres.");
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    if (editUid) {
+      // EDITAR: solo actualizar Firestore
+      const upd = { name, role, rango, cargos, status };
+      if (role==="user") upd.pin = pin;
+      await updateDoc(doc(db,"users",editUid), upd);
+      const idx = allUsers.findIndex(u => u.uid===editUid);
+      if (idx!==-1) allUsers[idx] = { ...allUsers[idx], ...upd };
+      showToast("Cuenta actualizada.", "ok");
+
+    } else {
+      // CREAR
+      let uid;
+      const data = { name, role, rango, cargos, status, points: 0, createdAt: serverTimestamp(), createdBy: myUid };
+
+      if (role==="admin" || role==="inspector") {
+        // Necesita Firebase Auth — segunda instancia para no cerrar sesión del admin actual
+        const secondName = "secondary-" + Date.now();
+        const secondApp  = initializeApp(cfg, secondName);
+        const secondAuth = getAuth(secondApp);
+        const cred = await createUserWithEmailAndPassword(secondAuth, email, pass);
+        await updateProfile(cred.user, { displayName: name });
+        await signOut(secondAuth);
+        uid = cred.user.uid;
+        data.email = email;
+      } else {
+        // Usuario: solo Firestore + PIN, sin cuenta Auth
+        uid = "usr_" + Date.now() + "_" + Math.random().toString(36).slice(2,6);
+        data.pin = pin;
+      }
+
+      await setDoc(doc(db,"users",uid), data);
+      allUsers.unshift({ uid, ...data, createdAt: new Date() });
+      showToast("✅ Cuenta creada: " + name, "ok");
+    }
+
+    closeModal();
+    renderAll();
+  } catch(e) {
+    console.error(e);
+    setModalErr(friendlyErr(e.code) || e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = editUid ? "Guardar cambios" : "Crear cuenta";
+  }
+};
+
+// ── ELIMINAR ──────────────────────────────────────────────────
+let pendingDel = null;
+window.askDelete = (uid, name) => {
+  pendingDel = uid;
+  document.getElementById("confirm-msg").textContent = `¿Eliminar la cuenta de "${name}"? No se puede deshacer.`;
+  document.getElementById("confirm-ov").classList.add("open");
+};
+window.closeConfirm = () => { document.getElementById("confirm-ov").classList.remove("open"); pendingDel=null; };
+document.getElementById("confirm-yes").onclick = async () => {
+  if (!pendingDel) return;
+  try {
+    await deleteDoc(doc(db,"users",pendingDel));
+    allUsers = allUsers.filter(u => u.uid!==pendingDel);
+    renderAll();
+    showToast("Cuenta eliminada.", "ok");
+  } catch(e) { showToast("Error: "+e.message,"err"); }
+  closeConfirm();
+};
+
+// ── UTILIDADES ────────────────────────────────────────────────
+function genPin() { return String(Math.floor(1000 + Math.random()*9000)); }
+
+function roleBadge(r) {
+  const cl = {admin:"b-admin",inspector:"b-inspector",user:"b-user"};
+  const lb = {admin:"Admin",inspector:"Inspector",user:"Usuario"};
+  return `<span class="badge ${cl[r]||'b-user'}">${lb[r]||r}</span>`;
+}
+function statusBadge(s) {
+  return s==="inactive"
+    ? '<span class="badge b-inactive">Inactivo</span>'
+    : '<span class="badge b-active">Activo</span>';
+}
+function esc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function friendlyErr(code) {
+  const m = {
+    "auth/email-already-in-use":"Ese email ya está registrado.",
+    "auth/invalid-email":"Email inválido.",
+    "auth/weak-password":"Contraseña muy corta (mínimo 6).",
+    "auth/wrong-password":"Contraseña incorrecta.",
+    "auth/user-not-found":"No existe cuenta con ese email.",
+    "auth/invalid-credential":"Email o contraseña incorrectos.",
+    "auth/too-many-requests":"Demasiados intentos, esperá unos minutos.",
+    "auth/network-request-failed":"Error de red. Verificá tu conexión.",
+    "auth/operation-not-allowed":"Email/contraseña no habilitado en Firebase.",
+  };
+  return m[code] || "";
+}
+let toastT;
+window.showToast = (msg, type="ok") => {
+  const t = document.getElementById("toast");
+  t.textContent = (type==="ok"?"✅ ":"❌ ") + msg;
+  t.className = "toast show " + type;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { t.className="toast"; }, 3500);
+};
+</script>
+</body>
+</html>
