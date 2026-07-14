@@ -198,7 +198,8 @@
       <div class="nav-item" id="nav-crear" onclick="openCreate()" style="display:none"><span class="ico">➕</span>Crear cuenta</div>
       <div class="nav-section">Puntos</div>
       <div class="nav-item" onclick="goPage('points')"><span class="ico">⭐</span>Gestión de puntos</div>
-      <div class="nav-item" onclick="goPage('config')"><span class="ico">⚙️</span>Configurar Puntos</div>
+      <div class="nav-item" id="nav-config" onclick="goPage('config')"><span class="ico">⚙️</span>Configurar Puntos</div>
+      <div class="nav-item" onclick="goPage('logs')"><span class="ico">📜</span>Logs</div>
     </nav>
     <div class="sb-footer">
       <div class="sb-user">
@@ -305,6 +306,56 @@
           </div>
         </div>
         <button class="btn btn-primary" id="config-save" onclick="saveConfig()" style="width:100%;margin-top:8px;">💾 Guardar Configuración</button>
+      </div>
+    </div>
+
+    <!-- LOGS -->
+    <div class="page" id="page-logs">
+      <div class="ph">
+        <div class="ph-left"><h2>Logs</h2><p>Accesos y cambios de puntos</p></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="toggleInspectorPanel()">📊 Actividad inspectores</button>
+          <button class="btn btn-ghost btn-sm" id="logs-export" onclick="exportLogs()">📥 Exportar</button>
+        </div>
+      </div>
+      <div class="tcard" id="insp-panel" style="display:none;margin-bottom:14px">
+        <div class="ttoolbar"><span class="ttoolbar-title">📊 Actividad de inspectores (hoy)</span></div>
+        <table>
+          <thead>
+            <tr>
+              <th>Inspector</th>
+              <th>Puntos asignados hoy</th>
+              <th>Acciones hoy</th>
+              <th>Última acción</th>
+              <th>Hace</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="insp-tbody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="tcard">
+        <div class="ttoolbar">
+          <select onchange="setLogTypeFilter(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none">
+            <option value="">Todos</option>
+            <option value="login">Logins</option>
+            <option value="points">Cambios de puntos</option>
+          </select>
+          <div class="search"><span>🔍</span><input type="text" placeholder="Buscar…" oninput="setLogSearch(this.value)"/></div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha y hora</th>
+              <th>Inspector/Admin</th>
+              <th>Usuario afectado</th>
+              <th>Cambio</th>
+              <th>Motivo</th>
+              <th id="logs-th-actions">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="logs-tbody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody>
+        </table>
       </div>
     </div>
 
@@ -435,7 +486,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 import {
   getFirestore, collection, doc, setDoc, getDoc, getDocs,
-  updateDoc, deleteDoc, serverTimestamp, query, orderBy
+  updateDoc, deleteDoc, serverTimestamp, query, orderBy, addDoc, onSnapshot, limit
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
 const cfg = {
@@ -456,11 +507,16 @@ const db   = getFirestore(app);
 let allUsers     = [];
 let myRole       = null;
 let myUid        = null;
+let myName       = null;
 let editUid      = null;
 let filterText   = "";
 let filterRoleV  = "";
 let filterPText  = "";
 let currentConfig = { hours: 24, minutes: 0 }; // Valor por defecto
+let logs         = [];
+let logsUnsub    = null;
+let logTypeFilter = "";
+let logSearch     = "";
 
 const RL_OPTS = { windowMs: 5 * 60 * 1000, maxAttempts: 6, lockMs: 10 * 60 * 1000 };
 const RL_PREFIX = "jowiland-admin:rl:";
@@ -592,6 +648,7 @@ async function bootApp(user, data) {
   document.getElementById("app").style.display = "block";
 
   const name = data.name || user.email;
+  myName = name;
   document.getElementById("sb-name").textContent = name;
   document.getElementById("sb-role").textContent = data.role;
   document.getElementById("sb-role").className = "srole role-" + data.role;
@@ -605,21 +662,25 @@ async function bootApp(user, data) {
     document.getElementById("ph-crear-btn").innerHTML =
       '<button class="btn btn-primary btn-auto" onclick="openCreate()">➕ Crear cuenta</button>';
   } else {
+    document.getElementById("nav-config").style.display = "none";
     // Inspector: ocultar columna acciones
     document.getElementById("th-acciones").style.display = "none";
     document.getElementById("st-insp-card").style.display = "none";
     document.getElementById("st-users-card").style.display = "none";
   }
-  
-  // Cargar configuración de puntos
-  await loadConfig();
-  
-  // Agregar event listeners para actualizar el resumen en tiempo real
-  document.getElementById("config-hours").addEventListener("input", updateConfigSummary);
-  document.getElementById("config-minutes").addEventListener("input", updateConfigSummary);
-  
-  // Agregar event listener para guardar config
-  document.getElementById("config-save").addEventListener("click", window.saveConfig);
+
+  if (myRole === "admin") {
+    await loadConfig();
+    document.getElementById("config-hours").addEventListener("input", updateConfigSummary);
+    document.getElementById("config-minutes").addEventListener("input", updateConfigSummary);
+    document.getElementById("config-save").addEventListener("click", window.saveConfig);
+  } else {
+    const btn = document.getElementById("config-save");
+    if (btn) btn.disabled = true;
+  }
+
+  await startLogsLive();
+  await logLoginOnce();
   
   await loadUsers();
 }
@@ -664,6 +725,10 @@ function updateConfigSummary() {
 
 window.saveConfig = async (e) => {
   if (e && e.preventDefault) e.preventDefault();
+  if (myRole !== "admin") {
+    showToast("Solo un admin puede guardar esta configuración.", "err");
+    return;
+  }
   const hours = parseInt(document.getElementById("config-hours").value) || 0;
   const minutes = parseInt(document.getElementById("config-minutes").value) || 0;
   
@@ -686,12 +751,225 @@ window.saveConfig = async (e) => {
 
 // ── PÁGINAS ───────────────────────────────────────────────────
 window.goPage = id => {
+  if (id === "config" && myRole !== "admin") {
+    showToast("Solo un admin puede entrar a Configurar Puntos.", "err");
+    id = "dashboard";
+  }
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
   document.getElementById("page-" + id).classList.add("active");
   const ni = document.querySelector(`.nav-item[onclick="goPage('${id}')"]`);
   if (ni) ni.classList.add("active");
 };
+
+window.setLogTypeFilter = v => { logTypeFilter = v; renderLogs(); };
+window.setLogSearch = v => { logSearch = (v || "").toLowerCase(); renderLogs(); };
+window.toggleInspectorPanel = () => {
+  const el = document.getElementById("insp-panel");
+  if (!el) return;
+  el.style.display = el.style.display === "none" ? "block" : "none";
+};
+
+function dayKey(dt) {
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const d = String(dt.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function tsToDate(ts) {
+  if (!ts) return null;
+  if (typeof ts.toDate === "function") return ts.toDate();
+  if (typeof ts.seconds === "number") return new Date(ts.seconds * 1000);
+  return null;
+}
+
+function fmtDateTime(ts) {
+  const d = tsToDate(ts);
+  return d ? d.toLocaleString("es-CO") : "—";
+}
+
+function fmtSince(ms) {
+  if (ms < 0) ms = 0;
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return `${h}h ${mm}m`;
+}
+
+async function writeLog(entry) {
+  try {
+    await addDoc(collection(db, "logs"), {
+      ...entry,
+      dayKey: dayKey(new Date()),
+      createdAt: serverTimestamp()
+    });
+  } catch(e) {
+    console.error("Error guardando log:", e);
+  }
+}
+
+async function logLoginOnce() {
+  if (!myUid || !myRole) return;
+  const k = `jowiland:loginLogged:${myUid}`;
+  try {
+    if (sessionStorage.getItem(k)) return;
+    sessionStorage.setItem(k, "1");
+  } catch {}
+  await writeLog({
+    type: "login",
+    actorUid: myUid,
+    actorRole: myRole,
+    actorName: myName || ""
+  });
+}
+
+async function startLogsLive() {
+  if (logsUnsub) { try { logsUnsub(); } catch {} logsUnsub = null; }
+  const q = query(collection(db, "logs"), orderBy("createdAt", "desc"), limit(300));
+  logsUnsub = onSnapshot(q, snap => {
+    logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderLogs();
+    renderInspectorActivity();
+  }, e => console.error("Logs snapshot error:", e));
+}
+
+function filteredLogs() {
+  let list = logs;
+  if (logTypeFilter) list = list.filter(l => l.type === logTypeFilter);
+  if (logSearch) {
+    list = list.filter(l => {
+      const a = (l.actorName || "").toLowerCase();
+      const t = (l.targetName || "").toLowerCase();
+      const r = (l.reason || "").toLowerCase();
+      return a.includes(logSearch) || t.includes(logSearch) || r.includes(logSearch);
+    });
+  }
+  return list;
+}
+
+function renderLogs() {
+  const tb = document.getElementById("logs-tbody");
+  if (!tb) return;
+  const isAdmin = myRole === "admin";
+  const th = document.getElementById("logs-th-actions");
+  if (th) th.style.display = isAdmin ? "" : "none";
+  const exp = document.getElementById("logs-export");
+  if (exp) exp.style.display = isAdmin ? "" : "none";
+
+  const list = filteredLogs();
+  if (!list.length) {
+    tb.innerHTML = `<tr><td colspan="${isAdmin ? 6 : 5}" class="empty">Sin registros.</td></tr>`;
+    return;
+  }
+  tb.innerHTML = list.map(l => {
+    const isPoints = l.type === "points";
+    const dt = fmtDateTime(l.createdAt);
+    const actor = esc(l.actorName || "—");
+    const target = esc(l.targetName || (l.type === "login" ? (l.actorName || "—") : "—"));
+    const delta = isPoints ? (typeof l.delta === "number" ? l.delta : 0) : null;
+    const deltaTxt = isPoints ? `${delta > 0 ? "+" : ""}${delta}` : "—";
+    const motivo = esc(l.reason || (l.type === "login" ? "Inicio de sesión" : "Sin motivo"));
+    const delBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="deleteLog('${l.id}')">🗑️</button>` : "";
+    return `
+      <tr>
+        <td>${dt}</td>
+        <td>${actor}</td>
+        <td>${target}</td>
+        <td><b style="color:${delta > 0 ? "var(--success)" : delta < 0 ? "var(--danger)" : "var(--muted)"}">${deltaTxt}</b></td>
+        <td>${motivo}</td>
+        ${isAdmin ? `<td>${delBtn}</td>` : ""}
+      </tr>`;
+  }).join("");
+}
+
+window.deleteLog = async (id) => {
+  if (myRole !== "admin") return;
+  const ok = confirm("¿Borrar este registro? No se puede deshacer.");
+  if (!ok) return;
+  try {
+    await deleteDoc(doc(db, "logs", id));
+    showToast("Registro borrado.", "ok");
+  } catch(e) {
+    showToast("Error al borrar: " + e.message, "err");
+  }
+};
+
+window.exportLogs = () => {
+  if (myRole !== "admin") return;
+  const list = filteredLogs().map(l => ({
+    ...l,
+    createdAt: tsToDate(l.createdAt) ? tsToDate(l.createdAt).toISOString() : null
+  }));
+  const blob = new Blob([JSON.stringify(list, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `logs-${dayKey(new Date())}.json`;
+  document.body.appendChild(a);
+  a.click();
+  URL.revokeObjectURL(a.href);
+  a.remove();
+};
+
+function renderInspectorActivity() {
+  const tb = document.getElementById("insp-tbody");
+  if (!tb) return;
+  const today = dayKey(new Date());
+  const todays = logs.filter(l => l.type === "points" && l.dayKey === today && l.actorRole === "inspector");
+  if (!todays.length) {
+    tb.innerHTML = '<tr><td colspan="6" class="empty">Sin actividad hoy.</td></tr>';
+    return;
+  }
+
+  const mp = new Map();
+  for (const l of todays) {
+    const uid = l.actorUid || "—";
+    const prev = mp.get(uid) || {
+      uid,
+      name: l.actorName || "—",
+      pts: 0,
+      actions: 0,
+      lastAt: null,
+      lastTxt: "—"
+    };
+    const delta = typeof l.delta === "number" ? l.delta : 0;
+    if (delta > 0) prev.pts += delta;
+    prev.actions += 1;
+    const d = tsToDate(l.createdAt);
+    if (d && (!prev.lastAt || d > prev.lastAt)) {
+      prev.lastAt = d;
+      const tgt = l.targetName ? ` → ${l.targetName}` : "";
+      prev.lastTxt = `${delta > 0 ? "+" : ""}${delta}${tgt}`;
+    }
+    mp.set(uid, prev);
+  }
+
+  const list = [...mp.values()].sort((a, b) => {
+    if (b.actions !== a.actions) return b.actions - a.actions;
+    if (b.pts !== a.pts) return b.pts - a.pts;
+    const ta = a.lastAt ? a.lastAt.getTime() : 0;
+    const tb = b.lastAt ? b.lastAt.getTime() : 0;
+    return tb - ta;
+  });
+
+  tb.innerHTML = list.map(r => {
+    const now = Date.now();
+    const lastMs = r.lastAt ? (now - r.lastAt.getTime()) : Infinity;
+    const state = lastMs <= 15 * 60 * 1000 ? "🟢 Activo" : lastMs <= 60 * 60 * 1000 ? "🟡 Poco activo" : "🔴 Inactivo";
+    return `
+      <tr>
+        <td><b>${esc(r.name)}</b></td>
+        <td><b style="color:var(--warn)">${r.pts}</b></td>
+        <td>${r.actions}</td>
+        <td>${esc(r.lastTxt)}</td>
+        <td>${r.lastAt ? fmtSince(lastMs) : "—"}</td>
+        <td>${state}</td>
+      </tr>`;
+  }).join("");
+}
 
 // ── CARGAR USUARIOS ───────────────────────────────────────────
 async function loadUsers() {
@@ -801,6 +1079,9 @@ window.adjPts = async (uid, delta) => {
   }
   const u = allUsers.find(x => x.uid===uid);
   if (!u) return;
+  const reasonRaw = prompt("Motivo del cambio de puntos:", "");
+  if (reasonRaw === null) return;
+  const reason = reasonRaw.trim() || "Sin motivo";
   const nv = Math.max(0, (u.points||0) + delta);
   try {
     await updateDoc(doc(db,"users",uid), { points: nv });
@@ -809,6 +1090,17 @@ window.adjPts = async (uid, delta) => {
     if (el) el.textContent = nv;
     renderDash();
     showToast((delta>0?"➕":"➖") + " " + Math.abs(delta) + " pt a " + (u.name||"usuario"), "ok");
+    await writeLog({
+      type: "points",
+      actorUid: myUid,
+      actorRole: myRole,
+      actorName: myName || "",
+      targetUid: uid,
+      targetName: u.name || "",
+      delta,
+      reason,
+      newPoints: nv
+    });
   } catch(e) { showToast("Error: "+e.message,"err"); }
 };
 
@@ -823,8 +1115,40 @@ window.promptPts = uid => {
   if (raw===null) return;
   const n = parseInt(raw, 10);
   if (isNaN(n)) return showToast("Número inválido.","err");
-  adjPts(uid, n);
+  const reasonRaw = prompt("Motivo del cambio de puntos:", "");
+  if (reasonRaw === null) return;
+  const reason = reasonRaw.trim() || "Sin motivo";
+  adjPtsWithReason(uid, n, reason);
 };
+
+async function adjPtsWithReason(uid, delta, reason) {
+  if (uid === myUid) {
+    showToast("No podés modificar tus propios puntos!", "err");
+    return;
+  }
+  const u = allUsers.find(x => x.uid===uid);
+  if (!u) return;
+  const nv = Math.max(0, (u.points||0) + delta);
+  try {
+    await updateDoc(doc(db,"users",uid), { points: nv });
+    u.points = nv;
+    const el = document.getElementById("pv-"+uid);
+    if (el) el.textContent = nv;
+    renderDash();
+    showToast((delta>0?"➕":"➖") + " " + Math.abs(delta) + " pt a " + (u.name||"usuario"), "ok");
+    await writeLog({
+      type: "points",
+      actorUid: myUid,
+      actorRole: myRole,
+      actorName: myName || "",
+      targetUid: uid,
+      targetName: u.name || "",
+      delta,
+      reason,
+      newPoints: nv
+    });
+  } catch(e) { showToast("Error: "+e.message,"err"); }
+}
 
 // ── MODAL ─────────────────────────────────────────────────────
 window.openCreate = () => {
