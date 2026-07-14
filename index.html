@@ -513,6 +513,8 @@ let filterText   = "";
 let filterRoleV  = "";
 let filterPText  = "";
 let currentConfig = { hours: 24, minutes: 0 }; // Valor por defecto
+let pointDecrementTimer = null;
+let pointDecrementBusy = false;
 let logs         = [];
 let logsUnsub    = null;
 let logTypeFilter = "";
@@ -686,6 +688,7 @@ async function bootApp(user, data) {
   await logLoginOnce();
   
   await loadUsers();
+  if (myRole === "admin") startPointDecrementScheduler();
 }
 
 function showLogin() {
@@ -746,9 +749,87 @@ window.saveConfig = async (e) => {
     await setDoc(doc(db, "settings", "pointDecrement"), currentConfig, { merge: true });
     console.log("Config saved successfully");
     showToast("✅ Configuración guardada!", "ok");
+    startPointDecrementScheduler();
   } catch (e) {
     console.error("Error saving config:", e);
     showToast("Error al guardar: " + e.message, "err");
+  }
+}
+
+function cfgToMs(cfg) {
+  const h = parseInt(cfg?.hours, 10) || 0;
+  const m = parseInt(cfg?.minutes, 10) || 0;
+  return (h * 60 + m) * 60 * 1000;
+}
+
+function fmtPts(p) {
+  const n = Number(p || 0);
+  if (!Number.isFinite(n)) return "0";
+  const r = Math.round(n * 10) / 10;
+  return r % 1 === 0 ? String(r.toFixed(0)) : r.toFixed(1);
+}
+
+function stopPointDecrementScheduler() {
+  if (pointDecrementTimer) {
+    clearInterval(pointDecrementTimer);
+    pointDecrementTimer = null;
+  }
+}
+
+function startPointDecrementScheduler() {
+  if (myRole !== "admin") return;
+  stopPointDecrementScheduler();
+  pointDecrementTimer = setInterval(applyPointDecrementTick, 60 * 1000);
+  applyPointDecrementTick();
+}
+
+async function applyPointDecrementTick() {
+  if (myRole !== "admin") return;
+  if (pointDecrementBusy) return;
+  pointDecrementBusy = true;
+  try {
+    const snap = await getDoc(doc(db, "settings", "pointDecrement"));
+    if (!snap.exists()) return;
+    const cfg = snap.data() || {};
+
+    const totalMs = cfgToMs(cfg);
+    if (!totalMs) return;
+    const stepMs = Math.floor(totalMs / 10);
+    if (!stepMs) return;
+
+    const now = Date.now();
+    const last = typeof cfg.lastAppliedClientTs === "number" ? cfg.lastAppliedClientTs : 0;
+    if (!last) {
+      await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: now, lastAppliedBy: myUid }, { merge: true });
+      return;
+    }
+
+    let steps = Math.floor((now - last) / stepMs);
+    if (steps <= 0) return;
+    if (steps > 200) steps = 200;
+
+    const dec = steps * 0.1;
+    let changed = 0;
+    for (const u of allUsers) {
+      if (!u || u.role === "admin") continue;
+      const oldP = Number(u.points || 0);
+      if (!Number.isFinite(oldP)) continue;
+      const newP = Math.max(0, Math.round((oldP - dec) * 10) / 10);
+      if (newP === oldP) continue;
+      try {
+        await updateDoc(doc(db, "users", u.uid), { points: newP });
+        u.points = newP;
+        changed++;
+      } catch {}
+    }
+
+    const newLast = last + (steps * stepMs);
+    await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: newLast, lastAppliedBy: myUid }, { merge: true });
+    if (changed) renderAll();
+  } catch (e) {
+    console.error("Error aplicando decremento:", e);
+  } finally {
+    pointDecrementBusy = false;
   }
 }
 
@@ -820,42 +901,62 @@ function cooldownKey(actorUid, targetUid) {
   return `${PTS_COOLDOWN_PREFIX}${actorUid}:${targetUid}`;
 }
 
-function readCooldown(actorUid, targetUid) {
+function readCooldownList(actorUid, targetUid) {
   try {
     const v = localStorage.getItem(cooldownKey(actorUid, targetUid));
-    const n = v ? parseInt(v, 10) : 0;
-    return Number.isFinite(n) ? n : 0;
+    if (!v) return [];
+    if (v.trim().startsWith("[")) {
+      const arr = JSON.parse(v);
+      if (!Array.isArray(arr)) return [];
+      return arr.map(x => parseInt(x, 10)).filter(n => Number.isFinite(n) && n > 0);
+    }
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) && n > 0 ? [n] : [];
   } catch {
-    return 0;
+    return [];
   }
 }
 
-function writeCooldown(actorUid, targetUid, ts) {
+function writeCooldownList(actorUid, targetUid, list) {
   try {
-    localStorage.setItem(cooldownKey(actorUid, targetUid), String(ts));
+    localStorage.setItem(cooldownKey(actorUid, targetUid), JSON.stringify(list));
   } catch {}
 }
 
-function getLastPairActionTs(actorUid, targetUid) {
-  let best = readCooldown(actorUid, targetUid) || 0;
+function getPairActionTimes(actorUid, targetUid) {
+  const best = new Set(readCooldownList(actorUid, targetUid));
   for (const l of logs) {
     if (l.type !== "points") continue;
     if (l.actorUid !== actorUid) continue;
     if (l.targetUid !== targetUid) continue;
     const t = typeof l.clientTs === "number" ? l.clientTs : 0;
-    if (t > best) best = t;
+    if (t > 0) best.add(t);
   }
-  return best;
+  return Array.from(best).sort((a,b) => a - b);
+}
+
+function writeCooldown(actorUid, targetUid, ts) {
+  const now = Date.now();
+  const floor = now - PTS_COOLDOWN_MS;
+  const list = readCooldownList(actorUid, targetUid).filter(t => t >= floor);
+  list.push(ts);
+  writeCooldownList(actorUid, targetUid, list);
 }
 
 function checkInspectorCooldown(targetUid) {
   const actorUid = myUid;
-  if (!actorUid) return { ok: true, waitMs: 0 };
-  const last = getLastPairActionTs(actorUid, targetUid);
-  if (!last) return { ok: true, waitMs: 0 };
-  const waitMs = PTS_COOLDOWN_MS - (Date.now() - last);
-  if (waitMs > 0) return { ok: false, waitMs };
-  return { ok: true, waitMs: 0 };
+  if (!actorUid) return { ok: true, waitMs: 0, remaining: 2 };
+  const now = Date.now();
+  const floor = now - PTS_COOLDOWN_MS;
+  const list = getPairActionTimes(actorUid, targetUid).filter(t => t >= floor);
+  const used = list.length;
+  const remaining = Math.max(0, 2 - used);
+  if (used >= 2) {
+    const oldest = list[0] || now;
+    const waitMs = (oldest + PTS_COOLDOWN_MS) - now;
+    return { ok: false, waitMs: Math.max(0, waitMs), remaining: 0 };
+  }
+  return { ok: true, waitMs: 0, remaining };
 }
 
 function pick(arr) {
@@ -1141,7 +1242,7 @@ function renderDash() {
       <td style="color:var(--muted);font-weight:700;width:30px">${i+1}</td>
       <td><b>${esc(u.name||"—")}</b></td>
       <td>${roleBadge(u.role)}</td>
-      <td><b style="color:var(--warn);font-size:15px">${u.points||0}</b></td>
+      <td><b style="color:var(--warn);font-size:15px">${fmtPts(u.points)}</b></td>
     </tr>`).join("");
 }
 
@@ -1195,7 +1296,7 @@ function renderPointsTable(list) {
     <tr>
       <td><b>${esc(u.name||"—")}</b></td>
       <td>${roleBadge(u.role)}</td>
-      <td><span class="pts-val" id="pv-${u.uid}">${u.points||0}</span></td>
+      <td><span class="pts-val" id="pv-${u.uid}">${fmtPts(u.points)}</span></td>
       <td>
         <div class="pts-row">
           <button class="pbtn minus" onclick="adjPts('${u.uid}',-1)" ${isSelf ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>−</button>
@@ -1223,14 +1324,14 @@ window.adjPts = async (uid, delta) => {
     }
   }
   const reasonRaw = prompt("Motivo del cambio de puntos:", "");
-  if (reasonRaw === null) return;
-  const reason = reasonRaw.trim() || "Sin motivo";
+  if (reasonRaw === null && myRole !== "admin") return;
+  const reason = (reasonRaw || "").trim() || "Sin motivo";
   const nv = Math.max(0, (u.points||0) + delta);
   try {
     await updateDoc(doc(db,"users",uid), { points: nv });
     u.points = nv;
     const el = document.getElementById("pv-"+uid);
-    if (el) el.textContent = nv;
+    if (el) el.textContent = fmtPts(nv);
     renderDash();
     showToast((delta>0?"➕":"➖") + " " + Math.abs(delta) + " pt a " + (u.name||"usuario"), "ok");
     const nText = buildPointsNovedad(u.name || "Un usuario", delta, nv, reason);
@@ -1262,8 +1363,8 @@ window.promptPts = uid => {
   const n = parseInt(raw, 10);
   if (isNaN(n)) return showToast("Número inválido.","err");
   const reasonRaw = prompt("Motivo del cambio de puntos:", "");
-  if (reasonRaw === null) return;
-  const reason = reasonRaw.trim() || "Sin motivo";
+  if (reasonRaw === null && myRole !== "admin") return;
+  const reason = (reasonRaw || "").trim() || "Sin motivo";
   adjPtsWithReason(uid, n, reason);
 };
 
@@ -1286,7 +1387,7 @@ async function adjPtsWithReason(uid, delta, reason) {
     await updateDoc(doc(db,"users",uid), { points: nv });
     u.points = nv;
     const el = document.getElementById("pv-"+uid);
-    if (el) el.textContent = nv;
+    if (el) el.textContent = fmtPts(nv);
     renderDash();
     showToast((delta>0?"➕":"➖") + " " + Math.abs(delta) + " pt a " + (u.name||"usuario"), "ok");
     const nText = buildPointsNovedad(u.name || "Un usuario", delta, nv, reason);
