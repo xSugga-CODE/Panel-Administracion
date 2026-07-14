@@ -462,6 +462,74 @@ let filterRoleV  = "";
 let filterPText  = "";
 let currentConfig = { hours: 24, minutes: 0 }; // Valor por defecto
 
+const RL_OPTS = { windowMs: 5 * 60 * 1000, maxAttempts: 6, lockMs: 10 * 60 * 1000 };
+const RL_PREFIX = "jowiland-admin:rl:";
+
+function rlLoad(kind) {
+  try {
+    const raw = localStorage.getItem(RL_PREFIX + kind);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function rlSave(kind, st) {
+  try {
+    localStorage.setItem(RL_PREFIX + kind, JSON.stringify(st));
+  } catch {}
+}
+
+function rlReset(kind) {
+  try {
+    localStorage.removeItem(RL_PREFIX + kind);
+  } catch {}
+}
+
+function rlCheck(kind) {
+  const now = Date.now();
+  const st0 = rlLoad(kind);
+  const st = st0 && typeof st0 === "object" ? st0 : { count: 0, firstTs: now, lockUntil: 0 };
+
+  if (st.lockUntil && now < st.lockUntil) return { ok: false, waitMs: st.lockUntil - now };
+
+  if (!st.firstTs || now - st.firstTs > RL_OPTS.windowMs) {
+    st.count = 0;
+    st.firstTs = now;
+    st.lockUntil = 0;
+    rlSave(kind, st);
+    return { ok: true, waitMs: 0 };
+  }
+
+  return { ok: true, waitMs: 0 };
+}
+
+function rlFail(kind, extraLockMs = 0) {
+  const now = Date.now();
+  const st0 = rlLoad(kind);
+  const st = st0 && typeof st0 === "object" ? st0 : { count: 0, firstTs: now, lockUntil: 0 };
+
+  if (!st.firstTs || now - st.firstTs > RL_OPTS.windowMs) {
+    st.count = 0;
+    st.firstTs = now;
+    st.lockUntil = 0;
+  }
+
+  st.count = (st.count || 0) + 1;
+  if (st.count >= RL_OPTS.maxAttempts) st.lockUntil = now + RL_OPTS.lockMs + extraLockMs;
+
+  rlSave(kind, st);
+  if (st.lockUntil && now < st.lockUntil) return { locked: true, waitMs: st.lockUntil - now };
+  return { locked: false, waitMs: 0 };
+}
+
+function fmtWait(ms) {
+  const s = Math.max(1, Math.ceil(ms / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.ceil(s / 60);
+  return `${m} min`;
+}
+
 // ── AUTH ──────────────────────────────────────────────────────
 onAuthStateChanged(auth, async user => {
   if (!user) { showLogin(); return; }
@@ -496,12 +564,19 @@ window.doLogin = async () => {
   const err   = document.getElementById("login-err");
   err.style.display = "none";
   if (!email || !pass) { err.textContent="Completá los dos campos."; err.style.display="block"; return; }
+  const chk = rlCheck("email");
+  if (!chk.ok) { err.textContent = `Demasiados intentos. Esperá ${fmtWait(chk.waitMs)} y probá de nuevo.`; err.style.display="block"; return; }
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div> Ingresando…';
   try {
     await signInWithEmailAndPassword(auth, email, pass);
+    rlReset("email");
   } catch(e) {
-    err.textContent = friendlyErr(e.code);
+    const extra = e.code === "auth/too-many-requests" ? 10 * 60 * 1000 : 0;
+    const fail = rlFail("email", extra);
+    err.textContent = fail.locked
+      ? `Demasiados intentos. Esperá ${fmtWait(fail.waitMs)} y probá de nuevo.`
+      : friendlyErr(e.code);
     err.style.display = "block";
     btn.disabled = false;
     btn.textContent = "Ingresar al panel";
@@ -543,6 +618,9 @@ async function bootApp(user, data) {
   document.getElementById("config-hours").addEventListener("input", updateConfigSummary);
   document.getElementById("config-minutes").addEventListener("input", updateConfigSummary);
   
+  // Agregar event listener para guardar config
+  document.getElementById("config-save").addEventListener("click", window.saveConfig);
+  
   await loadUsers();
 }
 
@@ -554,14 +632,17 @@ function showLogin() {
 // ── CONFIGURACIÓN DE DECREMENTO DE PUNTOS ───────────────────────────────────────────
 async function loadConfig() {
   try {
+    console.log("Loading config...");
     const snap = await getDoc(doc(db, "settings", "pointDecrement"));
     if (snap.exists()) {
       currentConfig = snap.data();
+      console.log("Loaded config from Firestore:", currentConfig);
     }
     // Cargar valores en los inputs
     document.getElementById("config-hours").value = currentConfig.hours || 24;
     document.getElementById("config-minutes").value = currentConfig.minutes || 0;
     updateConfigSummary();
+    console.log("Set inputs to:", currentConfig.hours, "hours,", currentConfig.minutes, "minutes");
   } catch (e) {
     console.error("Error loading config:", e);
   }
@@ -581,7 +662,8 @@ function updateConfigSummary() {
     `Cada <strong>${hours}h ${minutes}m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>${intervalHours}h ${intervalMins}m</strong>)`;
 }
 
-window.saveConfig = async () => {
+window.saveConfig = async (e) => {
+  if (e && e.preventDefault) e.preventDefault();
   const hours = parseInt(document.getElementById("config-hours").value) || 0;
   const minutes = parseInt(document.getElementById("config-minutes").value) || 0;
   
