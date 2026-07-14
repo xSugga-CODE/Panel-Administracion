@@ -520,6 +520,9 @@ let logSearch     = "";
 
 const RL_OPTS = { windowMs: 5 * 60 * 1000, maxAttempts: 6, lockMs: 10 * 60 * 1000 };
 const RL_PREFIX = "jowiland-admin:rl:";
+const PTS_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const PTS_COOLDOWN_PREFIX = "jowiland:ptcd:";
+const MAX_NOVEDADES = 20;
 
 function rlLoad(kind) {
   try {
@@ -805,10 +808,143 @@ async function writeLog(entry) {
     await addDoc(collection(db, "logs"), {
       ...entry,
       dayKey: dayKey(new Date()),
+      clientTs: Date.now(),
       createdAt: serverTimestamp()
     });
   } catch(e) {
     console.error("Error guardando log:", e);
+  }
+}
+
+function cooldownKey(actorUid, targetUid) {
+  return `${PTS_COOLDOWN_PREFIX}${actorUid}:${targetUid}`;
+}
+
+function readCooldown(actorUid, targetUid) {
+  try {
+    const v = localStorage.getItem(cooldownKey(actorUid, targetUid));
+    const n = v ? parseInt(v, 10) : 0;
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writeCooldown(actorUid, targetUid, ts) {
+  try {
+    localStorage.setItem(cooldownKey(actorUid, targetUid), String(ts));
+  } catch {}
+}
+
+function getLastPairActionTs(actorUid, targetUid) {
+  let best = readCooldown(actorUid, targetUid) || 0;
+  for (const l of logs) {
+    if (l.type !== "points") continue;
+    if (l.actorUid !== actorUid) continue;
+    if (l.targetUid !== targetUid) continue;
+    const t = typeof l.clientTs === "number" ? l.clientTs : 0;
+    if (t > best) best = t;
+  }
+  return best;
+}
+
+function checkInspectorCooldown(targetUid) {
+  const actorUid = myUid;
+  if (!actorUid) return { ok: true, waitMs: 0 };
+  const last = getLastPairActionTs(actorUid, targetUid);
+  if (!last) return { ok: true, waitMs: 0 };
+  const waitMs = PTS_COOLDOWN_MS - (Date.now() - last);
+  if (waitMs > 0) return { ok: false, waitMs };
+  return { ok: true, waitMs: 0 };
+}
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function prettyRole(r) {
+  const m = { admin: "Admin", inspector: "Inspector", user: "Usuario" };
+  return m[r] || r || "—";
+}
+
+function fmtCargos(cargos) {
+  if (!cargos) return "—";
+  if (Array.isArray(cargos)) return cargos.length ? cargos.join(", ") : "—";
+  return String(cargos);
+}
+
+function buildPointsNovedad(targetName, delta, newVal, reason) {
+  const name = targetName || "Un usuario";
+  const abs = Math.abs(delta);
+  const isUp = delta > 0;
+  const main = isUp
+    ? pick([
+        `✅ Buen desempeño: ${name} sumó +${abs} punto(s).`,
+        `✅ ${name} fue reconocido: +${abs} punto(s).`,
+        `✅ ¡Buen trabajo, ${name}! +${abs} punto(s).`
+      ])
+    : pick([
+        `⚠️ Ajuste de puntos: ${name} recibió -${abs} punto(s).`,
+        `⚠️ ${name} tuvo un ajuste: -${abs} punto(s).`,
+        `⚠️ Se registró un descuento para ${name}: -${abs} punto(s).`
+      ]);
+
+  const estado = newVal <= 2
+    ? " Quedó en estado: En riesgo."
+    : newVal >= 6
+      ? " Quedó en estado: Óptimo."
+      : "";
+
+  return `${main} Motivo: ${reason}. Total: ${newVal} pts.${estado}`;
+}
+
+function buildUserCreatedNovedad(name, role, rango, cargos) {
+  const who = name || "Nuevo usuario";
+  const main = pick([
+    `✨ Nuevo ingreso: ${who} se unió al equipo.`,
+    `✨ Se registró un nuevo integrante: ${who}.`,
+    `✨ Bienvenido/a: ${who}.`
+  ]);
+  return `${main} Rol: ${prettyRole(role)} · Rango: ${rango || "—"} · Cargos: ${fmtCargos(cargos)}.`;
+}
+
+function buildUserUpdatedNovedad(prev, next) {
+  const who = next?.name || prev?.name || "Un usuario";
+  const parts = [];
+  if ((prev?.role || "") !== (next?.role || "")) parts.push(`Rol: ${prettyRole(prev?.role)} → ${prettyRole(next?.role)}`);
+  if ((prev?.rango || "") !== (next?.rango || "")) parts.push(`Rango: ${prev?.rango || "—"} → ${next?.rango || "—"}`);
+  const pc = fmtCargos(prev?.cargos);
+  const nc = fmtCargos(next?.cargos);
+  if (pc !== nc) parts.push(`Cargos: ${pc} → ${nc}`);
+  if ((prev?.status || "") !== (next?.status || "")) parts.push(`Estado: ${prev?.status || "—"} → ${next?.status || "—"}`);
+  if (!parts.length) return null;
+  return `🔄 Actualización de perfil: ${who}. ${parts.join(" · ")}.`;
+}
+
+async function logNovedad(texto) {
+  try {
+    await addDoc(collection(db, "novedades"), {
+      texto,
+      fecha: serverTimestamp(),
+      autor: myName || "Sistema"
+    });
+    await cleanupNovedadesIfAdmin();
+  } catch(e) {
+    console.error("Error al registrar novedad:", e);
+  }
+}
+
+async function cleanupNovedadesIfAdmin() {
+  if (myRole !== "admin" && myRole !== "inspector") return;
+  try {
+    const snap = await getDocs(query(collection(db, "novedades"), orderBy("fecha", "desc"), limit(60)));
+    if (snap.size <= MAX_NOVEDADES) return;
+    const extra = snap.docs.slice(MAX_NOVEDADES);
+    for (const d of extra) {
+      await deleteDoc(doc(db, "novedades", d.id));
+    }
+  } catch(e) {
+    console.error("Error limpiando novedades:", e);
   }
 }
 
@@ -1079,6 +1215,13 @@ window.adjPts = async (uid, delta) => {
   }
   const u = allUsers.find(x => x.uid===uid);
   if (!u) return;
+  if (myRole === "inspector") {
+    const cd = checkInspectorCooldown(uid);
+    if (!cd.ok) {
+      showToast(`Cooldown activo. Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, "err");
+      return;
+    }
+  }
   const reasonRaw = prompt("Motivo del cambio de puntos:", "");
   if (reasonRaw === null) return;
   const reason = reasonRaw.trim() || "Sin motivo";
@@ -1090,6 +1233,8 @@ window.adjPts = async (uid, delta) => {
     if (el) el.textContent = nv;
     renderDash();
     showToast((delta>0?"➕":"➖") + " " + Math.abs(delta) + " pt a " + (u.name||"usuario"), "ok");
+    const nText = buildPointsNovedad(u.name || "Un usuario", delta, nv, reason);
+    await logNovedad(nText);
     await writeLog({
       type: "points",
       actorUid: myUid,
@@ -1101,6 +1246,7 @@ window.adjPts = async (uid, delta) => {
       reason,
       newPoints: nv
     });
+    if (myRole === "inspector") writeCooldown(myUid, uid, Date.now());
   } catch(e) { showToast("Error: "+e.message,"err"); }
 };
 
@@ -1128,6 +1274,13 @@ async function adjPtsWithReason(uid, delta, reason) {
   }
   const u = allUsers.find(x => x.uid===uid);
   if (!u) return;
+  if (myRole === "inspector") {
+    const cd = checkInspectorCooldown(uid);
+    if (!cd.ok) {
+      showToast(`Cooldown activo. Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, "err");
+      return;
+    }
+  }
   const nv = Math.max(0, (u.points||0) + delta);
   try {
     await updateDoc(doc(db,"users",uid), { points: nv });
@@ -1136,6 +1289,8 @@ async function adjPtsWithReason(uid, delta, reason) {
     if (el) el.textContent = nv;
     renderDash();
     showToast((delta>0?"➕":"➖") + " " + Math.abs(delta) + " pt a " + (u.name||"usuario"), "ok");
+    const nText = buildPointsNovedad(u.name || "Un usuario", delta, nv, reason);
+    await logNovedad(nText);
     await writeLog({
       type: "points",
       actorUid: myUid,
@@ -1147,6 +1302,7 @@ async function adjPtsWithReason(uid, delta, reason) {
       reason,
       newPoints: nv
     });
+    if (myRole === "inspector") writeCooldown(myUid, uid, Date.now());
   } catch(e) { showToast("Error: "+e.message,"err"); }
 }
 
@@ -1255,12 +1411,16 @@ window.saveAccount = async () => {
   try {
     if (editUid) {
       // EDITAR: solo actualizar Firestore
+      const prev = allUsers.find(u => u.uid === editUid) || null;
+      const prevSnap = prev ? { ...prev, cargos: Array.isArray(prev.cargos) ? [...prev.cargos] : prev.cargos } : null;
       const upd = { name, role, rango, cargos, status };
       if (role==="user") upd.pin = pin;
       await updateDoc(doc(db,"users",editUid), upd);
       const idx = allUsers.findIndex(u => u.uid===editUid);
       if (idx!==-1) allUsers[idx] = { ...allUsers[idx], ...upd };
       showToast("Cuenta actualizada.", "ok");
+      const nText = buildUserUpdatedNovedad(prevSnap, { ...(prevSnap || {}), ...upd });
+      if (nText) await logNovedad(nText);
 
     } else {
       // CREAR
@@ -1286,6 +1446,7 @@ window.saveAccount = async () => {
       await setDoc(doc(db,"users",uid), data);
       allUsers.unshift({ uid, ...data, createdAt: new Date() });
       showToast("✅ Cuenta creada: " + name, "ok");
+      await logNovedad(buildUserCreatedNovedad(name, role, rango, cargos));
     }
 
     closeModal();
