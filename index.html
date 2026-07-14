@@ -538,6 +538,11 @@ async function bootApp(user, data) {
   
   // Cargar configuración de puntos
   await loadConfig();
+  
+  // Agregar event listeners para actualizar el resumen en tiempo real
+  document.getElementById("config-hours").addEventListener("input", updateConfigSummary);
+  document.getElementById("config-minutes").addEventListener("input", updateConfigSummary);
+  
   await loadUsers();
 }
 
@@ -587,16 +592,15 @@ window.saveConfig = async () => {
   
   currentConfig = { hours, minutes, updatedAt: serverTimestamp() };
   try {
-    await setDoc(doc(db, "settings", "pointDecrement"), currentConfig);
+    console.log("Saving config:", currentConfig);
+    await setDoc(doc(db, "settings", "pointDecrement"), currentConfig, { merge: true });
+    console.log("Config saved successfully");
     showToast("✅ Configuración guardada!", "ok");
   } catch (e) {
+    console.error("Error saving config:", e);
     showToast("Error al guardar: " + e.message, "err");
   }
 }
-
-// Agregar event listeners para actualizar el resumen en tiempo real
-document.getElementById("config-hours").addEventListener("input", updateConfigSummary);
-document.getElementById("config-minutes").addEventListener("input", updateConfigSummary);
 
 // ── PÁGINAS ───────────────────────────────────────────────────
 window.goPage = id => {
@@ -689,23 +693,30 @@ window.filterP = v => { filterPText = v.toLowerCase(); renderPointsTable(filtere
 function renderPointsTable(list) {
   const tb = document.getElementById("pts-tbody");
   if (!list.length) { tb.innerHTML='<tr><td colspan="4" class="empty">Sin moderadores.</td></tr>'; return; }
-  tb.innerHTML = list.map(u => `
+  tb.innerHTML = list.map(u => {
+    const isSelf = u.uid === myUid;
+    return `
     <tr>
       <td><b>${esc(u.name||"—")}</b></td>
       <td>${roleBadge(u.role)}</td>
       <td><span class="pts-val" id="pv-${u.uid}">${u.points||0}</span></td>
       <td>
         <div class="pts-row">
-          <button class="pbtn minus" onclick="adjPts('${u.uid}',-1)">−</button>
-          <button class="pbtn plus"  onclick="adjPts('${u.uid}',+1)">+</button>
-          <button class="btn btn-ghost btn-sm" onclick="promptPts('${u.uid}')">± Ingresar</button>
+          <button class="pbtn minus" onclick="adjPts('${u.uid}',-1)" ${isSelf ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>−</button>
+          <button class="pbtn plus"  onclick="adjPts('${u.uid}',+1)" ${isSelf ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>+</button>
+          <button class="btn btn-ghost btn-sm" onclick="promptPts('${u.uid}')" ${isSelf ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>± Ingresar</button>
         </div>
       </td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
 }
 
 // ── PUNTOS ────────────────────────────────────────────────────
 window.adjPts = async (uid, delta) => {
+  if (uid === myUid) {
+    showToast("No podés modificar tus propios puntos!", "err");
+    return;
+  }
   const u = allUsers.find(x => x.uid===uid);
   if (!u) return;
   const nv = Math.max(0, (u.points||0) + delta);
@@ -720,6 +731,10 @@ window.adjPts = async (uid, delta) => {
 };
 
 window.promptPts = uid => {
+  if (uid === myUid) {
+    showToast("No podés modificar tus propios puntos!", "err");
+    return;
+  }
   const u = allUsers.find(x => x.uid===uid);
   if (!u) return;
   const raw = prompt(`Ajustar puntos de ${u.name||"usuario"} (actual: ${u.points||0})\n\nEscribí positivo para sumar o negativo para restar.\nEj: 5 suma 5 puntos | -3 resta 3 puntos`);
