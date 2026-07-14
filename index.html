@@ -706,8 +706,10 @@ async function loadConfig() {
       console.log("Loaded config from Firestore:", currentConfig);
     }
     // Cargar valores en los inputs
-    document.getElementById("config-hours").value = currentConfig.hours || 24;
-    document.getElementById("config-minutes").value = currentConfig.minutes || 0;
+    const h0 = Number(currentConfig?.hours);
+    const m0 = Number(currentConfig?.minutes);
+    document.getElementById("config-hours").value = Number.isFinite(h0) ? h0 : 24;
+    document.getElementById("config-minutes").value = Number.isFinite(m0) ? m0 : 0;
     updateConfigSummary();
     console.log("Set inputs to:", currentConfig.hours, "hours,", currentConfig.minutes, "minutes");
   } catch (e) {
@@ -810,6 +812,8 @@ async function applyPointDecrementTick() {
 
     const dec = steps * 0.1;
     let changed = 0;
+    const usersSnap = await getDocs(collection(db, "users"));
+    allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
     for (const u of allUsers) {
       if (!u || u.role === "admin") continue;
       const oldP = Number(u.points || 0);
