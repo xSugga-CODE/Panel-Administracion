@@ -1530,9 +1530,10 @@ window.openEdit = uid => {
     document.getElementById("email-section").style.display = "none";
     nameEl.disabled = true;
     const pr = document.getElementById("pin-regen-btn");
-    if (pr) pr.disabled = true;
+    if (pr) pr.disabled = false;
   } else {
-    document.getElementById("pin-section").style.display = "none";
+    document.getElementById("pin-val").textContent = u.pin || genPin();
+    document.getElementById("pin-section").style.display = "block";
     document.getElementById("email-section").style.display = "block";
     nameEl.disabled = false;
     const pr = document.getElementById("pin-regen-btn");
@@ -1547,14 +1548,15 @@ window.onRoleChange = role => {
 };
 
 function showPinSection(role) {
-  if (role==="user") {
-    document.getElementById("pin-val").textContent = genPin();
-    document.getElementById("pin-section").style.display = "block";
+  document.getElementById("pin-section").style.display = "block";
+  document.getElementById("pin-val").textContent = document.getElementById("pin-val").textContent || genPin();
+  if (role === "user") {
     document.getElementById("email-section").style.display = "none";
   } else {
-    document.getElementById("pin-section").style.display = "none";
     document.getElementById("email-section").style.display = "block";
   }
+  const pr = document.getElementById("pin-regen-btn");
+  if (pr) pr.disabled = false;
 }
 
 window.regenPin = () => { document.getElementById("pin-val").textContent = genPin(); };
@@ -1572,18 +1574,17 @@ window.saveAccount = async () => {
   const pass   = document.getElementById("m-pass").value;
   const role   = document.getElementById("m-role").value;
   const rango  = document.getElementById("m-rango").value;
-  // Obtener cargos desde checkboxes
   const cargos = Array.from(document.querySelectorAll(".cargo-checkbox:checked")).map(cb => cb.value);
   const status = document.getElementById("m-status").value;
-  const pin    = document.getElementById("pin-val").textContent;
+  const pin    = document.getElementById("pin-val").textContent.trim();
   const btn    = document.getElementById("m-save");
 
   document.getElementById("modal-err").style.display = "none";
 
   if (!name) return setModalErr("El nombre es obligatorio.");
+  if (!pin || pin.length !== 4 || isNaN(pin)) return setModalErr("El PIN debe ser de 4 dígitos.");
 
   if (!editUid) {
-    // Validar al crear
     if ((role==="admin"||role==="inspector") && !email) return setModalErr("Inspector/Admin necesitan email.");
     if ((role==="admin"||role==="inspector") && pass.length<6) return setModalErr("La contraseña debe tener al menos 6 caracteres.");
   }
@@ -1593,22 +1594,29 @@ window.saveAccount = async () => {
 
   try {
     if (editUid) {
-      // EDITAR: solo actualizar Firestore
+      // ───────────────── EDITAR ─────────────────
       const prev = allUsers.find(u => u.uid === editUid) || null;
       const prevSnap = prev ? { ...prev, cargos: Array.isArray(prev.cargos) ? [...prev.cargos] : prev.cargos } : null;
-      const upd = { name, role, rango, cargos, status };
-      if (role==="user") upd.pin = pin;
+      const upd = { name, role, rango, cargos, status, pin, nameLower: normLoginName(name) };
+      if (role==="admin" || role==="inspector") upd.email = email || prev?.email || "";
+
+      // Actualizar cuenta PIN sintética (crear nueva si cambió el nombre o el PIN)
+      const pinUid = await ensurePinAuthAccount(name, pin, editUid);
+      if (pinUid && pinUid !== editUid) {
+        await setDoc(doc(db, "pinLogins", pinUid), { realUid: editUid });
+      }
+
       await updateDoc(doc(db,"users",editUid), upd);
       const idx = allUsers.findIndex(u => u.uid===editUid);
       if (idx!==-1) allUsers[idx] = { ...allUsers[idx], ...upd };
-      showToast("Cuenta actualizada.", "ok");
+      showToast("Cuenta actualizada. PIN nuevo listo.", "ok");
       const nText = buildUserUpdatedNovedad(prevSnap, { ...(prevSnap || {}), ...upd });
       if (nText) await logNovedad(nText);
 
     } else {
-      // CREAR
+      // ───────────────── CREAR ─────────────────
       let uid;
-      const data = { name, role, rango, cargos, status, points: 0, createdAt: serverTimestamp(), createdBy: myUid, nameLower: normLoginName(name) };
+      const data = { name, role, rango, cargos, status, pin, points: 0, createdAt: serverTimestamp(), createdBy: myUid, nameLower: normLoginName(name) };
 
       const secondName = "secondary-" + Date.now();
       const secondApp  = initializeApp(cfg, secondName);
@@ -1620,14 +1628,15 @@ window.saveAccount = async () => {
         await signOut(secondAuth);
         uid = cred.user.uid;
         data.email = email;
+
+        const pinUid = await ensurePinAuthAccount(name, pin, uid, secondApp);
+        if (pinUid && pinUid !== uid) {
+          await setDoc(doc(db, "pinLogins", pinUid), { realUid: uid });
+        }
       } else {
-        // Usuario: también creamos cuenta Firebase Auth para login seguro
-        const fakeEmail = pinEmailFromName(name);
-        const fakePass  = pinPasswordFromPin(pin);
-        const cred = await createUserWithEmailAndPassword(secondAuth, fakeEmail, fakePass);
-        await updateProfile(cred.user, { displayName: name });
-        await signOut(secondAuth);
-        uid = cred.user.uid;
+        // Usuario: la cuenta PIN sintética será la cuenta principal
+        const pinUid = await ensurePinAuthAccount(name, pin, null, secondApp);
+        uid = pinUid;
         data.pin = pin;
       }
 
@@ -1647,6 +1656,50 @@ window.saveAccount = async () => {
     btn.textContent = editUid ? "Guardar cambios" : "Crear cuenta";
   }
 };
+
+async function ensurePinAuthAccount(name, pin, realUid, sharedApp) {
+  let app = sharedApp;
+  let createdAppHere = false;
+  if (!app) {
+    const n = "pin-" + Date.now() + "-" + Math.random().toString(36).slice(2,6);
+    app = initializeApp(cfg, n);
+    createdAppHere = true;
+  }
+  const authInst = getAuth(app);
+  const baseEmail = pinEmailFromName(name);
+  const pwd = pinPasswordFromPin(pin);
+  if (!baseEmail) throw new Error("Nombre inválido para PIN.");
+
+  let lastErr = null;
+  // Intentar base, luego nombre-1, nombre-2... hasta 10
+  for (let i = 0; i < 10; i++) {
+    const email = i === 0 ? baseEmail : pinEmailFromName(name + " " + i);
+    try {
+      const cred = await createUserWithEmailAndPassword(authInst, email, pwd);
+      await updateProfile(cred.user, { displayName: name });
+      await signOut(authInst);
+      return cred.user.uid;
+    } catch (e) {
+      if (e.code === "auth/email-already-in-use") {
+        // Intentar loguearse con el PIN actual → si coincide devolvemos ese uid.
+        try {
+          const cred2 = await signInWithEmailAndPassword(authInst, email, pwd);
+          await signOut(authInst);
+          return cred2.user.uid;
+        } catch (_) {
+          // PIN no coincide, probar siguiente sufijo
+          lastErr = _;
+          continue;
+        }
+      } else {
+        lastErr = e;
+        break;
+      }
+    }
+  }
+  if (lastErr) throw lastErr;
+  throw new Error("No se pudo crear la cuenta PIN.");
+}
 
 // ── ELIMINAR ──────────────────────────────────────────────────
 let pendingDel = null;
