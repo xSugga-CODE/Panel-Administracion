@@ -256,7 +256,6 @@
       <div class="ph">
         <div class="ph-left"><h2>Cuentas</h2><p>Todos los usuarios registrados</p></div>
         <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-ghost btn-sm" id="btn-migrar" onclick="migrateAllLegacyAccounts()" style="display:none">🔧 Migrar cuentas antiguas</button>
           <div id="ph-crear-btn"></div><!-- Se inyecta el botón si es admin -->
         </div>
       </div>
@@ -721,8 +720,6 @@ async function bootApp(user, data) {
     document.getElementById("nav-crear").style.display = "flex";
     document.getElementById("ph-crear-btn").innerHTML =
       '<button class="btn btn-primary btn-auto" onclick="openCreate()">➕ Crear cuenta</button>';
-    const mb = document.getElementById("btn-migrar");
-    if (mb) mb.style.display = "inline-flex";
   } else {
     document.getElementById("nav-config").style.display = "none";
     // Inspector: ocultar columna acciones
@@ -1053,17 +1050,18 @@ function fmtCargos(cargos) {
 function buildPointsNovedad(targetName, delta, newVal, reason) {
   const name = targetName || "Un usuario";
   const abs = Math.abs(delta);
+  const absStr = fmtPts(abs);
   const isUp = delta > 0;
   const main = isUp
     ? pick([
-        `✅ Buen desempeño: ${name} sumó +${abs} punto(s).`,
-        `✅ ${name} fue reconocido: +${abs} punto(s).`,
-        `✅ ¡Buen trabajo, ${name}! +${abs} punto(s).`
+        `✅ Buen desempeño: ${name} sumó +${absStr} punto(s).`,
+        `✅ ${name} fue reconocido: +${absStr} punto(s).`,
+        `✅ ¡Buen trabajo, ${name}! +${absStr} punto(s).`
       ])
     : pick([
-        `⚠️ Ajuste de puntos: ${name} recibió -${abs} punto(s).`,
-        `⚠️ ${name} tuvo un ajuste: -${abs} punto(s).`,
-        `⚠️ Se registró un descuento para ${name}: -${abs} punto(s).`
+        `⚠️ Ajuste de puntos: ${name} recibió -${absStr} punto(s).`,
+        `⚠️ ${name} tuvo un ajuste: -${absStr} punto(s).`,
+        `⚠️ Se registró un descuento para ${name}: -${absStr} punto(s).`
       ]);
 
   const estado = newVal <= 2
@@ -1072,7 +1070,7 @@ function buildPointsNovedad(targetName, delta, newVal, reason) {
       ? " Quedó en estado: Óptimo."
       : "";
 
-  return `${main} Motivo: ${reason}. Total: ${newVal} pts.${estado}`;
+  return `${main} Motivo: ${reason}. Total: ${fmtPts(newVal)} pts.${estado}`;
 }
 
 function buildUserCreatedNovedad(name, role, rango, cargos) {
@@ -1434,10 +1432,10 @@ window.promptPts = uid => {
   }
   const u = allUsers.find(x => x.uid===uid);
   if (!u) return;
-  const raw = prompt(`Ajustar puntos de ${u.name||"usuario"} (actual: ${u.points||0})\n\nEscribí positivo para sumar o negativo para restar.\nEj: 5 suma 5 puntos | -3 resta 3 puntos`);
+  const raw = prompt(`Ajustar puntos de ${u.name||"usuario"} (actual: ${fmtPts(u.points)})\n\nEscribí positivo para sumar o negativo para restar.\nEj: 5, 0.5, -3 o -1.5`);
   if (raw===null) return;
-  const n = parseInt(raw, 10);
-  if (isNaN(n)) return showToast("Número inválido.","err");
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return showToast("Número inválido.","err");
   const reasonRaw = prompt("Motivo del cambio de puntos:", "");
   if (reasonRaw === null && myRole !== "admin") return;
   const reason = (reasonRaw || "").trim() || "Sin motivo";
@@ -1623,24 +1621,19 @@ window.saveAccount = async () => {
       let uid;
       const data = { name, role, rango, cargos, status, pin, points: 0, createdAt: serverTimestamp(), createdBy: myUid, nameLower: normLoginName(name) };
 
-      const secondName = "secondary-" + Date.now();
-      const secondApp  = initializeApp(cfg, secondName);
-      const secondAuth = getAuth(secondApp);
-
       if (role==="admin" || role==="inspector") {
-        const cred = await createUserWithEmailAndPassword(secondAuth, email, pass);
+        const cred = await createUserWithEmailAndPassword(auth, email, pass);
         await updateProfile(cred.user, { displayName: name });
-        await signOut(secondAuth);
         uid = cred.user.uid;
         data.email = email;
 
-        const pinUid = await ensurePinAuthAccount(name, pin, uid, secondApp);
+        const pinUid = await ensurePinAuthAccount(name, pin, uid);
         if (pinUid && pinUid !== uid) {
           await setDoc(doc(db, "pinLogins", pinUid), { realUid: uid });
         }
       } else {
         // Usuario: la cuenta PIN sintética será la cuenta principal
-        const pinUid = await ensurePinAuthAccount(name, pin, null, secondApp);
+        const pinUid = await ensurePinAuthAccount(name, pin, null);
         uid = pinUid;
         data.pin = pin;
       }
@@ -1764,43 +1757,6 @@ window.showToast = (msg, type="ok") => {
   toastT = setTimeout(() => { t.className="toast"; }, 3500);
 };
 
-window.migrateAllLegacyAccounts = async () => {
-  const btn = document.getElementById("btn-migrar");
-  if (!btn) return;
-  if (!confirm("Esto migrará todas las cuentas antiguas creándoles una cuenta PIN. ¿Continuar?")) return;
-  btn.disabled = true;
-  const original = btn.textContent;
-  btn.textContent = "Migrando…";
-  let ok = 0, skip = 0, fail = 0;
-  try {
-    for (const u of allUsers) {
-      try {
-        const pin = u.pin && !/^\s*$/.test(u.pin) ? u.pin : genPin();
-        // Solo migramos si el uid no corresponde a una cuenta Auth de nombre normal (típicamente los users antiguos)
-        const wasCreated = await ensurePinAuthAccount(u.name || "", pin, u.uid);
-        if (wasCreated && wasCreated !== u.uid) {
-          await setDoc(doc(db, "pinLogins", wasCreated), { realUid: u.uid });
-        }
-        // Guardamos el PIN actualizado en el documento si no lo tenía
-        if (pin !== u.pin) {
-          await updateDoc(doc(db, "users", u.uid), { pin });
-          u.pin = pin;
-        }
-        ok++;
-      } catch (e) {
-        console.warn("Skip", u?.name, e?.message || e);
-        skip++;
-      }
-    }
-    showToast(`Migración OK: ${ok} OK / ${skip} ya migradas / ${fail} fallos`, "ok");
-  } catch (e) {
-    showToast("Error en migración: " + e.message, "err");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = original;
-    renderAll();
-  }
-};
 </script>
 </body>
 </html>
