@@ -46,7 +46,17 @@
 
     /* APP LAYOUT */
     #app{display:none;min-height:100vh}
-    .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;left:0;overflow-y:auto;position:fixed;top:0;width:215px}
+    /* MOBILE HEADER */
+    .mobile-top{display:none;align-items:center;justify-content:space-between;background:var(--surface);border-bottom:1px solid var(--border);padding:12px 14px;position:sticky;top:0;z-index:40}
+    .mobile-top .mt-left{display:flex;align-items:center;gap:10px}
+    .mobile-top .mt-mark{background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:8px;color:#fff;font-size:15px;height:30px;width:30px;display:grid;place-items:center;flex-shrink:0}
+    .mobile-top .mt-title{font-size:15px;font-weight:700}
+    .hamburger{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-size:18px;height:38px;width:38px;display:grid;place-items:center;flex-shrink:0;transition:border-color .15s,color .15s}
+    .hamburger:hover{border-color:var(--accent);color:var(--accent)}
+    .sidebar-overlay{display:none;background:rgba(0,0,0,.6);inset:0;position:fixed;z-index:49}
+    .sidebar-overlay.open{display:block}
+
+    .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;left:0;overflow-y:auto;position:fixed;top:0;width:215px;z-index:50;transition:transform .25s ease}
     .sb-logo{align-items:center;border-bottom:1px solid var(--border);display:flex;gap:10px;padding:18px 16px}
     .sb-logo .mark{background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:8px;color:#fff;font-size:16px;height:32px;width:32px;display:grid;place-items:center;flex-shrink:0}
     .sb-logo span{font-size:14px;font-weight:700}
@@ -138,9 +148,10 @@
     @keyframes spin{to{transform:rotate(360deg)}}
 
     @media(max-width:680px){
-      .sidebar{display:none}
+      .mobile-top{display:flex}
+      .sidebar{transform:translateX(-100%)}
+      .sidebar.open{transform:translateX(0)}
       .main{margin-left:0;padding:16px}
-      /* Mejoras para móviles */
       body{font-size:14px}
       .login-wrap{max-width:100%}
       .login-card{padding:20px}
@@ -149,7 +160,6 @@
       .stats{grid-template-columns:repeat(2,1fr)}
       .search input{width:120px}
       th,td{padding:9px 10px;font-size:12px}
-      /* Config page responsive */
       #page-config .field > div{
         flex-direction:column;
         align-items:stretch;
@@ -184,7 +194,15 @@
 
 <!-- APP -->
 <div id="app">
-  <aside class="sidebar">
+  <div class="mobile-top">
+    <div class="mt-left">
+      <button class="hamburger" onclick="toggleSidebar()" aria-label="Menú">☰</button>
+      <div class="mt-mark">⚡</div>
+      <div class="mt-title">Jowiland</div>
+    </div>
+  </div>
+  <div class="sidebar-overlay" id="sb-overlay" onclick="toggleSidebar()"></div>
+  <aside class="sidebar" id="sidebar">
     <div class="sb-logo">
       <div class="mark">⚡</div>
       <span>Jowiland</span>
@@ -441,7 +459,7 @@
     <div id="pin-section" style="display:none">
       <div class="pin-box" id="pin-val">——</div>
       <div class="pin-hint">PIN generado automáticamente. Compartíselo al usuario.</div>
-      <button class="btn btn-ghost btn-sm" style="margin-bottom:10px" onclick="regenPin()">🔄 Generar otro PIN</button>
+      <button class="btn btn-ghost btn-sm" id="pin-regen-btn" style="margin-bottom:10px" onclick="regenPin()">🔄 Generar otro PIN</button>
     </div>
 
     <div class="divider"></div>
@@ -525,6 +543,23 @@ const RL_PREFIX = "jowiland-admin:rl:";
 const PTS_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const PTS_COOLDOWN_PREFIX = "jowiland:ptcd:";
 const MAX_NOVEDADES = 20;
+
+function normLoginName(s) {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ".")
+    .replace(/[^a-z0-9._-]/g, "");
+}
+
+function pinEmailFromName(name) {
+  const u = normLoginName(name);
+  return u ? `${u}@pin.jowiland.local` : "";
+}
+
+function pinPasswordFromPin(pin) {
+  return `pin-${String(pin || "")}-jow`;
+}
 
 function rlLoad(kind) {
   try {
@@ -646,6 +681,23 @@ window.doLogin = async () => {
 
 document.getElementById("l-pass").addEventListener("keydown", e => { if(e.key==="Enter") window.doLogin(); });
 window.doLogout = () => signOut(auth);
+
+window.toggleSidebar = () => {
+  const sb = document.getElementById("sidebar");
+  const ov = document.getElementById("sb-overlay");
+  if (!sb || !ov) return;
+  const isOpen = sb.classList.toggle("open");
+  ov.classList.toggle("open", isOpen);
+};
+
+function closeSidebarIfMobile() {
+  if (window.innerWidth <= 680) {
+    const sb = document.getElementById("sidebar");
+    const ov = document.getElementById("sb-overlay");
+    if (sb) sb.classList.remove("open");
+    if (ov) ov.classList.remove("open");
+  }
+}
 
 // ── BOOT ──────────────────────────────────────────────────────
 async function bootApp(user, data) {
@@ -862,6 +914,7 @@ window.goPage = id => {
   document.getElementById("page-" + id).classList.add("active");
   const ni = document.querySelector(`.nav-item[onclick="goPage('${id}')"]`);
   if (ni) ni.classList.add("active");
+  closeSidebarIfMobile();
 };
 
 window.setLogTypeFilter = v => { logTypeFilter = v; renderLogs(); };
@@ -1429,7 +1482,9 @@ async function adjPtsWithReason(uid, delta, reason) {
 window.openCreate = () => {
   editUid = null;
   document.getElementById("modal-title").textContent = "Crear cuenta";
-  document.getElementById("m-name").value = "";
+  const nameEl = document.getElementById("m-name");
+  nameEl.value = "";
+  nameEl.disabled = false;
   document.getElementById("m-email").value = "";
   document.getElementById("m-pass").value = "";
   document.getElementById("m-role").value = "user";
@@ -1442,6 +1497,8 @@ window.openCreate = () => {
   document.getElementById("modal-err").style.display = "none";
   document.getElementById("pass-field").style.display = "flex";
   showPinSection("user");
+  const pr = document.getElementById("pin-regen-btn");
+  if (pr) pr.disabled = false;
   document.getElementById("modal-ov").classList.add("open");
 };
 
@@ -1450,7 +1507,8 @@ window.openEdit = uid => {
   if (!u) return;
   editUid = uid;
   document.getElementById("modal-title").textContent = "Editar cuenta";
-  document.getElementById("m-name").value   = u.name   || "";
+  const nameEl = document.getElementById("m-name");
+  nameEl.value   = u.name   || "";
   document.getElementById("m-email").value  = u.email  || "";
   document.getElementById("m-role").value   = u.role   || "user";
   document.getElementById("m-rango").value  = u.rango  || "Centinela";
@@ -1470,9 +1528,15 @@ window.openEdit = uid => {
     document.getElementById("pin-val").textContent = u.pin || genPin();
     document.getElementById("pin-section").style.display = "block";
     document.getElementById("email-section").style.display = "none";
+    nameEl.disabled = true;
+    const pr = document.getElementById("pin-regen-btn");
+    if (pr) pr.disabled = true;
   } else {
     document.getElementById("pin-section").style.display = "none";
     document.getElementById("email-section").style.display = "block";
+    nameEl.disabled = false;
+    const pr = document.getElementById("pin-regen-btn");
+    if (pr) pr.disabled = false;
   }
   document.getElementById("modal-ov").classList.add("open");
 };
@@ -1544,21 +1608,26 @@ window.saveAccount = async () => {
     } else {
       // CREAR
       let uid;
-      const data = { name, role, rango, cargos, status, points: 0, createdAt: serverTimestamp(), createdBy: myUid };
+      const data = { name, role, rango, cargos, status, points: 0, createdAt: serverTimestamp(), createdBy: myUid, nameLower: normLoginName(name) };
+
+      const secondName = "secondary-" + Date.now();
+      const secondApp  = initializeApp(cfg, secondName);
+      const secondAuth = getAuth(secondApp);
 
       if (role==="admin" || role==="inspector") {
-        // Necesita Firebase Auth — segunda instancia para no cerrar sesión del admin actual
-        const secondName = "secondary-" + Date.now();
-        const secondApp  = initializeApp(cfg, secondName);
-        const secondAuth = getAuth(secondApp);
         const cred = await createUserWithEmailAndPassword(secondAuth, email, pass);
         await updateProfile(cred.user, { displayName: name });
         await signOut(secondAuth);
         uid = cred.user.uid;
         data.email = email;
       } else {
-        // Usuario: solo Firestore + PIN, sin cuenta Auth
-        uid = "usr_" + Date.now() + "_" + Math.random().toString(36).slice(2,6);
+        // Usuario: también creamos cuenta Firebase Auth para login seguro
+        const fakeEmail = pinEmailFromName(name);
+        const fakePass  = pinPasswordFromPin(pin);
+        const cred = await createUserWithEmailAndPassword(secondAuth, fakeEmail, fakePass);
+        await updateProfile(cred.user, { displayName: name });
+        await signOut(secondAuth);
+        uid = cred.user.uid;
         data.pin = pin;
       }
 
