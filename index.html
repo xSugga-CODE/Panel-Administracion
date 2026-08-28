@@ -255,7 +255,10 @@
     <div class="page" id="page-users">
       <div class="ph">
         <div class="ph-left"><h2>Cuentas</h2><p>Todos los usuarios registrados</p></div>
-        <div id="ph-crear-btn"></div><!-- Se inyecta el botón si es admin -->
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost btn-sm" id="btn-migrar" onclick="migrateAllLegacyAccounts()" style="display:none">🔧 Migrar cuentas antiguas</button>
+          <div id="ph-crear-btn"></div><!-- Se inyecta el botón si es admin -->
+        </div>
       </div>
       <div class="tcard">
         <div class="ttoolbar">
@@ -718,6 +721,8 @@ async function bootApp(user, data) {
     document.getElementById("nav-crear").style.display = "flex";
     document.getElementById("ph-crear-btn").innerHTML =
       '<button class="btn btn-primary btn-auto" onclick="openCreate()">➕ Crear cuenta</button>';
+    const mb = document.getElementById("btn-migrar");
+    if (mb) mb.style.display = "inline-flex";
   } else {
     document.getElementById("nav-config").style.display = "none";
     // Inspector: ocultar columna acciones
@@ -1757,6 +1762,44 @@ window.showToast = (msg, type="ok") => {
   t.className = "toast show " + type;
   clearTimeout(toastT);
   toastT = setTimeout(() => { t.className="toast"; }, 3500);
+};
+
+window.migrateAllLegacyAccounts = async () => {
+  const btn = document.getElementById("btn-migrar");
+  if (!btn) return;
+  if (!confirm("Esto migrará todas las cuentas antiguas creándoles una cuenta PIN. ¿Continuar?")) return;
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = "Migrando…";
+  let ok = 0, skip = 0, fail = 0;
+  try {
+    for (const u of allUsers) {
+      try {
+        const pin = u.pin && !/^\s*$/.test(u.pin) ? u.pin : genPin();
+        // Solo migramos si el uid no corresponde a una cuenta Auth de nombre normal (típicamente los users antiguos)
+        const wasCreated = await ensurePinAuthAccount(u.name || "", pin, u.uid);
+        if (wasCreated && wasCreated !== u.uid) {
+          await setDoc(doc(db, "pinLogins", wasCreated), { realUid: u.uid });
+        }
+        // Guardamos el PIN actualizado en el documento si no lo tenía
+        if (pin !== u.pin) {
+          await updateDoc(doc(db, "users", u.uid), { pin });
+          u.pin = pin;
+        }
+        ok++;
+      } catch (e) {
+        console.warn("Skip", u?.name, e?.message || e);
+        skip++;
+      }
+    }
+    showToast(`Migración OK: ${ok} OK / ${skip} ya migradas / ${fail} fallos`, "ok");
+  } catch (e) {
+    showToast("Error en migración: " + e.message, "err");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+    renderAll();
+  }
 };
 </script>
 </body>
