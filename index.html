@@ -1576,6 +1576,31 @@ async function checkDuplicateName(name, ignoreUid = null) {
   return snap.docs.filter(docSnap => docSnap.id !== ignoreUid);
 }
 
+async function pinHashFromText(pin, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(String(pin || "")),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: enc.encode(String(salt || "")),
+      iterations: 200000,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    256
+  );
+  const bytes = new Uint8Array(bits);
+  let hex = "";
+  bytes.forEach((b) => { hex += b.toString(16).padStart(2, "0"); });
+  return hex;
+}
+
 function setModalErr(msg) {
   const el = document.getElementById("modal-err");
   el.textContent = msg;
@@ -1613,24 +1638,38 @@ window.saveAccount = async () => {
 
   try {
     if (editUid) {
-      // ───────────────── EDITAR ─────────────────
       const prev = allUsers.find(u => u.uid === editUid) || null;
       const prevSnap = prev ? { ...prev, cargos: Array.isArray(prev.cargos) ? [...prev.cargos] : prev.cargos } : null;
-      const upd = { name, role, rango, cargos, status, pin, nameLower: normLoginName(name) };
+      const normName = normLoginName(name);
+      const salt = crypto.getRandomValues(new Uint8Array(16)).reduce((acc, v) => acc + v.toString(16).padStart(2, "0"), "");
+      const hash = await pinHashFromText(pin, salt);
+      const upd = { name, role, rango, cargos, status, pin: null, pinHash: hash, pinSalt: salt, nameLower: normName };
       if (role==="admin" || role==="inspector") upd.email = email || prev?.email || "";
 
-      // Las cuentas PIN se gestionan solo desde Firestore. No se crean cuentas sintéticas en Firebase Auth.
       await updateDoc(doc(db,"users",editUid), upd);
+      await setDoc(doc(db, "publicLoginUsers", editUid), {
+        uid: editUid,
+        nameLower: normName,
+        role,
+        status,
+        pinHash: hash,
+        pinSalt: salt,
+        displayName: name,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
       const idx = allUsers.findIndex(u => u.uid===editUid);
-      if (idx!==-1) allUsers[idx] = { ...allUsers[idx], ...upd };
+      if (idx!==-1) allUsers[idx] = { ...allUsers[idx], ...upd, pin: null };
       showToast("Cuenta actualizada. PIN nuevo listo.", "ok");
       const nText = buildUserUpdatedNovedad(prevSnap, { ...(prevSnap || {}), ...upd });
       if (nText) await logNovedad(nText);
 
     } else {
-      // ───────────────── CREAR ─────────────────
       const uid = doc(collection(db, "users")).id;
-      const data = { name, role, rango, cargos, status, pin, points: 0, createdAt: serverTimestamp(), createdBy: myUid, nameLower: normLoginName(name) };
+      const normName = normLoginName(name);
+      const salt = crypto.getRandomValues(new Uint8Array(16)).reduce((acc, v) => acc + v.toString(16).padStart(2, "0"), "");
+      const hash = await pinHashFromText(pin, salt);
+      const data = { name, role, rango, cargos, status, pin: null, pinHash: hash, pinSalt: salt, points: 0, createdAt: serverTimestamp(), createdBy: myUid, nameLower: normName };
 
       if (role==="admin" || role==="inspector") {
         const cred = await createUserWithEmailAndPassword(auth, email, pass);
@@ -1638,10 +1677,30 @@ window.saveAccount = async () => {
         data.email = email;
         data.authUid = cred.user.uid;
         await setDoc(doc(db, "users", cred.user.uid), data);
+        await setDoc(doc(db, "publicLoginUsers", cred.user.uid), {
+          uid: cred.user.uid,
+          nameLower: normName,
+          role,
+          status,
+          pinHash: hash,
+          pinSalt: salt,
+          displayName: name,
+          createdAt: serverTimestamp()
+        }, { merge: true });
         allUsers.unshift({ uid: cred.user.uid, ...data, createdAt: new Date() });
       } else {
-        data.pin = pin;
+        data.pin = null;
         await setDoc(doc(db,"users",uid), data);
+        await setDoc(doc(db, "publicLoginUsers", uid), {
+          uid,
+          nameLower: normName,
+          role,
+          status,
+          pinHash: hash,
+          pinSalt: salt,
+          displayName: name,
+          createdAt: serverTimestamp()
+        }, { merge: true });
         allUsers.unshift({ uid, ...data, createdAt: new Date() });
       }
 
