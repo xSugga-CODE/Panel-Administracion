@@ -1565,6 +1565,14 @@ function showPinSection(role) {
 window.regenPin = () => { document.getElementById("pin-val").textContent = genPin(); };
 window.closeModal = () => document.getElementById("modal-ov").classList.remove("open");
 
+async function checkDuplicateName(name, ignoreUid = null) {
+  const normalized = normLoginName(name);
+  if (!normalized) return [];
+  const q = query(collection(db, "users"), where("nameLower", "==", normalized));
+  const snap = await getDocs(q);
+  return snap.docs.filter(docSnap => docSnap.id !== ignoreUid);
+}
+
 function setModalErr(msg) {
   const el = document.getElementById("modal-err");
   el.textContent = msg;
@@ -1586,6 +1594,11 @@ window.saveAccount = async () => {
 
   if (!name) return setModalErr("El nombre es obligatorio.");
   if (!pin || pin.length !== 4 || isNaN(pin)) return setModalErr("El PIN debe ser de 4 dígitos.");
+
+  const duplicateMatches = await checkDuplicateName(name, editUid);
+  if (duplicateMatches.length > 0) {
+    return setModalErr("Ese nombre ya existe en otra cuenta. Cambiá el nombre o borra el registro antiguo antes de crear uno nuevo.");
+  }
 
   if (!editUid) {
     if ((role==="admin"||role==="inspector") && !email) return setModalErr("Inspector/Admin necesitan email.");
