@@ -506,9 +506,10 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 import {
   getFirestore, collection, doc, setDoc, getDoc, getDocs,
-  updateDoc, deleteDoc, serverTimestamp, query, orderBy, addDoc, onSnapshot, limit
+  updateDoc, deleteDoc, serverTimestamp, query, orderBy, addDoc, onSnapshot, limit, where
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
+console.log("APP_START");
 const cfg = {
   apiKey:"AIzaSyAIqxYEo-flmj1KKz3f0x1CnKG8KoUMBrM",
   authDomain:"jowiland-2.firebaseapp.com",
@@ -522,6 +523,7 @@ const cfg = {
 const app  = getApps().length ? getApp() : initializeApp(cfg, "main");
 const auth = getAuth(app);
 const db   = getFirestore(app);
+console.log("FIREBASE_READY");
 
 // ── ESTADO GLOBAL ─────────────────────────────────────────────
 let allUsers     = [];
@@ -630,7 +632,8 @@ function fmtWait(ms) {
 
 // ── AUTH ──────────────────────────────────────────────────────
 onAuthStateChanged(auth, async user => {
-  if (!user) { showLogin(); return; }
+  console.log("AUTH_READY", !!user, user ? user.uid : "no-user");
+  if (!user) { console.log("APP_RENDERED"); showLogin(); return; }
 
   try {
     const snap = await getDoc(doc(db, "users", user.uid));
