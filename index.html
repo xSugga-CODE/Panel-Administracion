@@ -1616,12 +1616,7 @@ window.saveAccount = async () => {
       const upd = { name, role, rango, cargos, status, pin, nameLower: normLoginName(name) };
       if (role==="admin" || role==="inspector") upd.email = email || prev?.email || "";
 
-      // Actualizar cuenta PIN sintética (crear nueva si cambió el nombre o el PIN)
-      const pinUid = await ensurePinAuthAccount(name, pin, editUid);
-      if (pinUid && pinUid !== editUid) {
-        await setDoc(doc(db, "pinLogins", pinUid), { realUid: editUid });
-      }
-
+      // Las cuentas PIN se gestionan solo desde Firestore. No se crean cuentas sintéticas en Firebase Auth.
       await updateDoc(doc(db,"users",editUid), upd);
       const idx = allUsers.findIndex(u => u.uid===editUid);
       if (idx!==-1) allUsers[idx] = { ...allUsers[idx], ...upd };
@@ -1631,28 +1626,22 @@ window.saveAccount = async () => {
 
     } else {
       // ───────────────── CREAR ─────────────────
-      let uid;
+      const uid = doc(collection(db, "users")).id;
       const data = { name, role, rango, cargos, status, pin, points: 0, createdAt: serverTimestamp(), createdBy: myUid, nameLower: normLoginName(name) };
 
       if (role==="admin" || role==="inspector") {
         const cred = await createUserWithEmailAndPassword(auth, email, pass);
         await updateProfile(cred.user, { displayName: name });
-        uid = cred.user.uid;
         data.email = email;
-
-        const pinUid = await ensurePinAuthAccount(name, pin, uid);
-        if (pinUid && pinUid !== uid) {
-          await setDoc(doc(db, "pinLogins", pinUid), { realUid: uid });
-        }
+        data.authUid = cred.user.uid;
+        await setDoc(doc(db, "users", cred.user.uid), data);
+        allUsers.unshift({ uid: cred.user.uid, ...data, createdAt: new Date() });
       } else {
-        // Usuario: la cuenta PIN sintética será la cuenta principal
-        const pinUid = await ensurePinAuthAccount(name, pin, null);
-        uid = pinUid;
         data.pin = pin;
+        await setDoc(doc(db,"users",uid), data);
+        allUsers.unshift({ uid, ...data, createdAt: new Date() });
       }
 
-      await setDoc(doc(db,"users",uid), data);
-      allUsers.unshift({ uid, ...data, createdAt: new Date() });
       showToast("✅ Cuenta creada: " + name, "ok");
       await logNovedad(buildUserCreatedNovedad(name, role, rango, cargos));
     }
@@ -1669,47 +1658,8 @@ window.saveAccount = async () => {
 };
 
 async function ensurePinAuthAccount(name, pin, realUid, sharedApp) {
-  let app = sharedApp;
-  let createdAppHere = false;
-  if (!app) {
-    const n = "pin-" + Date.now() + "-" + Math.random().toString(36).slice(2,6);
-    app = initializeApp(cfg, n);
-    createdAppHere = true;
-  }
-  const authInst = getAuth(app);
-  const baseEmail = pinEmailFromName(name);
-  const pwd = pinPasswordFromPin(pin);
-  if (!baseEmail) throw new Error("Nombre inválido para PIN.");
-
-  let lastErr = null;
-  // Intentar base, luego nombre-1, nombre-2... hasta 10
-  for (let i = 0; i < 10; i++) {
-    const email = i === 0 ? baseEmail : pinEmailFromName(name + " " + i);
-    try {
-      const cred = await createUserWithEmailAndPassword(authInst, email, pwd);
-      await updateProfile(cred.user, { displayName: name });
-      await signOut(authInst);
-      return cred.user.uid;
-    } catch (e) {
-      if (e.code === "auth/email-already-in-use") {
-        // Intentar loguearse con el PIN actual → si coincide devolvemos ese uid.
-        try {
-          const cred2 = await signInWithEmailAndPassword(authInst, email, pwd);
-          await signOut(authInst);
-          return cred2.user.uid;
-        } catch (_) {
-          // PIN no coincide, probar siguiente sufijo
-          lastErr = _;
-          continue;
-        }
-      } else {
-        lastErr = e;
-        break;
-      }
-    }
-  }
-  if (lastErr) throw lastErr;
-  throw new Error("No se pudo crear la cuenta PIN.");
+  // Compatibilidad: los usuarios PIN no usan Firebase Auth. Se guardan solo en Firestore.
+  return realUid || null;
 }
 
 // ── ELIMINAR ──────────────────────────────────────────────────
