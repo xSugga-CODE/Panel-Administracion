@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Panel de Staff — Jowiland</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-wrap">
+    <div class="login-logo">
+      <div class="login-mark">⚡</div>
+      <h1>Jowiland</h1>
+      <p>Panel de Staff Discord</p>
+    </div>
+    <div class="login-card">
+      <div id="form-pin">
+        <div class="lfield">
+          <label>Nombre de usuario</label>
+          <input type="text" id="pin-name" placeholder="Ej: Juan" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+        </div>
+        <div class="lfield">
+          <label>PIN de 4 dígitos</label>
+          <input type="text" id="pin-code" placeholder="••••" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+        </div>
+        <button class="lbtn" id="btn-pin" onclick="loginWithPin()">Entrar</button>
+      </div>
+      <div class="lerr" id="login-err"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+  <div class="container">
+
+    <!-- HEADER -->
+    <header class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">Comunidad Jow</span>
+        <h1>Panel de Staff Discord</h1>
+        <p>Base administrativa para controlar actividad, puntos, rangos, apelaciones y seguimiento del staff.</p>
+      </div>
+      <div class="hero-side card compact-card" id="user-card">
+        <div class="uc-avatar" id="uc-avatar">?</div>
+        <div>
+          <div class="uc-name" id="uc-name">—</div>
+          <div class="uc-role" id="uc-role">—</div>
+          <div class="uc-pts" id="uc-pts" style="display:none"></div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()">Salir</button>
+      </div>
+    </header>
+
+    <!-- STATS -->
+    <section class="stats-grid" id="stats-section">
+      <article class="stat-card">
+        <span class="stat-label">Miembros staff</span>
+        <strong id="total-members">0</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">Puntos promedio</span>
+        <strong id="avg-points">0</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">En riesgo</span>
+        <strong id="staff-at-risk">0</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">Óptimos</span>
+        <strong id="staff-optimal">0</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">Puntos totales</span>
+        <strong id="total-points">0</strong>
+      </article>
+    </section>
+
+    <!-- TABS -->
+    <nav class="tabs-container" id="tabs-nav">
+      <button class="tab active" onclick="switchTab('points-tab',this)">⭐ Puntos</button>
+      <button class="tab"        onclick="switchTab('staff-tab',this)">👥 Staff</button>
+      <button class="tab"        onclick="switchTab('guide-tab',this)">📖 Guía</button>
+      <button class="tab"        onclick="switchTab('rangos-tab',this)">🏅 Rangos</button>
+      <button class="tab"        onclick="switchTab('rules-tab',this)">📋 Normas</button>
+      <button class="tab"        onclick="switchTab('novedades-tab',this)">🔔 Novedades</button>
+      <button class="tab" id="logs-tab-btn" style="display:none" onclick="switchTab('logs-tab',this)">📜 Logs</button>
+      <button class="tab"        onclick="switchTab('apelaciones-tab',this)">📨 Apelaciones</button>
+    </nav>
+
+    <main class="content">
+
+      <!-- ── PUNTOS ── -->
+      <section id="points-tab" class="tab-content active" style="display:none">
+        <h2>Tabla de Puntos</h2>
+        <div class="card">
+          <p style="color:#9ba8d6;margin-bottom:16px">Clasificación en tiempo real. Solo se muestran inspectores y usuarios — los admins gestionan desde el panel.</p>
+          <table>
+            <thead>
+              <tr id="pts-thead-row"><th>#</th><th>Nombre</th><th>Puntos</th><th>Estado</th></tr>
+            </thead>
+            <tbody id="pts-full-body">
+              <tr><td colspan="4" class="t-empty">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── STAFF ── -->
+      <section id="staff-tab" class="tab-content" style="display:none">
+        <h2>Staff</h2>
+        <div class="card">
+          <h3>Resumen del equipo</h3>
+          <p>Vista general del staff actual: rango, cargos asignados y estado operativo.</p>
+          <table>
+            <thead>
+              <tr><th>Nombre</th><th>Rango</th><th>Cargos</th><th>Estado</th></tr>
+            </thead>
+            <tbody id="staff-full-body">
+              <tr><td colspan="4" class="t-empty">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Papeles dentro de la página</h3>
+          <div class="info-grid">
+            <article>
+              <h4>🔧 Admin</h4>
+              <p>Acceso completo al panel. Puede crear, editar y eliminar cuentas, y gestionar todos los puntos.</p>
+            </article>
+            <article>
+              <h4>🔍 Inspector</h4>
+              <p>Accede al panel de staff. Puede sumar y restar puntos a los moderadores.</p>
+            </article>
+            <article>
+              <h4>👤 Usuario</h4>
+              <p>Miembro activo. Ingresa con PIN y solo puede ver sus propios puntos.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── LOGS ── -->
+      <section id="logs-tab" class="tab-content" style="display:none">
+        <h2>Logs</h2>
+        <div class="card">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+            <p style="color:#9ba8d6;margin:0">Accesos y cambios de puntos. Visible solo para inspectores y admins.</p>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <button class="btn-ghost" onclick="toggleInspectorPanelJow()">📊 Actividad inspectores</button>
+              <button class="btn-ghost" id="logs-export-btn" style="display:none" onclick="exportLogsJow()">📥 Exportar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="insp-panel-jow" style="display:none">
+          <h3>📊 Actividad de inspectores (hoy)</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Inspector</th>
+                <th>Puntos asignados hoy</th>
+                <th>Acciones hoy</th>
+                <th>Última acción</th>
+                <th>Hace</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="insp-jow-body">
+              <tr><td colspan="6" class="t-empty">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+            <select onchange="setLogTypeFilterJow(this.value)" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none">
+              <option value="">Todos</option>
+              <option value="login">Logins</option>
+              <option value="points">Cambios de puntos</option>
+            </select>
+            <input type="text" placeholder="Buscar…" oninput="setLogSearchJow(this.value)" style="flex:1;min-width:180px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none"/>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha y hora</th>
+                <th>Inspector/Admin</th>
+                <th>Usuario afectado</th>
+                <th>Cambio</th>
+                <th>Motivo</th>
+                <th id="logs-actions-th-jow">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="logs-jow-body">
+              <tr><td colspan="6" class="t-empty">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── GUÍA ── -->
+      <section id="guide-tab" class="tab-content" style="display:none">
+        <h2>Guía General</h2>
+        <div class="card">
+          <h3>Cómo está pensado el sistema</h3>
+          <div class="info-grid">
+            <article><h4>1. Actividad</h4><p>La actividad del staff se mide y sirve como base para mantener o recuperar puntos.</p></article>
+            <article><h4>2. Inspección</h4><p>Los inspectores revisan desempeño, ajustan puntos y avisan cuando haga falta intervenir.</p></article>
+            <article><h4>3. Degradación</h4><p>Al llegar a 0 puntos, el sistema bajará de rango y abrirá una apelación privada.</p></article>
+            <article><h4>4. Apelación</h4><p>El miembro afectado podrá apelar durante 24 horas antes de que se confirme o revierta el caso.</p></article>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Reglas base de puntos</h3>
+          <ul>
+            <li>Todos los miembros del staff empiezan con <strong>7 puntos</strong>.</li>
+            <li>Los puntos los gestionan los inspectores y admins desde el panel.</li>
+            <li>El máximo de puntos es <strong>7</strong>.</li>
+            <li>Al llegar a 0 se abre apelación automática.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ── RANGOS ── -->
+      <section id="rangos-tab" class="tab-content" style="display:none">
+        <h2>Rangos</h2>
+        <div class="card">
+          <h3>📌 Rangos reales del servidor</h3>
+          <div class="rango-list">
+            <div class="rango-item">
+              <div class="rango-icon">👑</div>
+              <div>
+                <div class="rango-name">Owner</div>
+                <div class="rango-desc">Máximo nivel de autoridad. Se encargan de dirigir la comunidad, tomar decisiones importantes, supervisar la moderación y coordinar el proyecto junto a Jow.</div>
+              </div>
+            </div>
+            <div class="rango-item">
+              <div class="rango-icon">🛡️</div>
+              <div>
+                <div class="rango-name">Admin</div>
+                <div class="rango-desc">Segundo nivel de autoridad. Supervisan la moderación, aplican sanciones avanzadas y ayudan a mantener el orden general de la comunidad.</div>
+              </div>
+            </div>
+            <div class="rango-item">
+              <div class="rango-icon">⚙️</div>
+              <div>
+                <div class="rango-name">Tester</div>
+                <div class="rango-desc">Primer nivel de moderación. Se encargan de tareas básicas como vigilar el chat, reportar problemas y aplicar sanciones simples cuando sea necesario.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Cadena de degradación</h3>
+          <p class="highlight-line">Owner → Admin → Tester → Usuario</p>
+          <p>Cuando un miembro del staff llega a 0 puntos, se abre un canal privado de apelación por 24 horas.</p>
+        </div>
+      </section>
+
+      <!-- ── NORMAS ── -->
+      <section id="rules-tab" class="tab-content" style="display:none">
+        <h2>Normas</h2>
+        <div class="card">
+          <h3>Sección en preparación</h3>
+          <p>Aquí irá la versión ordenada y definitiva de las normas del servidor.</p>
+          <div class="note">Pendiente de rellenar con el texto final de normas, sistema de warns y criterios de sanción.</div>
+        </div>
+        <div class="card">
+          <h3>Estructura prevista</h3>
+          <ul>
+            <li>Filosofía del servidor y libertad permitida.</li>
+            <li>Contenido totalmente prohibido.</li>
+            <li>Sistema de warns y escalado de sanciones.</li>
+            <li>Reglas específicas del staff.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ── NOVEDADES ── -->
+      <section id="novedades-tab" class="tab-content" style="display:none">
+        <h2>Novedades</h2>
+        <div class="card">
+          <p style="color:#9ba8d6;margin-bottom:20px">Registro de cambios recientes en el staff. Visible para todos los usuarios.</p>
+          <div id="novedades-list">
+            <div class="t-empty">Cargando novedades…</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── APELACIONES ── -->
+      <section id="apelaciones-tab" class="tab-content" style="display:none">
+        <h2>Apelaciones</h2>
+        <div class="card">
+          <h3>Sistema de apelaciones</h3>
+          <p>Esta sección estará activa una vez que el bot de Discord esté funcionando. Las apelaciones se abrirán automáticamente cuando un miembro llegue a 0 puntos.</p>
+          <div class="note" style="margin-top:16px">
+            ⚙️ Pendiente de integración con el bot. Por ahora no hay apelaciones activas.
+          </div>
+        </div>
+        <div class="card">
+          <h3>¿Cómo funcionará?</h3>
+          <ul>
+            <li>Al llegar a 0 puntos, se abre automáticamente un canal privado de apelación.</li>
+            <li>El miembro tiene <strong>24 horas</strong> para presentar su caso.</li>
+            <li>Un admin revisa y decide si revertir o confirmar la degradación.</li>
+            <li>El resultado se registrará acá como novedad.</li>
+          </ul>
+          <div class="apelacion-ejemplo">
+            <div class="ap-header">
+              <span class="ap-badge ap-abierta">Ejemplo</span>
+              <span class="ap-nombre">NombreUsuario</span>
+              <span class="ap-plazo">24h restantes</span>
+            </div>
+            <div class="ap-motivo">Llegó a 0 puntos — degradado a Usuario. Puede apelar antes de que se confirme.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── VISTA USUARIO ── -->
+      <section id="user-view" class="tab-content" style="display:none">
+        <div class="user-pts-card">
+          <div class="upc-label">Tus puntos actuales</div>
+          <div class="upc-value" id="my-pts-value">—</div>
+          <div class="upc-bar-wrap">
+            <div class="upc-bar" id="my-pts-bar"></div>
+          </div>
+          <div class="upc-state" id="my-pts-state"></div>
+        </div>
+        <div class="card" style="margin-top:20px">
+          <h3>¿Qué significan tus puntos?</h3>
+          <table>
+            <thead><tr><th>Estado</th><th>Puntos</th><th>Qué significa</th></tr></thead>
+            <tbody>
+              <tr><td><span class="circle points-7"></span>Óptimo</td><td>6 – 7</td><td>Todo en orden 👍</td></tr>
+              <tr><td><span class="circle points-6"></span>Estable</td><td>4 – 5.9</td><td>Vas bien, mantené el ritmo</td></tr>
+              <tr><td><span class="circle points-4"></span>Seguimiento</td><td>2.1 – 3.9</td><td>Aumentá la actividad</td></tr>
+              <tr><td><span class="circle points-2"></span>Riesgo alto</td><td>0.1 – 2</td><td>⚠️ Actividad urgente</td></tr>
+              <tr><td><span class="circle points-0"></span>Crítico</td><td>0</td><td>🚨 Apelación abierta</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>¿Cómo subir puntos?</h3>
+          <ul>
+            <li>Participar activamente en el servidor.</li>
+            <li>Cumplir tus funciones asignadas.</li>
+            <li>Un inspector puede sumar puntos por buen desempeño.</li>
+          </ul>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<div class="notification" id="toast" style="display:none"></div>
+<script src="script.js" type="module"></script>
+</body>
+</html>

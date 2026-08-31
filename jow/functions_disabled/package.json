@@ -1,0 +1,13 @@
+{
+  "name": "jow-functions",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^4.7.0"
+  }
+}
+

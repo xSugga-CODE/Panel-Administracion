@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function myUser() {
+      return signedIn()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data
+        : null;
+    }
+
+    function myRole() {
+      return myUser() != null ? myUser().role : null;
+    }
+
+    function isAdmin() {
+      return myRole() == 'admin';
+    }
+
+    function isStaff() {
+      return myRole() == 'admin' || myRole() == 'inspector';
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && isAdmin();
+      allow update: if signedIn() && (
+        isAdmin() ||
+        (
+          isStaff() &&
+          userId != request.auth.uid &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['points'])
+        )
+      );
+      allow delete: if signedIn() && isAdmin();
+    }
+
+    match /settings/{docId} {
+      allow read: if signedIn() && isStaff();
+      allow write: if signedIn() && isAdmin();
+    }
+
+    match /publicLoginUsers/{userId} {
+      allow read: if true;
+      allow create: if signedIn() && isAdmin();
+      allow update: if signedIn() && isAdmin();
+      allow delete: if signedIn() && isAdmin();
+    }
+
+    match /logs/{logId} {
+      allow read: if signedIn() && isStaff();
+      allow create: if signedIn() && isStaff();
+      allow update, delete: if signedIn() && isAdmin();
+    }
+
+    match /novedades/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && isStaff();
+      allow update, delete: if signedIn() && isAdmin();
+    }
+
+    match /pinLogins/{aliasId} {
+      allow read: if signedIn() && request.auth.uid == aliasId;
+      allow create: if signedIn() && isAdmin() && request.resource.data.realUid is string;
+      allow update: if signedIn() && isAdmin() && request.resource.data.realUid is string;
+      allow delete: if signedIn() && isAdmin();
+    }
+  }
+}
