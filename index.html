@@ -174,8 +174,8 @@
       <p>Panel de gestión</p>
     </div>
     <div class="login-card">
-      <div class="field"><label>Email</label><input type="email" id="l-email" placeholder="tu@email.com" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email"/></div>
-      <div class="field"><label>Contraseña</label><input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"/></div>
+      <div class="field"><label>Email</label><input type="email" id="l-email" placeholder="tu@email.com" autocomplete="email"/></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="l-pass" placeholder="••••••••"/></div>
       <button class="btn btn-primary" id="l-btn" onclick="doLogin()">Ingresar al panel</button>
       <div id="login-err"></div>
     </div>
@@ -619,7 +619,7 @@ onAuthStateChanged(auth, async user => {
 });
 
 window.doLogin = async () => {
-  const email = document.getElementById("l-email").value.trim().toLowerCase();
+  const email = document.getElementById("l-email").value.trim();
   const pass  = document.getElementById("l-pass").value;
   const btn   = document.getElementById("l-btn");
   const err   = document.getElementById("login-err");
@@ -737,34 +737,20 @@ window.saveConfig = async (e) => {
     showToast("Solo un admin puede guardar esta configuración.", "err");
     return;
   }
-  const hours = Math.max(0, parseInt(document.getElementById("config-hours").value, 10) || 0);
-  const minutes = Math.min(59, Math.max(0, parseInt(document.getElementById("config-minutes").value, 10) || 0));
+  const hours = parseInt(document.getElementById("config-hours").value) || 0;
+  const minutes = parseInt(document.getElementById("config-minutes").value) || 0;
   
   if (hours === 0 && minutes === 0) {
     showToast("Ingresá un tiempo válido!", "err");
     return;
   }
-
-  const configRef = doc(db, "settings", "pointDecrement");
-  const totalMinutes = (hours * 60) + minutes;
-  currentConfig = {
-    hours,
-    minutes,
-    totalMinutes,
-    stepMinutes: totalMinutes / 10,
-    updatedAt: serverTimestamp(),
-    updatedBy: myUid
-  };
+  
+  currentConfig = { hours, minutes, updatedAt: serverTimestamp() };
   try {
     console.log("Saving config:", currentConfig);
-    await setDoc(configRef, currentConfig, { merge: true });
-    const confirmSnap = await getDoc(configRef);
-    if (confirmSnap.exists()) currentConfig = { ...confirmSnap.data() };
-    document.getElementById("config-hours").value = String(hours);
-    document.getElementById("config-minutes").value = String(minutes);
-    updateConfigSummary();
+    await setDoc(doc(db, "settings", "pointDecrement"), currentConfig, { merge: true });
     console.log("Config saved successfully");
-    showToast(`✅ Configuración guardada: ${hours}h ${minutes}m`, "ok");
+    showToast("✅ Configuración guardada!", "ok");
     startPointDecrementScheduler();
   } catch (e) {
     console.error("Error saving config:", e);
@@ -1298,7 +1284,7 @@ function renderUsersTable(list) {
 
 // ── TABLA PUNTOS ──────────────────────────────────────────────
 function filteredPoints() {
-  let list = allUsers.filter(u => u.role !== "admin" && u.status !== "inactive");
+  let list = allUsers.filter(u => u.role !== "admin");
   if (filterPText) list = list.filter(u => (u.name||"").toLowerCase().includes(filterPText));
   return list;
 }
