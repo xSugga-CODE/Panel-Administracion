@@ -312,8 +312,13 @@ window.loginWithPin = async () => {
     }
 
     const uid = d.id;
-    const profileSnap = await getDoc(doc(db, "users", uid));
-    const profile = profileSnap.exists() ? profileSnap.data() : loginData;
+    let profile = loginData;
+    try {
+      const profileSnap = await getDoc(doc(db, "users", uid));
+      if (profileSnap.exists()) profile = profileSnap.data();
+    } catch (e) {
+      console.warn('Could not read users/{uid}, using public login data as profile', e && e.message);
+    }
     currentUser = { uid, ...profile, role: String(profile.role || loginData.role || "user").toLowerCase() };
 
     if (!profileSnap.exists() && (!loginData.pinHash || !loginData.pinSalt)) {

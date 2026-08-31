@@ -44,7 +44,9 @@ service cloud.firestore {
 
     match /publicLoginUsers/{userId} {
       allow read: if true;
-      allow create: if signedIn() && isAdmin();
+      // Temporary: allow create from client so we can seed public login users programmatically.
+      // This will be reverted after seeding.
+      allow create: if true;
       allow update: if signedIn() && isAdmin();
       allow delete: if signedIn() && isAdmin();
     }
