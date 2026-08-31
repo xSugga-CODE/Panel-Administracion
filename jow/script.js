@@ -312,13 +312,8 @@ window.loginWithPin = async () => {
     }
 
     const uid = d.id;
-    let profile = loginData;
-    try {
-      const profileSnap = await getDoc(doc(db, "users", uid));
-      if (profileSnap.exists()) profile = profileSnap.data();
-    } catch (e) {
-      console.warn('Could not read users/{uid}, using public login data as profile', e && e.message);
-    }
+    const profileSnap = await getDoc(doc(db, "users", uid));
+    const profile = profileSnap.exists() ? profileSnap.data() : loginData;
     currentUser = { uid, ...profile, role: String(profile.role || loginData.role || "user").toLowerCase() };
 
     if (!profileSnap.exists() && (!loginData.pinHash || !loginData.pinSalt)) {
@@ -390,7 +385,8 @@ function setupLogsTab() {
   const exp = document.getElementById("logs-export-btn");
 
   const role = currentUser?.role;
-  const isStaff = role === "admin" || role === "inspector";
+  // Allow 'user' role to view logs/novedades/points panel as requested
+  const isStaff = role === "admin" || role === "inspector" || role === "user";
   const isAdmin = role === "admin";
 
   if (btn) btn.style.display = isStaff ? "" : "none";
@@ -781,8 +777,8 @@ function setupStaffView() {
 
 // ── STATS ──────────────────────────────────────────────────────
 function renderStats() {
-  // Stats solo sobre no-admins (los que tienen puntos relevantes)
-  const staff = allMembers.filter(u => u.role !== "admin");
+  // Stats solo sobre no-admins activos (los que tienen puntos relevantes)
+  const staff = allMembers.filter(u => u.role !== "admin" && !["inactive","inactivo"].includes(String(u.status||"").toLowerCase()));
   const total  = staff.length;
   const pts    = staff.reduce((s,u) => s+(u.points||0), 0);
   document.getElementById("total-members").textContent = total;
@@ -798,9 +794,9 @@ function renderPointsTable() {
   const role    = currentUser?.role;
   const canEdit = role === "admin" || role === "inspector";
 
-  // Filtrar: nunca mostrar admins en la tabla de puntos
+  // Filtrar: nunca mostrar admins ni usuarios inactivos en la tabla de puntos
   const list = allMembers
-    .filter(u => u.role !== "admin" && u.status !== "inactive")
+    .filter(u => u.role !== "admin" && !["inactive","inactivo"].includes(String(u.status||"").toLowerCase()))
     .sort((a,b) => (b.points||0)-(a.points||0));
 
   // Header dinámico
@@ -819,14 +815,21 @@ function renderPointsTable() {
   tb.innerHTML = list.map((u, i) => {
     const pts    = u.points || 0;
     const isMe   = u.uid === currentUser.uid;
-    const adjust = canEdit ? `
+    const adjust = canEdit ? (
+      role === 'admin'
+        ? `
       <td>
         <div class="adj-btns">
-          <button class="adj-btn minus" onclick="adjPoints('${u.uid}',-1)" ${isMe ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>−</button>
-          <span class="adj-val" id="av-${u.uid}">${pts.toFixed(1)}</span>
-          <button class="adj-btn plus" onclick="adjPoints('${u.uid}',+1)" ${isMe ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>+</button>
+          <button class="adj-btn plus" onclick="setPoints('${u.uid}')" ${isMe ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>Ingresar</button>
         </div>
-      </td>` : "";
+      </td>`
+        : `
+      <td>
+        <div class="adj-btns">
+          <button class="adj-btn minus" onclick="setPoints('${u.uid}')" ${isMe ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>Ajustar</button>
+        </div>
+      </td>`
+    ) : "";
     return `
       <tr ${isMe ? 'class="my-row"' : ""}>
         <td class="rank-col">${i+1}</td>
@@ -848,64 +851,53 @@ function renderPointsTable() {
 }
 
 // ── AJUSTAR PUNTOS ─────────────────────────────────────────────
-window.adjPoints = async (uid, delta) => {
+// New unified setPoints for admin and inspector
+window.setPoints = async (uid) => {
   const role = currentUser?.role;
-  if (role !== "admin" && role !== "inspector") return;
-  
-  if (uid === currentUser.uid) {
-    showToast("No podés modificar tus propios puntos!", "err");
+  if (role !== 'admin' && role !== 'inspector') return;
+  if (uid === currentUser.uid) { showToast('No podés modificar tus propios puntos!', 'err'); return; }
+  const member = allUsers.find(u => u.uid === uid);
+  if (!member) return;
+
+  if (role === 'inspector') {
+    const cd = checkInspectorCooldown(uid);
+    if (!cd.ok) { showToast(`Cooldown activo. Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, 'err'); return; }
+    const valStr = prompt('Ingresá la cantidad final de puntos (decimales permitidos):', String(member.points || 0));
+    if (valStr === null) return;
+    const newVal0 = parseFloat(valStr.replace(',', '.'));
+    if (!Number.isFinite(newVal0)) { showToast('Valor inválido','err'); return; }
+    const newVal = Math.round(Math.min(MAX_PTS, Math.max(0, newVal0)) * 10) / 10;
+    if (newVal === member.points) return;
+    const reason = prompt('Motivo (opcional):','') || 'Sin motivo';
+    const oldVal = member.points || 0;
+    member.points = newVal; updatePointCells(uid, newVal);
+    try {
+      await updateDoc(doc(db, 'users', uid), { points: newVal });
+      await writeLog({ type: 'points', actorUid: currentUser.uid, actorRole: role, actorName: currentUser.name||'', targetUid: uid, targetName: member.name||'', delta: newVal - oldVal, reason, newPoints: newVal });
+      writeCooldown(currentUser.uid, uid, Date.now());
+      showToast('Puntos actualizados a ' + newVal, 'ok');
+      renderAll();
+    } catch (e) { member.points = oldVal; updatePointCells(uid, oldVal); showToast('Error al guardar: '+e.message,'err'); }
     return;
   }
 
-  const member = allMembers.find(u => u.uid === uid);
-  if (!member) return;
-
-  if (role === "inspector") {
-    const cd = checkInspectorCooldown(uid);
-    if (!cd.ok) {
-      showToast(`Cooldown activo. Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, "err");
-      return;
-    }
-  }
-
-  const reasonRaw = prompt("Motivo del cambio de puntos:", "");
-  if (reasonRaw === null && role !== "admin") return;
-  const reason = (reasonRaw || "").trim() || "Sin motivo";
-
-  const oldVal = member.points || 0;
-  const newVal = Math.round(Math.min(MAX_PTS, Math.max(0, oldVal + delta)) * 10) / 10;
-  if (newVal === oldVal) return;
-
-  member.points = newVal;
-  updatePointCells(uid, newVal);
-
+  // Admin flow: set final points
+  const val = prompt('Ingresá la cantidad final de puntos para este usuario (0 - ' + MAX_PTS + '):', String(member.points || 0));
+  if (val === null) return;
+  const parsed = parseFloat(String(val).replace(',', '.'));
+  if (!Number.isFinite(parsed)) { showToast('Valor inválido','err'); return; }
+  const finalPts = Math.round(Math.min(MAX_PTS, Math.max(0, parsed)) * 10) / 10;
+  const old = member.points || 0;
+  if (finalPts === old) return;
+  const reasonAdmin = prompt('Motivo del cambio (opcional):','') || 'Ajuste manual';
+  member.points = finalPts; updatePointCells(uid, finalPts);
   try {
-    await updateDoc(doc(db, "users", uid), { points: newVal });
-    const accion = delta > 0 ? `sumó ${delta} punto(s)` : `restó ${Math.abs(delta)} punto(s)`;
-    showToast(`${delta>0?"➕":"➖"} ${Math.abs(delta)} pt a ${member.name||"usuario"}`, "ok");
-    // Registrar en novedades
-    const nText = delta > 0
-      ? `✅ Buen desempeño: ${member.name || "Un usuario"} recibió +${delta} punto(s). Motivo: ${reason}. Ahora tiene ${newVal} pts.`
-      : `⚠️ Ajuste de puntos: ${member.name || "Un usuario"} recibió -${Math.abs(delta)} punto(s). Motivo: ${reason}. Ahora tiene ${newVal} pts.`;
-    await logNovedad(nText);
-    await writeLog({
-      type: "points",
-      actorUid: currentUser.uid,
-      actorRole: role,
-      actorName: currentUser.name || "",
-      targetUid: uid,
-      targetName: member.name || "",
-      delta,
-      reason,
-      newPoints: newVal
-    });
-    if (role === "inspector") writeCooldown(currentUser.uid, uid, Date.now());
-    renderStats();
-  } catch(e) {
-    member.points = oldVal;
-    updatePointCells(uid, oldVal);
-    showToast("Error al guardar: " + e.message, "err");
-  }
+    await updateDoc(doc(db, 'users', uid), { points: finalPts });
+    await logNovedad(`🔧 Admin ${myName||''} estableció ${member.name||'usuario'} a ${finalPts} pts. Motivo: ${reasonAdmin}`);
+    await writeLog({ type: 'points', actorUid: myUid, actorRole: myRole, actorName: myName||'', targetUid: uid, targetName: member.name||'', delta: finalPts - old, reason: reasonAdmin, newPoints: finalPts });
+    showToast('Puntos establecidos: ' + finalPts, 'ok');
+    renderAll();
+  } catch (e) { member.points = old; updatePointCells(uid, old); showToast('Error al guardar: '+e.message,'err'); }
 };
 
 function updatePointCells(uid, pts) {

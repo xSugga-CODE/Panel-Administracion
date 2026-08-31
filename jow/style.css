@@ -831,21 +831,21 @@ li { color: #c2cceb; margin-bottom: 8px; }
   }
 
   table {
-    font-size: .9rem;
+    font-size: .85rem;
     display: block;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    min-width: 560px;
-    width: max-content;
+    min-width: 0;
+    width: 100%;
   }
 
   th, td {
-    padding: 10px 12px;
+    padding: 8px 10px;
     white-space: nowrap;
   }
 
   .pts-mini-bar-wrap {
-    width: 55px;
+    width: 48px;
   }
 
   /* Ajustar botones y campos para tactiles */
@@ -858,10 +858,10 @@ li { color: #c2cceb; margin-bottom: 8px; }
   }
 
   .stat-card {
-    padding: 14px 16px;
+    padding: 10px 12px;
   }
 
   .stat-card strong {
-    font-size: 1.8rem;
+    font-size: 1.2rem;
   }
 }

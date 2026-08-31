@@ -24,7 +24,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow create: if signedIn() && isAdmin();
       allow update: if signedIn() && (
         isAdmin() ||
@@ -42,15 +42,6 @@ service cloud.firestore {
       allow write: if signedIn() && isAdmin();
     }
 
-    match /publicLoginUsers/{userId} {
-      allow read: if true;
-      // Temporary: allow create from client so we can seed public login users programmatically.
-      // This will be reverted after seeding.
-      allow create: if true;
-      allow update: if signedIn() && isAdmin();
-      allow delete: if signedIn() && isAdmin();
-    }
-
     match /logs/{logId} {
       allow read: if signedIn() && isStaff();
       allow create: if signedIn() && isStaff();
@@ -58,16 +49,9 @@ service cloud.firestore {
     }
 
     match /novedades/{id} {
-      allow read: if signedIn();
+      allow read: if true;
       allow create: if signedIn() && isStaff();
       allow update, delete: if signedIn() && isAdmin();
-    }
-
-    match /pinLogins/{aliasId} {
-      allow read: if signedIn() && request.auth.uid == aliasId;
-      allow create: if signedIn() && isAdmin() && request.resource.data.realUid is string;
-      allow update: if signedIn() && isAdmin() && request.resource.data.realUid is string;
-      allow delete: if signedIn() && isAdmin();
     }
   }
 }
