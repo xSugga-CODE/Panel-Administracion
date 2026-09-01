@@ -17,6 +17,10 @@
       <p>Panel de Staff Discord</p>
     </div>
     <div class="login-card">
+      <div class="login-toggle" id="login-toggle">
+        <button class="ltab active" data-login="pin" onclick="switchLogin('pin')">🔑 PIN</button>
+        <button class="ltab" data-login="email" onclick="switchLogin('email')">📧 Email</button>
+      </div>
       <div id="form-pin">
         <div class="lfield">
           <label>Nombre de usuario</label>
@@ -27,6 +31,17 @@
           <input type="text" id="pin-code" placeholder="••••" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" autocapitalize="none" autocorrect="off" spellcheck="false"/>
         </div>
         <button class="lbtn" id="btn-pin" onclick="loginWithPin()">Entrar</button>
+      </div>
+      <div id="form-email" style="display:none">
+        <div class="lfield">
+          <label>Email</label>
+          <input type="email" id="l-email" placeholder="tu@email.com" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false"/>
+        </div>
+        <div class="lfield">
+          <label>Contraseña</label>
+          <input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"/>
+        </div>
+        <button class="lbtn" id="btn-email" onclick="loginWithEmail()">Ingresar</button>
       </div>
       <div class="lerr" id="login-err"></div>
     </div>

@@ -245,10 +245,17 @@ onAuthStateChanged(auth, async fbUser => {
   }
 });
 
-// ── LOGIN SWITCH ───────────────────────────────────────────────
+// ── LOGIN SWITCH (PIN / Email) ─────────────────────────────────
 window.switchLogin = (type) => {
-  document.getElementById("form-pin").style.display = type === "pin" ? "block" : "none";
-  document.getElementById("login-err").style.display = "none";
+  const pinF = document.getElementById("form-pin");
+  const emF  = document.getElementById("form-email");
+  if (pinF) pinF.style.display = type === "pin" ? "block" : "none";
+  if (emF)  emF.style.display  = type === "email" ? "block" : "none";
+  const err = document.getElementById("login-err");
+  if (err) err.style.display = "none";
+  document.querySelectorAll("#login-toggle .ltab").forEach(b => {
+    b.classList.toggle("active", b.getAttribute("data-login") === type);
+  });
 };
 
 // ── LOGIN PIN ──────────────────────────────────────────────────
@@ -270,13 +277,30 @@ window.loginWithPin = async () => {
     const normName = normLoginName(nameRaw);
     if (!normName) throw new Error("name-invalid");
 
-    const qSnap = await getDocs(query(
-      collection(db, "publicLoginUsers"),
-      where("nameLower", "==", normName),
-      limit(1)
-    ));
+    // Buscar credenciales: primero en publicLoginUsers (diseño original)
+    // y, si la colección no es accesible o está vacía, en "users" (legible: allow read: if true)
+    let loginDoc = null;
+    try {
+      const q1 = await getDocs(query(
+        collection(db, "publicLoginUsers"),
+        where("nameLower", "==", normName),
+        limit(1)
+      ));
+      if (!q1.empty) loginDoc = q1.docs[0];
+    } catch (err1) {
+      console.warn("publicLoginUsers no accesible, usando users:", err1.code || err1.message);
+    }
 
-    if (qSnap.empty) {
+    if (!loginDoc) {
+      const q2 = await getDocs(query(
+        collection(db, "users"),
+        where("nameLower", "==", normName),
+        limit(1)
+      ));
+      if (!q2.empty) loginDoc = q2.docs[0];
+    }
+
+    if (!loginDoc) {
       rlFail("pin");
       showErr("Nombre o PIN incorrecto.");
       btn.disabled = false;
@@ -284,7 +308,7 @@ window.loginWithPin = async () => {
       return;
     }
 
-    const d = qSnap.docs[0];
+    const d = loginDoc;
     const loginData = d.data() || {};
     const status = String(loginData.status || "active").toLowerCase();
     if (status === "inactive" || status === "inactivo") {
@@ -317,11 +341,15 @@ window.loginWithPin = async () => {
     currentUser = { uid, ...profile, role: String(profile.role || loginData.role || "user").toLowerCase() };
 
     if (!profileSnap.exists() && (!loginData.pinHash || !loginData.pinSalt)) {
-      await updateDoc(d.ref, {
-        pinHash: pinHash || await pinHashFromText(pin, pinSalt || ""),
-        pinSalt: pinSalt || "",
-        nameLower: normName
-      });
+      try {
+        await updateDoc(d.ref, {
+          pinHash: pinHash || await pinHashFromText(pin, pinSalt || ""),
+          pinSalt: pinSalt || "",
+          nameLower: normName
+        });
+      } catch (e2) {
+        console.warn("No se pudo guardar hash de PIN:", e2.code || e2.message);
+      }
     }
 
     sessionStorage.setItem(PIN_SESSION_KEY, uid);
@@ -338,7 +366,38 @@ window.loginWithPin = async () => {
     btn.textContent = "Entrar";
   }
 };
-document.getElementById("pin-code").addEventListener("keydown", e => { if(e.key==="Enter") window.loginWithPin(); });
+try { document.getElementById("pin-code").addEventListener("keydown", e => { if(e.key==="Enter") window.loginWithPin(); }); } catch {}
+
+// ── LOGIN EMAIL / CONTRASEÑA ──────────────────────────────────
+window.loginWithEmail = async () => {
+  const email = document.getElementById("l-email")?.value.trim() || "";
+  const pass  = document.getElementById("l-pass")?.value || "";
+  const btn   = document.getElementById("btn-email");
+
+  if (!email || !pass) return showErr("Completá email y contraseña.");
+  const chk = rlCheck("email");
+  if (!chk.ok) return showErr(`Demasiados intentos. Esperá ${fmtWait(chk.waitMs)} y probá de nuevo.`);
+
+  if (btn) { btn.disabled = true; btn.textContent = "Verificando…"; }
+
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    // onAuthStateChanged se encarga del resto
+    rlReset("email");
+  } catch (e) {
+    const extra = e.code === "auth/too-many-requests" ? 10 * 60 * 1000 : 0;
+    const fail  = rlFail("email", extra);
+    showErr(fail.locked
+      ? `Demasiados intentos. Esperá ${fmtWait(fail.waitMs)} y probá de nuevo.`
+      : friendlyErr(e.code));
+    if (btn) { btn.disabled = false; btn.textContent = "Ingresar"; }
+  }
+};
+
+try {
+  const lp = document.getElementById("l-pass");
+  if (lp) lp.addEventListener("keydown", e => { if(e.key==="Enter") window.loginWithEmail(); });
+} catch {}
 
 // ── LOGOUT ─────────────────────────────────────────────────────
 window.doLogout = async () => {
@@ -352,7 +411,8 @@ window.doLogout = async () => {
 
   currentUser = null; allMembers = []; novedades = [];
   showLoginScreen();
-  ["pin-name","pin-code"].forEach(id => { document.getElementById(id).value = ""; });
+  ["pin-name","pin-code","l-email","l-pass"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+  if (window.switchLogin) switchLogin("pin");
 };
 
 // ── BOOT ───────────────────────────────────────────────────────
