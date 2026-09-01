@@ -42,7 +42,7 @@
       <div class="hero-copy">
         <span class="eyebrow">Comunidad Jow</span>
         <h1>Panel de Staff Discord</h1>
-        <p>Base administrativa para controlar actividad, puntos, rangos, apelaciones y seguimiento del staff.</p>
+        <p>Base administrativa para controlar actividad, puntos, rangos, cargos y seguimiento del staff.</p>
       </div>
       <div class="hero-side card compact-card" id="user-card">
         <div class="uc-avatar" id="uc-avatar">?</div>
@@ -79,16 +79,45 @@
       </article>
     </section>
 
+    <!-- ESTADÍSTICAS (solo Admin e Inspector) -->
+    <section class="stats-detail" id="stats-detail-section" style="display:none">
+      <div class="card chart-card">
+        <div class="chart-head">
+          <h3>📈 Actividad de los admins</h3>
+          <div class="chart-toolbar" id="chart-toolbar">
+            <button class="period-btn active" data-period="day" onclick="setChartPeriod('day',this)">Día</button>
+            <button class="period-btn" data-period="week" onclick="setChartPeriod('week',this)">Semana</button>
+            <button class="period-btn" data-period="month" onclick="setChartPeriod('month',this)">Mes</button>
+          </div>
+        </div>
+        <div class="chart-container" id="activity-chart"><div class="chart-empty">Cargando actividad…</div></div>
+        <div class="chart-legend" id="chart-legend"></div>
+      </div>
+
+      <div class="more-stats-actions">
+        <button class="btn-ghost" id="more-stats-btn" onclick="toggleMoreStats()">📊 Ver más estadísticas</button>
+      </div>
+
+      <div class="rank-grid" id="more-stats" style="display:none">
+        <article class="rank-card"><h4>👑 Admin más activo</h4><div class="rank-value" id="rank-admin-active">—</div><div class="rank-sub" id="rank-admin-active-sub"></div></article>
+        <article class="rank-card"><h4>✏️ Quién más modifica puntos</h4><div class="rank-value" id="rank-points-editor">—</div><div class="rank-sub" id="rank-points-editor-sub"></div></article>
+        <article class="rank-card"><h4>🚪 Quién más ingresa a la página</h4><div class="rank-value" id="rank-login-leader">—</div><div class="rank-sub" id="rank-login-leader-sub"></div></article>
+        <article class="rank-card"><h4>🛠️ Inspector que más trabaja</h4><div class="rank-value" id="rank-inspector">—</div><div class="rank-sub" id="rank-inspector-sub"></div></article>
+        <article class="rank-card"><h4>🌟 Trabajador del día</h4><div class="rank-value" id="rank-day">—</div><div class="rank-sub" id="rank-day-sub"></div></article>
+        <article class="rank-card"><h4>📅 Trabajador de la semana</h4><div class="rank-value" id="rank-week">—</div><div class="rank-sub" id="rank-week-sub"></div></article>
+        <article class="rank-card"><h4>🗓️ Trabajador del mes</h4><div class="rank-value" id="rank-month">—</div><div class="rank-sub" id="rank-month-sub"></div></article>
+      </div>
+    </section>
+
     <!-- TABS -->
     <nav class="tabs-container" id="tabs-nav">
       <button class="tab active" onclick="switchTab('points-tab',this)">⭐ Puntos</button>
       <button class="tab"        onclick="switchTab('staff-tab',this)">👥 Staff</button>
       <button class="tab"        onclick="switchTab('guide-tab',this)">📖 Guía</button>
-      <button class="tab"        onclick="switchTab('rangos-tab',this)">🏅 Roles</button>
+      <button class="tab"        onclick="switchTab('rangos-tab',this)">🏅 Rangos y Cargos</button>
       <button class="tab"        onclick="switchTab('rules-tab',this)">📋 Normas</button>
       <button class="tab"        onclick="switchTab('novedades-tab',this)">🔔 Novedades</button>
       <button class="tab" id="logs-tab-btn" style="display:none" onclick="switchTab('logs-tab',this)">📜 Logs</button>
-      <button class="tab"        onclick="switchTab('apelaciones-tab',this)">📨 Apelaciones</button>
     </nav>
 
     <main class="content">
@@ -206,55 +235,59 @@
       <section id="guide-tab" class="tab-content" style="display:none">
         <h2>Guía General</h2>
         <div class="card">
-          <h3>Cómo está pensado el sistema</h3>
-          <div class="info-grid">
-            <article><h4>1. Actividad</h4><p>La actividad del staff se mide y sirve como base para mantener o recuperar puntos.</p></article>
-            <article><h4>2. Inspección</h4><p>Los inspectores revisan desempeño, ajustan puntos y avisan cuando haga falta intervenir.</p></article>
-            <article><h4>3. Degradación</h4><p>Al llegar a 0 puntos, el sistema bajará de rango y abrirá una apelación privada.</p></article>
-            <article><h4>4. Apelación</h4><p>El miembro afectado podrá apelar durante 24 horas antes de que se confirme o revierta el caso.</p></article>
+          <h3>Guías de MC Team</h3>
+          <div class="guide-block">
+            <h4>Guía 1:</h4>
+            <a class="guide-link" href="https://app.milanote.com/1WXWLa1W9vOHbR?p=VgupnNwI1ro" target="_blank" rel="noopener">https://app.milanote.com/1WXWLa1W9vOHbR?p=VgupnNwI1ro</a>
           </div>
         </div>
         <div class="card">
-          <h3>Reglas base de puntos</h3>
+          <h3>Panel de puntos</h3>
           <ul>
-            <li>Todos los miembros del staff empiezan con <strong>7 puntos</strong>.</li>
-            <li>Los puntos los gestionan los inspectores y admins desde el panel.</li>
-            <li>El máximo de puntos es <strong>7</strong>.</li>
-            <li>Al llegar a 0 se abre apelación automática.</li>
+            <li>Sirve para ver tus puntos y los de los demás.</li>
+            <li>Acceso: <a class="guide-link" href="https://jowiland-2.web.app/" target="_blank" rel="noopener">https://jowiland-2.web.app/</a></li>
+            <li>Los puntos bajan <strong>1 cada 24 horas</strong>.</li>
+            <li>Los puntos también bajan por incumplimiento de las reglas.</li>
+            <li>Sin actividad durante <strong>7 días</strong> y con 0 puntos, posiblemente se expulsa al miembro de <strong>MC Team</strong>.</li>
+            <li>Si no puedes realizar un trabajo durante cierto periodo, no se te bajarán puntos.</li>
           </ul>
+        </div>
+        <div class="card">
+          <h3>Guías de Admins</h3>
+          <p style="color:var(--muted)">Dejar completamente vacío por ahora.</p>
         </div>
       </section>
 
-      <!-- ── ROLES ── -->
+      <!-- ── RANGOS Y CARGOS ── -->
       <section id="rangos-tab" class="tab-content" style="display:none">
-        <h2>Roles</h2>
+        <h2>Rangos y Cargos</h2>
         <div class="card">
-          <h3>📌 Roles y descripciones</h3>
+          <h3>Rangos</h3>
           <table>
-            <thead><tr><th>Rol</th><th>Descripción</th></tr></thead>
+            <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
             <tbody>
-              <tr><td>Overlord</td><td>Máxima autoridad (solo Jow).</td></tr>
-              <tr><td>Owner</td><td>Dirige proyectos, coordina equipos y administra el desarrollo general de la comunidad.</td></tr>
-              <tr><td>Bot</td><td>Aplicaciones y sistemas automatizados del servidor.</td></tr>
-              <tr><td>Admin</td><td>Encargado de la administración del servidor y de aplicar sanciones avanzadas.</td></tr>
-              <tr><td>Centinela</td><td>Miembro de confianza con permisos intermedios para apoyar en la moderación y gestión del servidor.</td></tr>
-              <tr><td>VIP</td><td>Usuario con beneficios y ventajas exclusivas.</td></tr>
-              <tr><td>Usuario</td><td>Miembro estándar del servidor.</td></tr>
+              <tr><td>🔱 Overlord</td><td>Máxima autoridad (Solo lo tiene Jow).</td></tr>
+              <tr><td>👑 Owner</td><td>Dirige proyectos, coordina equipos y administra el desarrollo general.</td></tr>
+              <tr><td>🤖 Bot</td><td>Aplicaciones y sistemas automatizados.</td></tr>
+              <tr><td>🔰 Admin</td><td>Administración del servidor y sanciones avanzadas.</td></tr>
+              <tr><td>🛡️ Centinela</td><td>Miembro de confianza con permisos intermedios.</td></tr>
+              <tr><td>💎 VIP</td><td>Usuario con beneficios exclusivos.</td></tr>
+              <tr><td>👤 Usuario</td><td>Miembro estándar.</td></tr>
             </tbody>
           </table>
         </div>
         <div class="card">
-          <h3>Cargos y descripciones</h3>
+          <h3>Cargos</h3>
           <table>
-            <thead><tr><th>Cargo</th><th>Descripción</th></tr></thead>
+            <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
             <tbody>
-              <tr><td>Dev</td><td>Desarrolla y mantiene proyectos, herramientas, sistemas y automatizaciones.</td></tr>
-              <tr><td>Inspector</td><td>Evalúa el desempeño del staff y administra el sistema de puntos.</td></tr>
-              <tr><td>Mod</td><td>Mantiene el orden y hace cumplir las normas del servidor.</td></tr>
-              <tr><td>Editor</td><td>Edita contenido audiovisual para redes sociales y proyectos.</td></tr>
-              <tr><td>Marketing</td><td>Promociona la comunidad y planifica estrategias de crecimiento.</td></tr>
-              <tr><td>Colaborador</td><td>Apoya en distintas tareas cuando es necesario.</td></tr>
-              <tr><td>MC Team</td><td>Diseña, desarrolla y organiza contenido relacionado con Minecraft.</td></tr>
+              <tr><td>💻 Dev</td><td>Desarrolla y mantiene proyectos y sistemas.</td></tr>
+              <tr><td>📋 Inspector</td><td>Evalúa al staff y administra los puntos.</td></tr>
+              <tr><td>🛡️ Mod</td><td>Mantiene el orden y hace cumplir las normas.</td></tr>
+              <tr><td>🎬 Editor</td><td>Edita contenido audiovisual.</td></tr>
+              <tr><td>📢 Marketing</td><td>Promociona la comunidad.</td></tr>
+              <tr><td>🤝 Colaborador</td><td>Apoya en distintas tareas.</td></tr>
+              <tr><td>💎 MC Team</td><td>Diseña, desarrolla y organiza contenido de Minecraft.</td></tr>
             </tbody>
           </table>
         </div>
@@ -264,18 +297,28 @@
       <section id="rules-tab" class="tab-content" style="display:none">
         <h2>Normas</h2>
         <div class="card">
-          <h3>Sección en preparación</h3>
-          <p>Aquí irá la versión ordenada y definitiva de las normas del servidor.</p>
-          <div class="note">Pendiente de rellenar con el texto final de normas, sistema de warns y criterios de sanción.</div>
+          <h3>Normas de MC Team</h3>
+          <ol class="normas-list">
+            <li>Toda tarea asignada debe cumplirse.</li>
+            <li>Toda ausencia debe ser informada.</li>
+            <li>Todo trabajo realizado debe ser reportado.</li>
+            <li>Todo evento o proyecto debe coordinarse antes de comenzar.</li>
+            <li>Ningún cambio importante se realiza sin autorización.</li>
+            <li>Toda tarea debe realizarse según las instrucciones recibidas.</li>
+            <li>Todo problema que impida avanzar debe ser comunicado.</li>
+            <li>Ningún miembro debe interferir en el trabajo de otro sin coordinación.</li>
+            <li>Discord es el medio oficial de coordinación del MC Team.</li>
+            <li>La actividad y el cumplimiento determinan la permanencia en el equipo.</li>
+            <li>No ignorar llamados de atención.</li>
+            <li>No realizar tareas no asignadas sin permiso.</li>
+            <li>No responder por otros usuarios a menos de que se indique.</li>
+            <li>No ingresar a cuentas de otros usuarios.</li>
+            <li>No compartir tareas o información privada.</li>
+          </ol>
         </div>
         <div class="card">
-          <h3>Estructura prevista</h3>
-          <ul>
-            <li>Filosofía del servidor y libertad permitida.</li>
-            <li>Contenido totalmente prohibido.</li>
-            <li>Sistema de warns y escalado de sanciones.</li>
-            <li>Reglas específicas del staff.</li>
-          </ul>
+          <h3>Normas de todos los admins</h3>
+          <p style="color:var(--muted)">No hay normas establecidas actualmente.</p>
         </div>
       </section>
 
@@ -286,35 +329,6 @@
           <p style="color:#9ba8d6;margin-bottom:20px">Registro de cambios recientes en el staff. Visible para todos los usuarios.</p>
           <div id="novedades-list">
             <div class="t-empty">Cargando novedades…</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── APELACIONES ── -->
-      <section id="apelaciones-tab" class="tab-content" style="display:none">
-        <h2>Apelaciones</h2>
-        <div class="card">
-          <h3>Sistema de apelaciones</h3>
-          <p>Esta sección estará activa una vez que el bot de Discord esté funcionando. Las apelaciones se abrirán automáticamente cuando un miembro llegue a 0 puntos.</p>
-          <div class="note" style="margin-top:16px">
-            ⚙️ Pendiente de integración con el bot. Por ahora no hay apelaciones activas.
-          </div>
-        </div>
-        <div class="card">
-          <h3>¿Cómo funcionará?</h3>
-          <ul>
-            <li>Al llegar a 0 puntos, se abre automáticamente un canal privado de apelación.</li>
-            <li>El miembro tiene <strong>24 horas</strong> para presentar su caso.</li>
-            <li>Un admin revisa y decide si revertir o confirmar la degradación.</li>
-            <li>El resultado se registrará acá como novedad.</li>
-          </ul>
-          <div class="apelacion-ejemplo">
-            <div class="ap-header">
-              <span class="ap-badge ap-abierta">Ejemplo</span>
-              <span class="ap-nombre">NombreUsuario</span>
-              <span class="ap-plazo">24h restantes</span>
-            </div>
-            <div class="ap-motivo">Llegó a 0 puntos — degradado a Usuario. Puede apelar antes de que se confirme.</div>
           </div>
         </div>
       </section>

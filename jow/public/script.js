@@ -385,8 +385,8 @@ function setupLogsTab() {
   const exp = document.getElementById("logs-export-btn");
 
   const role = currentUser?.role;
-  // Allow 'user' role to view logs/novedades/points panel as requested
-  const isStaff = role === "admin" || role === "inspector" || role === "user";
+  // Mostrar logs/novedades/tabla de puntos solo para admin e inspector
+  const isStaff = role === "admin" || role === "inspector";
   const isAdmin = role === "admin";
 
   if (btn) btn.style.display = isStaff ? "" : "none";
@@ -549,6 +549,8 @@ function startLogsLive() {
     logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderLogsJow();
     renderInspectorActivityJow();
+    if (typeof renderActivityChart === "function") renderActivityChart();
+    if (typeof renderRankings === "function") renderRankings();
   }, e => console.error("Logs snapshot error:", e));
 }
 
@@ -760,8 +762,16 @@ function setupUserView() {
 // VISTA STAFF
 // ══════════════════════════════════════════
 function setupStaffView() {
-  document.getElementById("stats-section").style.display = "";
-  document.getElementById("tabs-nav").style.display      = "";
+  const role     = currentUser?.role;
+  const isStaff  = role === "admin" || role === "inspector";
+  const statsSec = document.getElementById("stats-section");
+  const statsDet = document.getElementById("stats-detail-section");
+
+  // Estadísticas: únicamente Admin e Inspector
+  if (statsSec) statsSec.style.display = isStaff ? "" : "none";
+  if (statsDet) statsDet.style.display = isStaff ? "" : "none";
+
+  document.getElementById("tabs-nav").style.display = "";
 
   // Activar primera pestaña
   document.querySelectorAll(".tab-content").forEach(el => { el.style.display="none"; el.classList.remove("active"); });
@@ -769,6 +779,7 @@ function setupStaffView() {
   document.getElementById("points-tab").classList.add("active");
   document.querySelector(".tab").classList.add("active");
 
+  if (isStaff) { renderActivityChart(); renderRankings(); }
   renderStats();
   renderPointsTable();
   renderStaffTable();
@@ -786,6 +797,188 @@ function renderStats() {
   document.getElementById("staff-at-risk").textContent = staff.filter(u => (u.points||0) <= 2).length;
   document.getElementById("staff-optimal").textContent = staff.filter(u => (u.points||0) >= 6).length;
   document.getElementById("total-points").textContent  = pts.toFixed(0);
+}
+
+// ── ESTADÍSTICAS (gráfico + rankings, solo Admin e Inspector) ──
+let chartPeriod  = "day";
+let moreStatsOpen = false;
+
+function logTime(l) {
+  if (!l) return 0;
+  const d = tsToDate(l.createdAt);
+  if (d) return d.getTime();
+  if (typeof l.clientTs === "number") return l.clientTs;
+  return 0;
+}
+
+function labelHour(d) { return String(d.getHours()).padStart(2, "0") + ":00"; }
+function labelShortDay(d) { return (d.getDate()) + "/" + (d.getMonth() + 1); }
+
+function chartBuckets(period, now) {
+  const buckets = [];
+  let step, count, lab;
+  if (period === "day") {
+    step = 3 * 60 * 60 * 1000; count = 8; lab = labelHour;
+  } else if (period === "week") {
+    step = 24 * 60 * 60 * 1000; count = 7; lab = labelShortDay;
+  } else {
+    step = 3 * 24 * 60 * 60 * 1000; count = 10; lab = labelShortDay;
+  }
+  for (let i = count - 1; i >= 0; i--) {
+    const end = now - i * step;
+    const start = end - step;
+    buckets.push({ start, end, label: lab(new Date(end)) });
+  }
+  return buckets;
+}
+
+window.setChartPeriod = (p, btn) => {
+  chartPeriod = p;
+  document.querySelectorAll("#chart-toolbar .period-btn").forEach(b => b.classList.toggle("active", b.getAttribute("data-period") === p));
+  renderActivityChart();
+};
+
+window.toggleMoreStats = () => {
+  moreStatsOpen = !moreStatsOpen;
+  const moreEl = document.getElementById("more-stats");
+  const btn    = document.getElementById("more-stats-btn");
+  if (moreEl) moreEl.style.display = moreStatsOpen ? "grid" : "none";
+  if (btn) btn.textContent = moreStatsOpen ? "📊 Ocultar estadísticas" : "📊 Ver más estadísticas";
+  if (moreStatsOpen && typeof renderRankings === "function") renderRankings();
+};
+
+function renderActivityChart() {
+  const el = document.getElementById("activity-chart");
+  const legendEl = document.getElementById("chart-legend");
+  if (!el) return;
+  const role = currentUser?.role;
+  if (role !== "admin" && role !== "inspector") return;
+
+  if (!logs.length) {
+    el.innerHTML = '<div class="chart-empty">Sin datos de actividad todavía. Los movimientos de admins e inspectores aparecerán acá.</div>';
+    if (legendEl) legendEl.innerHTML = "";
+    return;
+  }
+
+  const now = Date.now();
+  const buckets = chartBuckets(chartPeriod, now);
+  let maxVal = 1;
+  for (const b of buckets) {
+    b.admins = 0; b.inspectors = 0;
+    for (const l of logs) {
+      const t = logTime(l);
+      if (t < b.start || t >= b.end) continue;
+      const r = String(l.actorRole || "").toLowerCase();
+      if (r === "admin") b.admins++;
+      else b.inspectors++;
+    }
+    maxVal = Math.max(maxVal, b.admins, b.inspectors);
+  }
+
+  const W = 720, H = 240, pl = 44, pr = 14, pt = 18, pb = 30;
+  const iw = W - pl - pr, ih = H - pt - pb;
+  const yMax = maxVal;
+  const n = buckets.length;
+  const xPos = i => (n > 1 ? pl + (iw * i) / (n - 1) : pl + iw / 2);
+  const yPos = v => pt + ih - (ih * v) / yMax;
+
+  let grid = "", xl = "", series = "";
+  const gridCount = 4;
+  for (let g = 0; g <= gridCount; g++) {
+    const val = Math.round((yMax * g) / gridCount);
+    const gy = yPos(val);
+    grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
+    grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
+  }
+  buckets.forEach((b, i) => {
+    xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#7c86ad">${b.label}</text>`;
+  });
+
+  const lines = [
+    { key: "admins", color: "#7f8cff", label: "Admins" },
+    { key: "inspectors", color: "#3ecf8e", label: "Inspectores" }
+  ];
+  for (const s of lines) {
+    const pts = buckets.map((b, i) => `${xPos(i)},${yPos(b[s.key])}`).join(" ");
+    series += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+    buckets.forEach((b, i) => {
+      series += `<circle cx="${xPos(i)}" cy="${yPos(b[s.key])}" r="3.2" fill="${s.color}"/>`;
+    });
+  }
+
+  el.innerHTML = `
+    <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Actividad de los admins (${chartPeriod})">
+      ${grid}
+      <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+      <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+      ${xl}
+      ${series}
+    </svg>
+    <div class="chart-note">Actividad registrada en los últimos ${chartPeriod === "day" ? "24 h" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
+
+  if (legendEl) {
+    legendEl.innerHTML = lines.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.label}</span>`).join("");
+  }
+}
+
+function countByActor(list, filterFn) {
+  const mp = new Map();
+  for (const l of list) {
+    if (filterFn && !filterFn(l)) continue;
+    const key = l.actorUid || "—";
+    const prev = mp.get(key) || { uid: key, name: l.actorName || "—", count: 0 };
+    prev.count++;
+    mp.set(key, prev);
+  }
+  return [...mp.values()].sort((a, b) => b.count - a.count);
+}
+
+function bestActor(list, filterFn) {
+  const arr = countByActor(list, filterFn);
+  return arr[0] || null;
+}
+
+function fillRank(id, idSub, winner, label) {
+  const vEl = document.getElementById(id);
+  const sEl = document.getElementById(idSub);
+  if (!vEl) return;
+  if (!winner) { vEl.textContent = "—"; if (sEl) sEl.textContent = "Sin datos por ahora"; return; }
+  vEl.textContent = esc(winner.name);
+  if (sEl) sEl.textContent = `${winner.count} ${label}`;
+}
+
+function renderRankings() {
+  const role = currentUser?.role;
+  if (role !== "admin" && role !== "inspector") return;
+
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000, weekMs = 7 * dayMs, monthMs = 30 * dayMs;
+  const isIn = (l, rangeMs) => { const t = logTime(l); return t > 0 && (now - t) <= rangeMs; };
+
+  fillRank("rank-admin-active", "rank-admin-active-sub",
+    bestActor(logs, l => String(l.actorRole || "").toLowerCase() === "admin"), "acciones registradas");
+
+  fillRank("rank-points-editor", "rank-points-editor-sub",
+    bestActor(logs.filter(l => l.type === "points"), null), "cambios de puntos");
+
+  fillRank("rank-login-leader", "rank-login-leader-sub",
+    bestActor(logs.filter(l => l.type === "login"), null), "ingresos a la página");
+
+  fillRank("rank-inspector", "rank-inspector-sub",
+    bestActor(logs, l => String(l.actorRole || "").toLowerCase() === "inspector" && l.type === "points"), "acciones de puntos");
+
+  fillRank("rank-day", "rank-day-sub", bestActor(logs, l => isIn(l, dayMs)), "acciones hoy");
+  fillRank("rank-week", "rank-week-sub", bestActor(logs, l => isIn(l, weekMs)), "acciones en 7 días");
+  fillRank("rank-month", "rank-month-sub", bestActor(logs, l => isIn(l, monthMs)), "acciones en 30 días");
+}
+
+// Refresca todas las vistas tras un cambio de puntos
+function renderAll() {
+  if (typeof renderStats === "function") renderStats();
+  if (typeof renderPointsTable === "function") renderPointsTable();
+  if (typeof renderStaffTable === "function") renderStaffTable();
+  if (typeof renderActivityChart === "function") renderActivityChart();
+  if (typeof renderRankings === "function") renderRankings();
 }
 
 // ── TABLA PUNTOS (sin admins) ──────────────────────────────────
@@ -816,17 +1009,9 @@ function renderPointsTable() {
     const pts    = u.points || 0;
     const isMe   = u.uid === currentUser.uid;
     const adjust = canEdit ? (
-      role === 'admin'
-        ? `
-      <td>
+      `<td>
         <div class="adj-btns">
           <button class="adj-btn plus" onclick="setPoints('${u.uid}')" ${isMe ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>Ingresar</button>
-        </div>
-      </td>`
-        : `
-      <td>
-        <div class="adj-btns">
-          <button class="adj-btn minus" onclick="setPoints('${u.uid}')" ${isMe ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>Ajustar</button>
         </div>
       </td>`
     ) : "";
@@ -851,53 +1036,42 @@ function renderPointsTable() {
 }
 
 // ── AJUSTAR PUNTOS ─────────────────────────────────────────────
-// New unified setPoints for admin and inspector
+// Unificado: se ingresa SIEMPRE el VALOR FINAL de puntos (decimales permitidos).
+// No hay opciones de sumar/restar: la cifra introducida queda como puntos del miembro.
 window.setPoints = async (uid) => {
   const role = currentUser?.role;
   if (role !== 'admin' && role !== 'inspector') return;
   if (uid === currentUser.uid) { showToast('No podés modificar tus propios puntos!', 'err'); return; }
-  const member = allUsers.find(u => u.uid === uid);
+  const member = allMembers.find(u => u.uid === uid);
   if (!member) return;
 
   if (role === 'inspector') {
     const cd = checkInspectorCooldown(uid);
     if (!cd.ok) { showToast(`Cooldown activo. Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, 'err'); return; }
-    const valStr = prompt('Ingresá la cantidad final de puntos (decimales permitidos):', String(member.points || 0));
-    if (valStr === null) return;
-    const newVal0 = parseFloat(valStr.replace(',', '.'));
-    if (!Number.isFinite(newVal0)) { showToast('Valor inválido','err'); return; }
-    const newVal = Math.round(Math.min(MAX_PTS, Math.max(0, newVal0)) * 10) / 10;
-    if (newVal === member.points) return;
-    const reason = prompt('Motivo (opcional):','') || 'Sin motivo';
-    const oldVal = member.points || 0;
-    member.points = newVal; updatePointCells(uid, newVal);
-    try {
-      await updateDoc(doc(db, 'users', uid), { points: newVal });
-      await writeLog({ type: 'points', actorUid: currentUser.uid, actorRole: role, actorName: currentUser.name||'', targetUid: uid, targetName: member.name||'', delta: newVal - oldVal, reason, newPoints: newVal });
-      writeCooldown(currentUser.uid, uid, Date.now());
-      showToast('Puntos actualizados a ' + newVal, 'ok');
-      renderAll();
-    } catch (e) { member.points = oldVal; updatePointCells(uid, oldVal); showToast('Error al guardar: '+e.message,'err'); }
-    return;
   }
 
-  // Admin flow: set final points
-  const val = prompt('Ingresá la cantidad final de puntos para este usuario (0 - ' + MAX_PTS + '):', String(member.points || 0));
-  if (val === null) return;
-  const parsed = parseFloat(String(val).replace(',', '.'));
-  if (!Number.isFinite(parsed)) { showToast('Valor inválido','err'); return; }
-  const finalPts = Math.round(Math.min(MAX_PTS, Math.max(0, parsed)) * 10) / 10;
-  const old = member.points || 0;
-  if (finalPts === old) return;
-  const reasonAdmin = prompt('Motivo del cambio (opcional):','') || 'Ajuste manual';
-  member.points = finalPts; updatePointCells(uid, finalPts);
+  const valStr = prompt('Ingresá el valor final de puntos (decimales permitidos):', String(member.points || 0));
+  if (valStr === null) return;
+  const newVal0 = parseFloat(String(valStr).replace(',', '.'));
+  if (!Number.isFinite(newVal0) || newVal0 < 0) { showToast('Valor inválido. Usá un número mayor o igual a 0.', 'err'); return; }
+  const newVal = Math.round(newVal0 * 10) / 10;
+  const oldVal = member.points || 0;
+  if (newVal === oldVal) return;
+  const reason = prompt('Motivo del cambio (opcional):', '') || 'Ajuste manual';
+
+  member.points = newVal; updatePointCells(uid, newVal);
   try {
-    await updateDoc(doc(db, 'users', uid), { points: finalPts });
-    await logNovedad(`🔧 Admin ${myName||''} estableció ${member.name||'usuario'} a ${finalPts} pts. Motivo: ${reasonAdmin}`);
-    await writeLog({ type: 'points', actorUid: myUid, actorRole: myRole, actorName: myName||'', targetUid: uid, targetName: member.name||'', delta: finalPts - old, reason: reasonAdmin, newPoints: finalPts });
-    showToast('Puntos establecidos: ' + finalPts, 'ok');
+    await updateDoc(doc(db, 'users', uid), { points: newVal });
+    await writeLog({ type: 'points', actorUid: currentUser.uid, actorRole: role, actorName: currentUser.name||'', targetUid: uid, targetName: member.name||'', delta: +((newVal - oldVal).toFixed(1)), reason, newPoints: newVal });
+    if (role === 'inspector') {
+      writeCooldown(currentUser.uid, uid, Date.now());
+      showToast('Puntos establecidos: ' + newVal, 'ok');
+    } else {
+      await logNovedad(`🔧 Admin ${currentUser.name||''} estableció ${member.name||'usuario'} a ${newVal} pts. Motivo: ${reason}`);
+      showToast('Puntos establecidos: ' + newVal, 'ok');
+    }
     renderAll();
-  } catch (e) { member.points = old; updatePointCells(uid, old); showToast('Error al guardar: '+e.message,'err'); }
+  } catch (e) { member.points = oldVal; updatePointCells(uid, oldVal); showToast('Error al guardar: '+e.message,'err'); }
 };
 
 function updatePointCells(uid, pts) {
@@ -988,11 +1162,21 @@ function fmtFecha(date) {
 
 // ── TABS ────────────────────────────────────────────────────────
 window.switchTab = (id, btn) => {
-  document.querySelectorAll(".tab-content").forEach(s => { s.classList.remove("active"); s.style.display="none"; });
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  document.getElementById(id).style.display = "block";
-  document.getElementById(id).classList.add("active");
-  btn.classList.add("active");
+  try {
+    document.querySelectorAll(".tab-content").forEach(s => { s.classList.remove("active"); s.style.display="none"; });
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = "block";
+    el.classList.add("active");
+    if (btn && btn.classList) btn.classList.add("active");
+
+    // hooks por pestaña (siempre que existan)
+    if (id === "points-tab") { if (typeof renderPointsTable === "function") renderPointsTable(); if (typeof renderStats === "function") renderStats(); if (typeof renderActivityChart === "function") renderActivityChart(); if (typeof renderRankings === "function") renderRankings(); }
+    if (id === "staff-tab")   { if (typeof renderStaffTable === "function") renderStaffTable(); }
+    if (id === "novedades-tab") { if (typeof renderNovedades === "function") renderNovedades(); }
+    if (id === "logs-tab")    { if (typeof renderLogsJow === "function") renderLogsJow(); }
+  } catch (e) { console.error("switchTab error", e); }
 };
 
 // ── TOAST ───────────────────────────────────────────────────────

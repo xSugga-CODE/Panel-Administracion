@@ -737,11 +737,187 @@ li { color: #c2cceb; margin-bottom: 8px; }
 .ap-plazo   { color: var(--muted); font-size: 12px; margin-left: auto; }
 .ap-motivo  { color: var(--text2); font-size: 13px; }
 
+/* ── ESTADÍSTICAS DETALLADAS (gráfico + rankings) ── */
+.stats-detail { margin-bottom: 20px; }
+
+.chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.chart-head h3 { margin-bottom: 0; }
+
+.chart-toolbar {
+  display: inline-flex;
+  gap: 6px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.period-btn {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.period-btn:hover { color: #e9eeff; }
+.period-btn.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff;
+}
+
+.chart-container {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart-empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 40px 16px;
+  text-align: center;
+  background: rgba(31,38,68,.4);
+  border: 1px dashed rgba(141,153,255,.25);
+  border-radius: 12px;
+}
+
+.chart-note {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.more-stats-actions {
+  margin-bottom: 18px;
+  text-align: center;
+}
+
+.rank-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 14px;
+  margin-bottom: 4px;
+}
+
+.rank-card {
+  background: rgba(31,38,68,.6);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.rank-card h4 {
+  color: #c7d2ff;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.rank-value {
+  color: #fff;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.rank-sub {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 5px;
+}
+
+/* ── GUÍA ── */
+.guide-block { margin-top: 4px; }
+.guide-block h4 { margin-bottom: 4px; }
+
+.guide-link {
+  color: #9fb2ff;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(141,153,255,.4);
+  word-break: break-all;
+}
+
+.guide-link:hover { color: #fff; }
+
+/* ── NORMAS ── */
+.normas-list {
+  counter-reset: norma;
+  list-style: none;
+  padding-left: 0;
+}
+
+.normas-list li {
+  counter-increment: norma;
+  position: relative;
+  padding-left: 34px;
+  margin-bottom: 10px;
+}
+
+.normas-list li::before {
+  content: counter(norma);
+  position: absolute;
+  left: 0; top: 0;
+  width: 24px; height: 24px;
+  display: grid;
+  place-items: center;
+  background: rgba(88,101,242,.18);
+  border: 1px solid rgba(88,101,242,.3);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #b0bcff;
+}
+
 /* Responsive mejorado para celulares */
 @media (max-width: 980px) {
   .hero, .info-grid { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .hero h1 { font-size: 2rem; }
+  .rank-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .chart-head { flex-direction: column; align-items: flex-start; }
 }
 
 @media (max-width: 640px) {
@@ -794,8 +970,30 @@ li { color: #c2cceb; margin-bottom: 8px; }
   }
 
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 10px;
   }
+
+  .stat-card {
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    margin-bottom: 3px;
+  }
+
+  .stat-card strong {
+    font-size: 1.35rem;
+  }
+
+  .chart-card { padding: 14px; }
+  .chart-toolbar { width: 100%; }
+  .period-btn { flex: 1; padding: 8px 6px; }
+  .rank-grid { grid-template-columns: 1fr; gap: 10px; }
+  .rank-card { padding: 12px 14px; }
+  .rank-value { font-size: 1.15rem; }
 
   .upc-value {
     font-size: 48px;
@@ -855,13 +1053,5 @@ li { color: #c2cceb; margin-bottom: 8px; }
 
   .lfield input {
     font-size: 16px; /* Evita zoom en iOS al escribir */
-  }
-
-  .stat-card {
-    padding: 10px 12px;
-  }
-
-  .stat-card strong {
-    font-size: 1.2rem;
   }
 }
