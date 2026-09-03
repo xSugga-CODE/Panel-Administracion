@@ -525,6 +525,9 @@ tr.my-row td { background: rgba(88,101,242,.06); }
 
 .upc-state { font-size: 14px; }
 
+.upc-who { color: #fff; font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+.upc-who b { color: #ffd166; }
+
 /* ── MISC ── */
 .highlight-line {
   font-size: 1.05rem;
@@ -911,6 +914,156 @@ li { color: #c2cceb; margin-bottom: 8px; }
   color: #b0bcff;
 }
 
+/* ══════════════════════════════════════════
+   NUEVO DASHBOARD: destacados, ranking y gráficos
+   ══════════════════════════════════════════ */
+
+/* Cabecera de sección */
+.section-head { margin-bottom: 16px; }
+.section-head h3 { color: #fff; font-size: 1.35rem; margin-bottom: 4px; }
+.section-head p { color: var(--muted); font-size: 13px; }
+
+.tab-sub { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+
+/* Trabajadores destacados (Día / Semana / Mes) */
+.destacado-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.destacado-card {
+  background: linear-gradient(160deg, rgba(88,101,242,.16), rgba(31,38,68,.85));
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  min-height: 150px;
+  position: relative;
+  overflow: hidden;
+}
+
+.destacado-card.dc-featured {
+  border-color: rgba(255,209,102,.45);
+  box-shadow: 0 10px 30px rgba(255,209,102,.08);
+}
+
+.dc-label {
+  color: #c7d2ff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.dc-featured .dc-label { color: #ffd166; }
+
+.dc-content { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+.dc-name { color: #fff; font-size: 1.25rem; font-weight: 800; margin-bottom: 4px; word-break: break-word; }
+
+.dc-pts { color: #ffd166; font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+
+.dc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.dc-meta span { white-space: nowrap; }
+
+.dc-period {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 12px;
+  border-top: 1px dashed rgba(141,153,255,.18);
+  padding-top: 8px;
+}
+
+.dc-empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+
+/* Barra "Usuario actual" */
+.cur-user-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(88,101,242,.2), rgba(31,38,68,.9));
+  border: 1px solid rgba(141,153,255,.25);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+}
+
+.cub-item { color: var(--text2); font-size: 13px; }
+.cub-item b { color: #fff; }
+
+.cub-chip {
+  background: rgba(88,101,242,.28);
+  border: 1px solid rgba(141,153,255,.4);
+  border-radius: 99px;
+  color: #cdd7ff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  padding: 3px 10px;
+  text-transform: uppercase;
+  margin-right: 6px;
+}
+
+/* Tarjeta de usuario: rango */
+.uc-rango { color: #ffd166; font-size: 12px; font-weight: 600; margin-top: 2px; }
+
+/* Gráficos */
+.chart-grid { display: grid; gap: 18px; margin-bottom: 18px; }
+.chart-grid.two-col { grid-template-columns: repeat(2, minmax(0,1fr)); }
+
+.chart-card { margin-bottom: 0; }
+
+.chart-note-inline { color: var(--muted); font-size: 12px; font-weight: 500; }
+
+/* Ranking de barras horizontal */
+.rank-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+
+.rank-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0,1fr) minmax(90px, 1.4fr) auto;
+  align-items: center;
+  gap: 10px;
+  background: rgba(31,38,68,.45);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 12px;
+}
+
+.rank-pos { color: var(--muted); font-weight: 800; font-size: 13px; }
+
+.rank-name { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-name b { color: #fff; }
+
+.rank-bars { height: 8px; background: rgba(255,255,255,.07); border-radius: 99px; overflow: hidden; }
+
+.rank-bar {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 99px;
+  transition: width .4s ease;
+}
+
+.rank-val { color: #ffd166; font-weight: 700; font-size: 12px; white-space: nowrap; }
+
+/* Ascenso (guía) */
+.ascenso-card {
+  border-color: rgba(255,209,102,.4);
+  background: linear-gradient(160deg, rgba(255,209,102,.08), rgba(31,38,68,.85));
+}
+
 /* Responsive mejorado para celulares */
 @media (max-width: 980px) {
   .hero, .info-grid { grid-template-columns: 1fr; }
@@ -918,6 +1071,7 @@ li { color: #c2cceb; margin-bottom: 8px; }
   .hero h1 { font-size: 2rem; }
   .rank-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .chart-head { flex-direction: column; align-items: flex-start; }
+  .chart-grid.two-col, .destacado-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
@@ -983,6 +1137,12 @@ li { color: #c2cceb; margin-bottom: 8px; }
     font-size: 11px;
     margin-bottom: 3px;
   }
+
+  /* Dashboard en móvil */
+  .destacado-grid, .chart-grid.two-col { grid-template-columns: 1fr; }
+  .rank-row { grid-template-columns: 34px minmax(0,1fr) auto; }
+  .rank-bars { display: none; }
+  .cur-user-bar { gap: 8px 14px; padding: 12px 14px; }
 
   .stat-card strong {
     font-size: 1.35rem;

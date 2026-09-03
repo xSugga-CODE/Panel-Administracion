@@ -455,10 +455,25 @@ async function bootApp() {
   ucPts.style.display = "block";
   ucPts.textContent = `⭐ ${pts.toFixed(1)} puntos`;
 
+  // Rango del usuario en la tarjeta (identificación tras login con PIN)
+  const urEl = document.getElementById("uc-rango");
+  if (urEl) {
+    const rangoTxt = fmtRango(currentUser.rango);
+    if (rangoTxt && rangoTxt !== "—") {
+      urEl.textContent = rangoTxt;
+      urEl.style.display = "block";
+    }
+  }
+
   await loadNovedades();
   await loadMembers();
 
-  setupStaffView();
+  // Los usuarios (trabajadores) ven su vista personal; el staff ve el panel completo.
+  if (role === "user") {
+    setupUserView();
+  } else {
+    setupStaffView();
+  }
   setupLogsTab();
 }
 
@@ -634,6 +649,12 @@ function startLogsLive() {
     renderInspectorActivityJow();
     if (typeof renderActivityChart === "function") renderActivityChart();
     if (typeof renderRankings === "function") renderRankings();
+    if (typeof renderDestacados === "function") renderDestacados();
+    if (typeof renderRankingMC === "function") renderRankingMC();
+    if (typeof renderRankingWeek === "function") renderRankingWeek();
+    if (typeof renderWorkerActivity === "function") renderWorkerActivity();
+    if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+    if (typeof renderActivityGeneral === "function") renderActivityGeneral();
   }, e => console.error("Logs snapshot error:", e));
 }
 
@@ -831,6 +852,8 @@ function setupUserView() {
   uv.classList.add("active");
 
   const pts = currentUser.points || 0;
+  const whoEl = document.getElementById("my-pts-who");
+  if (whoEl) whoEl.innerHTML = `👋 Bienvenido/a, <b>${esc(currentUser.name || "—")}</b>`;
   document.getElementById("my-pts-value").textContent = pts.toFixed(1);
   document.getElementById("my-pts-bar").style.width   = `${Math.min((pts/MAX_PTS)*100,100)}%`;
   document.getElementById("my-pts-bar").className     = "upc-bar " + ptBarClass(pts);
@@ -848,11 +871,11 @@ function setupStaffView() {
   const role     = currentUser?.role;
   const isStaff  = role === "admin" || role === "inspector";
   const statsSec = document.getElementById("stats-section");
-  const statsDet = document.getElementById("stats-detail-section");
+  const destSec  = document.getElementById("destacados-section");
 
   // Estadísticas: únicamente Admin e Inspector
   if (statsSec) statsSec.style.display = isStaff ? "" : "none";
-  if (statsDet) statsDet.style.display = isStaff ? "" : "none";
+  if (destSec) destSec.style.display = isStaff ? "" : "none";
 
   document.getElementById("tabs-nav").style.display = "";
 
@@ -862,28 +885,110 @@ function setupStaffView() {
   document.getElementById("points-tab").classList.add("active");
   document.querySelector(".tab").classList.add("active");
 
-  if (isStaff) { renderActivityChart(); renderRankings(); }
+  if (isStaff) {
+    renderActivityChart();
+    renderRankings();
+    renderDestacados();
+    renderRankingMC();
+    renderRankingWeek();
+    renderWorkerActivity();
+    renderEvolutionPts();
+    renderActivityGeneral();
+  }
   renderStats();
   renderPointsTable();
   renderStaffTable();
   renderNovedades();
+  if (typeof renderCurUserBar === "function") renderCurUserBar();
 }
 
-// ── STATS ──────────────────────────────────────────────────────
+// ══════════════════════════════════════════
+// RANGOS (nueva estructura)
+// ══════════════════════════════════════════
+const RANK_LABELS = {
+  overlord:  "《🪬》 Overlord",
+  owner:     "《🧿》 Owner",
+  admin:     "《💎》 Admin",
+  centinela: "《🔹》 Centinela",
+  vigia:     "《🔹》 Vigia"
+};
+const RANK_ORDER = ["vigia", "centinela", "admin", "owner", "overlord"];
+
+function normRango(r) {
+  let s = String(r || "").trim().toLowerCase();
+  s = s.replace(/《.*?》/g, "").replace(/[^a-záéíóúñ ]/g, "").replace(/\s+/g, " ").trim();
+  if (s.includes("overlord")) return "overlord";
+  if (s.includes("owner"))    return "owner";
+  if (s.includes("admin"))    return "admin";
+  if (s.includes("centinela")) return "centinela";
+  if (s.includes("vigia"))    return "vigia";
+  // Rangos antiguos seleccionados → se adaptan al nuevo rango base Vigia
+  if (s.includes("vip") || s.includes("usuario") || s.includes("bot")) return "vigia";
+  return null;
+}
+
+function fmtRango(r) {
+  const k = normRango(r);
+  return k ? RANK_LABELS[k] : (r ? esc(String(r)) : "—");
+}
+
+function rangoIndex(k) {
+  const i = RANK_ORDER.indexOf(k);
+  return i >= 0 ? i : -1;
+}
+
+// ══════════════════════════════════════════
+// CARGO MC TEAM (MC Team es un CARGO)
+// ══════════════════════════════════════════
+function getCargos(u) {
+  if (!u) return [];
+  if (Array.isArray(u.cargos)) return u.cargos.map(c => String(c)).filter(Boolean);
+  if (typeof u.cargos === "string" && u.cargos.trim()) return u.cargos.split(",").map(s => s.trim()).filter(Boolean);
+  return [];
+}
+
+function hasCargo(u, name) {
+  const target = String(name || "").trim().toLowerCase();
+  return getCargos(u).some(c => String(c).trim().toLowerCase().includes(target));
+}
+
+function isMCteam(u) {
+  return hasCargo(u, "MC Team");
+}
+
+// Trabajador del MC Team: cargo MC Team + NO admin/inspector + NO rango
+// superior a Centinela (Admin/Owner/Overlord no son candidatos) + activo
+function isMCteamWorker(u) {
+  if (!u || !isMCteam(u)) return false;
+  const role = String(u.role || "").toLowerCase();
+  if (role === "admin" || role === "inspector") return false;
+  const rk = normRango(u.rango);
+  if (rk && rangoIndex(rk) >= rangoIndex("admin")) return false;
+  const st = String(u.status || "active").toLowerCase();
+  if (st === "inactive" || st === "inactivo") return false;
+  return true;
+}
+
+function mcWorkers() {
+  return allMembers.filter(isMCteamWorker);
+}
+
+// ── STATS GENERALES (solo MC Team) ─────────────────────────────
 function renderStats() {
-  // Stats solo sobre no-admins activos (los que tienen puntos relevantes)
-  const staff = allMembers.filter(u => u.role !== "admin" && !["inactive","inactivo"].includes(String(u.status||"").toLowerCase()));
-  const total  = staff.length;
-  const pts    = staff.reduce((s,u) => s+(u.points||0), 0);
-  document.getElementById("total-members").textContent = total;
-  document.getElementById("avg-points").textContent    = total ? (pts/total).toFixed(1) : "0";
-  document.getElementById("staff-at-risk").textContent = staff.filter(u => (u.points||0) <= 2).length;
-  document.getElementById("staff-optimal").textContent = staff.filter(u => (u.points||0) >= 6).length;
-  document.getElementById("total-points").textContent  = pts.toFixed(0);
+  const staff = mcWorkers();
+  const total = staff.length;
+  const pts   = staff.reduce((s, u) => s + (Number(u.points) || 0), 0);
+  const el = id => document.getElementById(id);
+  const st = el("total-members"), av = el("avg-points"), ar = el("staff-at-risk"), op = el("staff-optimal"), tp = el("total-points");
+  if (st) st.textContent = total;
+  if (av) av.textContent = total ? (pts / total).toFixed(1) : "0";
+  if (ar) ar.textContent = staff.filter(u => (Number(u.points) || 0) <= 2).length;
+  if (op) op.textContent = staff.filter(u => (Number(u.points) || 0) >= 6).length;
+  if (tp) tp.textContent = pts.toFixed(0);
 }
 
-// ── ESTADÍSTICAS (gráfico + rankings, solo Admin e Inspector) ──
-let chartPeriod  = "day";
+// ── UTILIDADES DE TIEMPO / LOGS ────────────────────────────────
+let chartPeriod   = "day";
 let moreStatsOpen = false;
 
 function logTime(l) {
@@ -894,14 +999,19 @@ function logTime(l) {
   return 0;
 }
 
-function labelHour(d) { return String(d.getHours()).padStart(2, "0") + ":00"; }
+function label24(d) {
+  const h = d.getHours();
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12} ${h < 12 ? "AM" : "PM"}`;
+}
+
 function labelShortDay(d) { return (d.getDate()) + "/" + (d.getMonth() + 1); }
 
 function chartBuckets(period, now) {
   const buckets = [];
   let step, count, lab;
   if (period === "day") {
-    step = 3 * 60 * 60 * 1000; count = 8; lab = labelHour;
+    step = 60 * 60 * 1000; count = 24; lab = label24;
   } else if (period === "week") {
     step = 24 * 60 * 60 * 1000; count = 7; lab = labelShortDay;
   } else {
@@ -930,6 +1040,8 @@ window.toggleMoreStats = () => {
   if (moreStatsOpen && typeof renderRankings === "function") renderRankings();
 };
 
+// ── GRÁFICO: ACTIVIDAD DE ADMINS POR DÍA (24 horas) ────────────
+// Estadística de Admins; separada de las del MC Team.
 function renderActivityChart() {
   const el = document.getElementById("activity-chart");
   const legendEl = document.getElementById("chart-legend");
@@ -958,7 +1070,7 @@ function renderActivityChart() {
     maxVal = Math.max(maxVal, b.admins, b.inspectors);
   }
 
-  const W = 720, H = 240, pl = 44, pr = 14, pt = 18, pb = 30;
+  const W = 760, H = 250, pl = 40, pr = 16, pt = 18, pb = 32;
   const iw = W - pl - pr, ih = H - pt - pb;
   const yMax = maxVal;
   const n = buckets.length;
@@ -974,7 +1086,9 @@ function renderActivityChart() {
     grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
   }
   buckets.forEach((b, i) => {
-    xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#7c86ad">${b.label}</text>`;
+    // Con 24 horas, mostramos cada franja horaria; se reduce el tamaño de fuente.
+    if (buckets.length > 12 && i % 2 === 1) return;
+    xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="${buckets.length > 12 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
   });
 
   const lines = [
@@ -985,7 +1099,7 @@ function renderActivityChart() {
     const pts = buckets.map((b, i) => `${xPos(i)},${yPos(b[s.key])}`).join(" ");
     series += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
     buckets.forEach((b, i) => {
-      series += `<circle cx="${xPos(i)}" cy="${yPos(b[s.key])}" r="3.2" fill="${s.color}"/>`;
+      series += `<circle cx="${xPos(i)}" cy="${yPos(b[s.key])}" r="2.6" fill="${s.color}"/>`;
     });
   }
 
@@ -997,7 +1111,7 @@ function renderActivityChart() {
       ${xl}
       ${series}
     </svg>
-    <div class="chart-note">Actividad registrada en los últimos ${chartPeriod === "day" ? "24 h" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
+    <div class="chart-note">Actividad registrada · ${chartPeriod === "day" ? "24 horas completas (12 AM → 11 PM)" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
 
   if (legendEl) {
     legendEl.innerHTML = lines.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.label}</span>`).join("");
@@ -1030,13 +1144,10 @@ function fillRank(id, idSub, winner, label) {
   if (sEl) sEl.textContent = `${winner.count} ${label}`;
 }
 
+// ── RANKINGS SECUNDARIOS (menú desplegable, NIVEL 4) ───────────
 function renderRankings() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
-
-  const now = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000, weekMs = 7 * dayMs, monthMs = 30 * dayMs;
-  const isIn = (l, rangeMs) => { const t = logTime(l); return t > 0 && (now - t) <= rangeMs; };
 
   fillRank("rank-admin-active", "rank-admin-active-sub",
     bestActor(logs, l => String(l.actorRole || "").toLowerCase() === "admin"), "acciones registradas");
@@ -1049,10 +1160,313 @@ function renderRankings() {
 
   fillRank("rank-inspector", "rank-inspector-sub",
     bestActor(logs, l => String(l.actorRole || "").toLowerCase() === "inspector" && l.type === "points"), "acciones de puntos");
+}
 
-  fillRank("rank-day", "rank-day-sub", bestActor(logs, l => isIn(l, dayMs)), "acciones hoy");
-  fillRank("rank-week", "rank-week-sub", bestActor(logs, l => isIn(l, weekMs)), "acciones en 7 días");
-  fillRank("rank-month", "rank-month-sub", bestActor(logs, l => isIn(l, monthMs)), "acciones en 30 días");
+// ══════════════════════════════════════════
+// TRABAJADORES DESTACADOS (Día / Semana / Mes)
+// ══════════════════════════════════════════
+function workerActivityInRange(u, startMs) {
+  const uid = u.uid;
+  let count = 0, deltaPts = 0;
+  for (const l of logs) {
+    if (!l || l.actorUid !== uid) continue;
+    const t = logTime(l);
+    if (t <= 0 || t < startMs) continue;
+    count++;
+    if (l.type === "points" && typeof l.delta === "number") deltaPts += l.delta;
+  }
+  return { count, deltaPts };
+}
+
+function periodWorkers(mode) {
+  const now = Date.now();
+  const mult = mode === "day" ? 1 : mode === "week" ? 7 : 30;
+  const start = now - mult * 24 * 60 * 60 * 1000;
+  const rows = mcWorkers().map(u => {
+    const act = workerActivityInRange(u, start);
+    return { u, count: act.count, deltaPts: act.deltaPts };
+  }).sort((a, b) => (b.count - a.count) || ((b.u.points || 0) - (a.u.points || 0)));
+  rows.forEach((r, i) => { r.place = i + 1; });
+  return rows;
+}
+
+function renderDestacados() {
+  const role = currentUser?.role;
+  if (role !== "admin" && role !== "inspector") return;
+
+  const defs = [
+    { mode: "day",   id: "destacado-day",   empty: "Sin datos hoy" },
+    { mode: "week",  id: "destacado-week",  empty: "Sin datos esta semana" },
+    { mode: "month", id: "destacado-month", empty: "Sin datos este mes" }
+  ];
+  for (const def of defs) {
+    const el = document.getElementById(def.id);
+    if (!el) continue;
+    const rows = periodWorkers(def.mode);
+    const winner = rows[0];
+    if (!winner) { el.innerHTML = `<div class="dc-empty">${def.empty}</div>`; continue; }
+    const u = winner.u;
+    const pts = Number(u.points) || 0;
+    el.innerHTML = `
+      <div class="dc-name">${esc(u.name || "—")}</div>
+      <div class="dc-pts">⭐ ${pts.toFixed(1)} puntos</div>
+      <div class="dc-meta">
+        <span>🎯 ${winner.count} acciones</span>
+        <span>${winner.deltaPts > 0 ? "➕" : winner.deltaPts < 0 ? "➖" : "·"} ${Math.abs(winner.deltaPts).toFixed(1)} pts</span>
+        <span>#${winner.place} de ${rows.length}</span>
+      </div>`;
+  }
+}
+
+// ══════════════════════════════════════════
+// GRÁFICOS DEL MC TEAM (pestaña Gráficos)
+// ══════════════════════════════════════════
+const PALETTE = ["#5865f2", "#3ecf8e", "#ffd166", "#ff9f43", "#ff5c75", "#4cc9f0", "#a78bfa", "#57cc99"];
+
+const modeStates = { mc: "cols", week: "cols", worker: "cols" };
+
+function setModeState(key, m, btn) {
+  modeStates[key] = m;
+  const tb = btn ? btn.parentElement : null;
+  if (tb) {
+    tb.querySelectorAll(".period-btn").forEach(b => b.classList.toggle("active", b.getAttribute("data-mode") === m));
+  }
+  if (key === "mc") renderRankingMC();
+  if (key === "week") renderRankingWeek();
+  if (key === "worker") renderWorkerActivity();
+}
+
+window.setRankModeMC     = (m, btn) => setModeState("mc", m, btn);
+window.setRankModeWeek   = (m, btn) => setModeState("week", m, btn);
+window.setRankModeWorker = (m, btn) => setModeState("worker", m, btn);
+
+function svgDonut(items, centerLabel) {
+  const total = items.reduce((s, it) => s + (Number(it.value) || 0), 0);
+  if (!total) return '<div class="chart-empty">Sin datos.</div>';
+  const cx = 90, cy = 90, R = 62, C = 2 * Math.PI * R;
+  let acc = 0, arcs = "", legend = "";
+  for (const it of items) {
+    const frac = (Number(it.value) || 0) / total;
+    const dash = `${Math.max(frac * C - 2, 0.5)} ${C}`;
+    const rot = -90 + acc * 360;
+    arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${it.color}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
+    acc += frac;
+    legend += `<span class="legend-item"><span class="legend-dot" style="background:${it.color}"></span>${esc(it.label)} · ${(frac * 100).toFixed(1)}%</span>`;
+  }
+  return `
+    <svg class="chart-svg" viewBox="0 0 180 180" role="img">
+      ${arcs}
+      <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${centerLabel || Math.round(total)}</text>
+    </svg>
+    <div class="chart-legend">${legend}</div>`;
+}
+
+function rankListHTML(rows, valLabel, showRango) {
+  const max = Math.max(1, ...rows.map(r => Number(r.value) || 0));
+  return `<div class="rank-list">
+    ${rows.map((r, i) => {
+      const pct = Math.min((Number(r.value) || 0) / max * 100, 100);
+      return `<div class="rank-row">
+        <span class="rank-pos">#${i + 1}</span>
+        <span class="rank-name"><b>${esc(r.name || "—")}</b>${showRango ? ` <span class="rango-tag">${fmtRango(r.rango)}</span>` : ""}</span>
+        <span class="rank-bars"><span class="rank-bar" style="width:${pct}%"></span></span>
+        <span class="rank-val">${valLabel} ${Number(r.value || 0).toFixed(1)}</span>
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
+function renderRankingMC() {
+  const box = document.getElementById("rank-mc-box");
+  if (!box) return;
+  const role = currentUser?.role;
+  if (role !== "admin" && role !== "inspector") return;
+
+  const rows = mcWorkers()
+    .map(u => ({ name: u.name || "—", value: Number(u.points) || 0, rango: u.rango }))
+    .sort((a, b) => b.value - a.value);
+
+  if (!rows.length) { box.innerHTML = '<div class="chart-empty">Sin trabajadores con cargo MC Team.</div>'; return; }
+
+  if (modeStates.mc === "circ") {
+    const items = rows.map((r, i) => ({ label: r.name, value: r.value, color: PALETTE[i % PALETTE.length] }));
+    box.innerHTML = svgDonut(items, "MC Team");
+  } else {
+    box.innerHTML = rankListHTML(rows, "⭐", true) + '<div class="chart-note">Ordenados por puntos actuales · con rango actual</div>';
+  }
+}
+
+function renderRankingWeek() {
+  const box = document.getElementById("rank-week-box");
+  if (!box) return;
+  const role = currentUser?.role;
+  if (role !== "admin" && role !== "inspector") return;
+
+  const rows = periodWorkers("week")
+    .map(r => ({ name: r.u.name || "—", value: r.count, rango: r.u.rango }));
+
+  if (!rows.length) { box.innerHTML = '<div class="chart-empty">Sin actividad semanal todavía.</div>'; return; }
+
+  if (modeStates.week === "circ") {
+    const items = rows.map((r, i) => ({ label: r.name, value: r.value, color: PALETTE[i % PALETTE.length] }));
+    box.innerHTML = svgDonut(items, "Semana");
+  } else {
+    box.innerHTML = rankListHTML(rows, "🎯", true) + '<div class="chart-note">Acciones registradas en los últimos 7 días</div>';
+  }
+}
+
+function renderWorkerActivity() {
+  const el = document.getElementById("act-worker-chart");
+  if (!el) return;
+  const role = currentUser?.role;
+  if (role !== "admin" && role !== "inspector") return;
+
+  const rows = periodWorkers("month")
+    .map(r => ({ name: r.u.name || "—", value: r.count, rango: r.u.rango }));
+
+  if (!rows.length) { el.innerHTML = '<div class="chart-empty">Sin actividad registrada.</div>'; return; }
+
+  if (modeStates.worker === "circ") {
+    const items = rows.map((r, i) => ({ label: r.name, value: r.value, color: PALETTE[i % PALETTE.length] }));
+    el.innerHTML = svgDonut(items, "Acciones") + '<div class="chart-note">Distribución de acciones (30 días) · circular para proporciones</div>';
+  } else {
+    el.innerHTML = rankListHTML(rows, "🎯", false) + '<div class="chart-note">Acciones por trabajador en los últimos 30 días</div>';
+  }
+}
+
+function multiLineChartSVG(labels, series, h) {
+  const H = h || 230, W = 760, pl = 44, pr = 16, pt = 18, pb = 32;
+  const iw = W - pl - pr, ih = H - pt - pb;
+  let maxV = 1;
+  for (const s of series) for (const v of s.values) maxV = Math.max(maxV, Number(v) || 0);
+  const n = labels.length;
+  const xPos = i => (n > 1 ? pl + (iw * i) / (n - 1) : pl + iw / 2);
+  const yPos = v => pt + ih - (ih * v) / maxV;
+  let grid = "", xl = "", lines = "";
+  const gridCount = 4;
+  for (let g = 0; g <= gridCount; g++) {
+    const val = Math.round((maxV * g) / gridCount);
+    const gy = yPos(val);
+    grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
+    grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
+  }
+  labels.forEach((lb, i) => {
+    if (n > 10 && i % 2 === 1) return;
+    xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="${n > 10 ? 8 : 9}" fill="#7c86ad">${lb}</text>`;
+  });
+  for (const s of series) {
+    const pts = s.values.map((v, i) => `${xPos(i)},${yPos(v)}`).join(" ");
+    lines += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    s.values.forEach((v, i) => { lines += `<circle cx="${xPos(i)}" cy="${yPos(v)}" r="2.4" fill="${s.color}"/>`; });
+  }
+  return `
+    <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img">
+      ${grid}
+      <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+      <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+      ${xl}
+      ${lines}
+    </svg>`;
+}
+
+// Evolución de puntos: reconstruye el valor diario de cada trabajador
+// del MC Team a partir de los registros (delta) y los puntos actuales.
+function renderEvolutionPts() {
+  const el = document.getElementById("evo-pts-chart");
+  const legendEl = document.getElementById("evo-pts-legend");
+  if (!el) return;
+  const role = currentUser?.role;
+  if (role !== "admin" && role !== "inspector") return;
+
+  const workers = mcWorkers().sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 6);
+  if (!workers.length) { el.innerHTML = '<div class="chart-empty">Sin trabajadores del MC Team.</div>'; if (legendEl) legendEl.innerHTML = ""; return; }
+
+  const now = Date.now(), step = 24 * 60 * 60 * 1000, count = 14;
+  const days = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const end = now - i * step, start = end - step;
+    days.push({ start, end, label: labelShortDay(new Date(end)), vals: {} });
+  }
+
+  for (const w of workers) {
+    const daily = new Array(count).fill(0);
+    for (const l of logs) {
+      if (!l || l.type !== "points" || l.targetUid !== w.uid) continue;
+      const t = logTime(l);
+      if (!t) continue;
+      const bi = days.findIndex(d => t >= d.start && t < d.end);
+      if (bi >= 0) daily[bi] += typeof l.delta === "number" ? l.delta : 0;
+    }
+    let val = Number(w.points) || 0;
+    const series = new Array(count).fill(0);
+    for (let i = count - 1; i >= 0; i--) {
+      series[i] = Math.round(val * 10) / 10;
+      val -= daily[i];
+    }
+    days.forEach((d, i) => { d.vals[w.uid] = series[i]; });
+  }
+
+  const series = workers.map((w, i) => ({
+    name: w.name || "—",
+    color: PALETTE[i % PALETTE.length],
+    values: days.map(d => d.vals[w.uid])
+  }));
+
+  el.innerHTML = multiLineChartSVG(days.map(d => d.label), series);
+  if (legendEl) {
+    legendEl.innerHTML = series.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${esc(s.name)}</span>`).join("");
+  }
+}
+
+// Actividad general del equipo: acciones diarias del MC Team (14 días)
+function renderActivityGeneral() {
+  const el = document.getElementById("act-general-chart");
+  if (!el) return;
+  const role = currentUser?.role;
+  if (role !== "admin" && role !== "inspector") return;
+
+  const now = Date.now(), step = 24 * 60 * 60 * 1000, count = 14;
+  const days = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const end = now - i * step, start = end - step;
+    days.push({ start, end, label: labelShortDay(new Date(end)), total: 0 });
+  }
+  for (const l of logs) {
+    if (!l) continue;
+    const uid = l.actorUid;
+    const u = allMembers.find(x => x.uid === uid);
+    if (!u || !isMCteamWorker(u)) continue;
+    const t = logTime(l);
+    if (!t) continue;
+    const d = days.find(x => t >= x.start && t < x.end);
+    if (d) d.total++;
+  }
+
+  if (!days.some(d => d.total)) {
+    el.innerHTML = '<div class="chart-empty">Sin actividad registrada del MC Team.</div>';
+    return;
+  }
+
+  el.innerHTML = multiLineChartSVG(
+    days.map(d => d.label),
+    [{ name: "MC Team", color: "#3ecf8e", values: days.map(d => d.total) }]
+  );
+}
+
+// ── IDENTIFICACIÓN DEL USUARIO ACTUAL ──────────────────────────
+function renderCurUserBar() {
+  const el = document.getElementById("cur-user-bar");
+  if (!el) return;
+  if (!currentUser) { el.style.display = "none"; return; }
+  const name  = currentUser.name || "—";
+  const pts   = Number(currentUser.points || 0);
+  const rango = fmtRango(currentUser.rango);
+  el.innerHTML = `
+    <div class="cub-item"><span class="cub-chip">👤 Usuario actual</span> <b>${esc(name)}</b></div>
+    <div class="cub-item">⭐ <b>${pts.toFixed(1)}</b> puntos</div>
+    <div class="cub-item">Rango: <b>${rango}</b></div>
+    <div class="cub-item">Rol: ${roleName(currentUser.role || "user")}</div>`;
+  el.style.display = "flex";
 }
 
 // Refresca todas las vistas tras un cambio de puntos
@@ -1062,42 +1476,33 @@ function renderAll() {
   if (typeof renderStaffTable === "function") renderStaffTable();
   if (typeof renderActivityChart === "function") renderActivityChart();
   if (typeof renderRankings === "function") renderRankings();
+  if (typeof renderDestacados === "function") renderDestacados();
+  if (typeof renderRankingMC === "function") renderRankingMC();
+  if (typeof renderRankingWeek === "function") renderRankingWeek();
+  if (typeof renderWorkerActivity === "function") renderWorkerActivity();
+  if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+  if (typeof renderActivityGeneral === "function") renderActivityGeneral();
+  if (typeof renderCurUserBar === "function") renderCurUserBar();
 }
 
-// ── TABLA PUNTOS (sin admins) ──────────────────────────────────
+// ── TABLA PUNTOS (solo MC Team, sin edición) ───────────────────
 function renderPointsTable() {
-  const tb      = document.getElementById("pts-full-body");
-  const role    = currentUser?.role;
-  const canEdit = role === "admin" || role === "inspector";
+  const tb = document.getElementById("pts-full-body");
 
-  // Filtrar: nunca mostrar admins ni usuarios inactivos en la tabla de puntos
-  const list = allMembers
-    .filter(u => u.role !== "admin" && !["inactive","inactivo"].includes(String(u.status||"").toLowerCase()))
-    .sort((a,b) => (b.points||0)-(a.points||0));
+  // La tabla muestra únicamente trabajadores con cargo MC Team. Los admins e
+  // inspectores gestionan puntos desde setupAdmin.html → Gestionar puntos.
+  const list = mcWorkers().sort((a,b) => (b.points||0)-(a.points||0));
 
-  // Header dinámico
-  const thRow = document.getElementById("pts-thead-row");
-  if (thRow) {
-    thRow.innerHTML = canEdit
-      ? "<th>#</th><th>Nombre</th><th>Puntos</th><th>Estado</th><th>Ajustar</th>"
-      : "<th>#</th><th>Nombre</th><th>Puntos</th><th>Estado</th>";
-  }
+  if (typeof renderCurUserBar === "function") renderCurUserBar();
 
   if (!list.length) {
-    tb.innerHTML = `<tr><td colspan="${canEdit?5:4}" class="t-empty">Sin miembros aún.</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="5" class="t-empty">Sin trabajadores del MC Team.</td></tr>`;
     return;
   }
 
   tb.innerHTML = list.map((u, i) => {
-    const pts    = u.points || 0;
-    const isMe   = u.uid === currentUser.uid;
-    const adjust = canEdit ? (
-      `<td>
-        <div class="adj-btns">
-          <button class="adj-btn plus" onclick="setPoints('${u.uid}')" ${isMe ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>Ingresar</button>
-        </div>
-      </td>`
-    ) : "";
+    const pts  = u.points || 0;
+    const isMe = currentUser && u.uid === currentUser.uid;
     return `
       <tr ${isMe ? 'class="my-row"' : ""}>
         <td class="rank-col">${i+1}</td>
@@ -1106,6 +1511,7 @@ function renderPointsTable() {
           <b>${esc(u.name||"—")}</b>
           ${isMe ? '<span class="you-tag">tú</span>' : ""}
         </td>
+        <td><span class="rango-tag">${fmtRango(u.rango)}</span></td>
         <td>
           <span class="pts-number" id="pn-${u.uid}" style="color:${ptColor(pts)}">${pts.toFixed(1)}</span>
           <div class="pts-mini-bar-wrap">
@@ -1113,7 +1519,6 @@ function renderPointsTable() {
           </div>
         </td>
         <td id="ps-${u.uid}">${ptStateBadge(pts)}</td>
-        ${adjust}
       </tr>`;
   }).join("");
 }
@@ -1184,12 +1589,12 @@ function renderStaffTable() {
         : `<span style="color:var(--muted)">—</span>`;
 
     // Rango del servidor (campo separado del role de la página)
-    const rango = u.rango || "—";
+    const rango = fmtRango(u.rango);
 
     return `
       <tr>
         <td><b>${esc(u.name||"—")}</b></td>
-        <td><span class="rango-tag">${esc(rango)}</span></td>
+        <td><span class="rango-tag">${rango}</span></td>
         <td>${cargos}</td>
         <td>${statusBadge(u.status)}</td>
       </tr>`;
@@ -1255,7 +1660,16 @@ window.switchTab = (id, btn) => {
     if (btn && btn.classList) btn.classList.add("active");
 
     // hooks por pestaña (siempre que existan)
-    if (id === "points-tab") { if (typeof renderPointsTable === "function") renderPointsTable(); if (typeof renderStats === "function") renderStats(); if (typeof renderActivityChart === "function") renderActivityChart(); if (typeof renderRankings === "function") renderRankings(); }
+    if (id === "points-tab") { if (typeof renderPointsTable === "function") renderPointsTable(); if (typeof renderStats === "function") renderStats(); if (typeof renderDestacados === "function") renderDestacados(); if (typeof renderCurUserBar === "function") renderCurUserBar(); }
+    if (id === "graficos-tab") {
+      if (typeof renderRankingMC === "function") renderRankingMC();
+      if (typeof renderRankingWeek === "function") renderRankingWeek();
+      if (typeof renderWorkerActivity === "function") renderWorkerActivity();
+      if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+      if (typeof renderActivityGeneral === "function") renderActivityGeneral();
+      if (typeof renderActivityChart === "function") renderActivityChart();
+      if (typeof renderRankings === "function") renderRankings();
+    }
     if (id === "staff-tab")   { if (typeof renderStaffTable === "function") renderStaffTable(); }
     if (id === "novedades-tab") { if (typeof renderNovedades === "function") renderNovedades(); }
     if (id === "logs-tab")    { if (typeof renderLogsJow === "function") renderLogsJow(); }

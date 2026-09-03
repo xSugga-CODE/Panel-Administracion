@@ -65,6 +65,7 @@
           <div class="uc-name" id="uc-name">—</div>
           <div class="uc-role" id="uc-role">—</div>
           <div class="uc-pts" id="uc-pts" style="display:none"></div>
+          <div class="uc-rango" id="uc-rango" style="display:none"></div>
         </div>
         <button class="logout-btn" onclick="doLogout()">Salir</button>
       </div>
@@ -94,39 +95,35 @@
       </article>
     </section>
 
-    <!-- ESTADÍSTICAS (solo Admin e Inspector) -->
-    <section class="stats-detail" id="stats-detail-section" style="display:none">
-      <div class="card chart-card">
-        <div class="chart-head">
-          <h3>📈 Actividad de los admins</h3>
-          <div class="chart-toolbar" id="chart-toolbar">
-            <button class="period-btn active" data-period="day" onclick="setChartPeriod('day',this)">Día</button>
-            <button class="period-btn" data-period="week" onclick="setChartPeriod('week',this)">Semana</button>
-            <button class="period-btn" data-period="month" onclick="setChartPeriod('month',this)">Mes</button>
-          </div>
-        </div>
-        <div class="chart-container" id="activity-chart"><div class="chart-empty">Cargando actividad…</div></div>
-        <div class="chart-legend" id="chart-legend"></div>
+    <!-- TRABAJADORES DESTACADOS DEL MC TEAM (solo Admin e Inspector) -->
+    <section class="stats-detail" id="destacados-section" style="display:none">
+      <div class="section-head">
+        <h3>⭐ Trabajadores destacados del MC Team</h3>
+        <p>Reconocimiento por rendimiento. Solo se consideran trabajadores con el cargo <b>MC Team</b>. Los administradores e inspectores quedan separados de estas estadísticas.</p>
       </div>
-
-      <div class="more-stats-actions">
-        <button class="btn-ghost" id="more-stats-btn" onclick="toggleMoreStats()">📊 Ver más estadísticas</button>
-      </div>
-
-      <div class="rank-grid" id="more-stats" style="display:none">
-        <article class="rank-card"><h4>👑 Admin más activo</h4><div class="rank-value" id="rank-admin-active">—</div><div class="rank-sub" id="rank-admin-active-sub"></div></article>
-        <article class="rank-card"><h4>✏️ Quién más modifica puntos</h4><div class="rank-value" id="rank-points-editor">—</div><div class="rank-sub" id="rank-points-editor-sub"></div></article>
-        <article class="rank-card"><h4>🚪 Quién más ingresa a la página</h4><div class="rank-value" id="rank-login-leader">—</div><div class="rank-sub" id="rank-login-leader-sub"></div></article>
-        <article class="rank-card"><h4>🛠️ Inspector que más trabaja</h4><div class="rank-value" id="rank-inspector">—</div><div class="rank-sub" id="rank-inspector-sub"></div></article>
-        <article class="rank-card"><h4>🌟 Trabajador del día</h4><div class="rank-value" id="rank-day">—</div><div class="rank-sub" id="rank-day-sub"></div></article>
-        <article class="rank-card"><h4>📅 Trabajador de la semana</h4><div class="rank-value" id="rank-week">—</div><div class="rank-sub" id="rank-week-sub"></div></article>
-        <article class="rank-card"><h4>🗓️ Trabajador del mes</h4><div class="rank-value" id="rank-month">—</div><div class="rank-sub" id="rank-month-sub"></div></article>
+      <div class="destacado-grid">
+        <article class="destacado-card">
+          <div class="dc-label">🌟 Trabajador del día</div>
+          <div class="dc-content" id="destacado-day"><div class="dc-empty">Cargando…</div></div>
+          <div class="dc-period">Últimas 24 horas</div>
+        </article>
+        <article class="destacado-card dc-featured">
+          <div class="dc-label">📅 Trabajador de la semana</div>
+          <div class="dc-content" id="destacado-week"><div class="dc-empty">Cargando…</div></div>
+          <div class="dc-period">Últimos 7 días</div>
+        </article>
+        <article class="destacado-card">
+          <div class="dc-label">🗓 Trabajador del mes</div>
+          <div class="dc-content" id="destacado-month"><div class="dc-empty">Cargando…</div></div>
+          <div class="dc-period">Últimos 30 días</div>
+        </article>
       </div>
     </section>
 
     <!-- TABS -->
     <nav class="tabs-container" id="tabs-nav">
       <button class="tab active" onclick="switchTab('points-tab',this)">⭐ Puntos</button>
+      <button class="tab"        onclick="switchTab('graficos-tab',this)">📊 Gráficos</button>
       <button class="tab"        onclick="switchTab('staff-tab',this)">👥 Staff</button>
       <button class="tab"        onclick="switchTab('guide-tab',this)">📖 Guía</button>
       <button class="tab"        onclick="switchTab('rangos-tab',this)">🏅 Rangos y Cargos</button>
@@ -140,14 +137,15 @@
       <!-- ── PUNTOS ── -->
       <section id="points-tab" class="tab-content active" style="display:none">
         <h2>Tabla de Puntos</h2>
+        <div class="cur-user-bar" id="cur-user-bar" style="display:none"></div>
         <div class="card">
-          <p style="color:#9ba8d6;margin-bottom:16px">Clasificación en tiempo real. Solo se muestran inspectores y usuarios — los admins gestionan desde el panel.</p>
+          <p style="color:#9ba8d6;margin-bottom:16px">Clasificación en tiempo real del MC Team. Solo se muestran trabajadores con el cargo MC Team; los admins e inspectores gestionan desde <b>setupAdmin.html → Gestionar puntos</b>.</p>
           <table>
             <thead>
-              <tr id="pts-thead-row"><th>#</th><th>Nombre</th><th>Puntos</th><th>Estado</th></tr>
+              <tr id="pts-thead-row"><th>#</th><th>Nombre</th><th>Rango</th><th>Puntos</th><th>Estado</th></tr>
             </thead>
             <tbody id="pts-full-body">
-              <tr><td colspan="4" class="t-empty">Cargando…</td></tr>
+              <tr><td colspan="5" class="t-empty">Cargando…</td></tr>
             </tbody>
           </table>
         </div>
@@ -184,6 +182,91 @@
               <p>Miembro activo. Ingresa con PIN y solo puede ver sus propios puntos.</p>
             </article>
           </div>
+        </div>
+      </section>
+
+      <!-- ── GRÁFICOS ── -->
+      <section id="graficos-tab" class="tab-content" style="display:none">
+        <h2>Gráficos</h2>
+        <p class="tab-sub">Estadísticas visuales y rankings del MC Team. Los trabajadores se identifican por el cargo <b>MC Team</b>.</p>
+
+        <!-- NIVEL 2: RANKINGS PRINCIPALES -->
+        <div class="chart-grid two-col">
+          <div class="card chart-card">
+            <div class="chart-head">
+              <h3>🏆 Ranking del MC Team</h3>
+              <div class="chart-toolbar">
+                <button class="period-btn active" data-mode="cols" onclick="setRankModeMC('cols',this)">Columnas</button>
+                <button class="period-btn" data-mode="circ" onclick="setRankModeMC('circ',this)">Circular</button>
+              </div>
+            </div>
+            <div class="chart-container" id="rank-mc-box"><div class="chart-empty">Cargando ranking…</div></div>
+          </div>
+
+          <div class="card chart-card">
+            <div class="chart-head">
+              <h3>📊 Ranking semanal del MC Team</h3>
+              <div class="chart-toolbar">
+                <button class="period-btn active" data-mode="cols" onclick="setRankModeWeek('cols',this)">Columnas</button>
+                <button class="period-btn" data-mode="circ" onclick="setRankModeWeek('circ',this)">Circular</button>
+              </div>
+            </div>
+            <div class="chart-container" id="rank-week-box"><div class="chart-empty">Cargando ranking…</div></div>
+          </div>
+        </div>
+
+        <!-- NIVEL 3: GRÁFICOS PRINCIPALES -->
+        <div class="card chart-card">
+          <div class="chart-head">
+            <h3>📈 Evolución de puntos del MC Team</h3>
+            <span class="chart-note-inline">Puntos reconstruidos a partir de los registros recientes</span>
+          </div>
+          <div class="chart-container" id="evo-pts-chart"><div class="chart-empty">Cargando evolución…</div></div>
+          <div class="chart-legend" id="evo-pts-legend"></div>
+        </div>
+
+        <div class="chart-grid two-col">
+          <div class="card chart-card">
+            <div class="chart-head">
+              <h3>🎯 Actividad por trabajador</h3>
+              <div class="chart-toolbar">
+                <button class="period-btn active" data-mode="cols" onclick="setRankModeWorker('cols',this)">Columnas</button>
+                <button class="period-btn" data-mode="circ" onclick="setRankModeWorker('circ',this)">Circular</button>
+              </div>
+            </div>
+            <div class="chart-container" id="act-worker-chart"><div class="chart-empty">Cargando actividad…</div></div>
+          </div>
+
+          <div class="card chart-card">
+            <h3>🌐 Actividad general del equipo</h3>
+            <div class="chart-container" id="act-general-chart"><div class="chart-empty">Cargando actividad…</div></div>
+            <div class="chart-note">Acciones registradas por trabajadores del MC Team en los últimos 14 días</div>
+          </div>
+        </div>
+
+        <!-- ACTIVIDAD DE ADMINS (separada del MC Team) -->
+        <div class="card chart-card">
+          <div class="chart-head">
+            <h3>🕐 Actividad de admins por día (24 horas)</h3>
+            <div class="chart-toolbar" id="chart-toolbar">
+              <button class="period-btn active" data-period="day" onclick="setChartPeriod('day',this)">Día</button>
+              <button class="period-btn" data-period="week" onclick="setChartPeriod('week',this)">Semana</button>
+              <button class="period-btn" data-period="month" onclick="setChartPeriod('month',this)">Mes</button>
+            </div>
+          </div>
+          <div class="chart-container" id="activity-chart"><div class="chart-empty">Cargando actividad…</div></div>
+          <div class="chart-legend" id="chart-legend"></div>
+        </div>
+
+        <!-- NIVEL 4: INFORMACIÓN SECUNDARIA -->
+        <div class="more-stats-actions" style="margin-top:24px">
+          <button class="btn-ghost" id="more-stats-btn" onclick="toggleMoreStats()">📊 Ver más estadísticas</button>
+        </div>
+        <div class="rank-grid" id="more-stats" style="display:none">
+          <article class="rank-card"><h4>👑 Admin más activo</h4><div class="rank-value" id="rank-admin-active">—</div><div class="rank-sub" id="rank-admin-active-sub"></div></article>
+          <article class="rank-card"><h4>✏️ Quién más modifica puntos</h4><div class="rank-value" id="rank-points-editor">—</div><div class="rank-sub" id="rank-points-editor-sub"></div></article>
+          <article class="rank-card"><h4>🚪 Quién más ingresa a la página</h4><div class="rank-value" id="rank-login-leader">—</div><div class="rank-sub" id="rank-login-leader-sub"></div></article>
+          <article class="rank-card"><h4>🛠️ Inspector que más trabaja</h4><div class="rank-value" id="rank-inspector">—</div><div class="rank-sub" id="rank-inspector-sub"></div></article>
         </div>
       </section>
 
@@ -268,6 +351,39 @@
           </ul>
         </div>
         <div class="card">
+          <h3>Nueva estructura de rangos</h3>
+          <table>
+            <thead><tr><th>Rango</th><th>Descripción</th></tr></thead>
+            <tbody>
+              <tr><td>《🪬》 Overlord</td><td>Máxima autoridad (Solo lo tiene Jow).</td></tr>
+              <tr><td>《🧿》 Owner</td><td>Dirige proyectos, coordina equipos y administra el desarrollo general.</td></tr>
+              <tr><td>《💎》 Admin</td><td>Administración del servidor y sanciones avanzadas. Gestiona el equipo y los puntos.</td></tr>
+              <tr><td>《🔹》 Centinela</td><td>Miembro de confianza con permisos intermedios.</td></tr>
+              <tr><td>《🔹》 Vigia</td><td>Nuevo rango de apoyo y vigilancia. Supervisa el cumplimiento de normas y reporta incidencias.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>¿Qué es el MC Team?</h3>
+          <p>En este sistema, <strong>MC Team es un CARGO</strong>, no un rango. Para saber quién es trabajador del MC Team se comprueba el <strong>cargo asignado al usuario</strong> (campo <code>cargos</code>).</p>
+          <ul>
+            <li>Las estadísticas y rankings del MC Team usan únicamente esa condición.</li>
+            <li>Los administradores e inspectores quedan separados de las estadísticas de trabajadores.</li>
+            <li>Los rangos superiores (Admin, Owner, Overlord) no se cuentan como trabajadores candidatos.</li>
+          </ul>
+        </div>
+        <div class="card ascenso-card">
+          <h3>🏆 Ascenso del mejor trabajador del mes</h3>
+          <p>Cada mes se reconoce al mejor trabajador del MC Team según su rendimiento durante el período. Ese trabajador recibe el reconocimiento correspondiente y puede ascender de <b>《🔹》 Centinela</b> a <b>《💎》 Admin</b>.</p>
+          <ul>
+            <li><strong>Reconocimiento por rendimiento del mes:</strong> actividad, puntos y compromiso registrados en el período.</li>
+            <li>Solo se consideran trabajadores con el <strong>cargo MC Team</strong>.</li>
+            <li>El ascenso <b>《🔹》 Centinela → 《💎》 Admin</b> es un reconocimiento al destacado del mes y <strong>no significa que todos los miembros del MC Team suban de rango automáticamente</strong>.</li>
+            <li>Quienes ya tienen un rango superior (Admin, Owner, Overlord) no son candidatos al ascenso de la misma manera que un Centinela: ellos administran y evalúan.</li>
+            <li>La decisión final del ascenso corresponde a la administración (Owner/Overlord/Admin).</li>
+          </ul>
+        </div>
+        <div class="card">
           <h3>Guías de Admins</h3>
           <p style="color:var(--muted)">Dejar completamente vacío por ahora.</p>
         </div>
@@ -281,13 +397,11 @@
           <table>
             <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
             <tbody>
-              <tr><td>🔱 Overlord</td><td>Máxima autoridad (Solo lo tiene Jow).</td></tr>
-              <tr><td>👑 Owner</td><td>Dirige proyectos, coordina equipos y administra el desarrollo general.</td></tr>
-              <tr><td>🤖 Bot</td><td>Aplicaciones y sistemas automatizados.</td></tr>
-              <tr><td>🔰 Admin</td><td>Administración del servidor y sanciones avanzadas.</td></tr>
-              <tr><td>🛡️ Centinela</td><td>Miembro de confianza con permisos intermedios.</td></tr>
-              <tr><td>💎 VIP</td><td>Usuario con beneficios exclusivos.</td></tr>
-              <tr><td>👤 Usuario</td><td>Miembro estándar.</td></tr>
+              <tr><td>《🪬》 Overlord</td><td>Máxima autoridad (Solo lo tiene Jow).</td></tr>
+              <tr><td>《🧿》 Owner</td><td>Dirige proyectos, coordina equipos y administra el desarrollo general.</td></tr>
+              <tr><td>《💎》 Admin</td><td>Administración del servidor y sanciones avanzadas. Gestiona el equipo y los puntos.</td></tr>
+              <tr><td>《🔹》 Centinela</td><td>Miembro de confianza con permisos intermedios.</td></tr>
+              <tr><td>《🔹》 Vigia</td><td>Nuevo rango de apoyo y vigilancia. Supervisa el cumplimiento de normas y reporta incidencias.</td></tr>
             </tbody>
           </table>
         </div>
@@ -351,6 +465,7 @@
       <!-- ── VISTA USUARIO ── -->
       <section id="user-view" class="tab-content" style="display:none">
         <div class="user-pts-card">
+          <div class="upc-who" id="my-pts-who"></div>
           <div class="upc-label">Tus puntos actuales</div>
           <div class="upc-value" id="my-pts-value">—</div>
           <div class="upc-bar-wrap">
