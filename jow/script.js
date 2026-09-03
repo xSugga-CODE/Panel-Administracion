@@ -277,28 +277,51 @@ window.loginWithPin = async () => {
     const normName = normLoginName(nameRaw);
     if (!normName) throw new Error("name-invalid");
 
-    // Buscar credenciales: primero en publicLoginUsers (diseño original)
-    // y, si la colección no es accesible o está vacía, en "users" (legible: allow read: if true)
-    let loginDoc = null;
-    try {
-      const q1 = await getDocs(query(
-        collection(db, "publicLoginUsers"),
-        where("nameLower", "==", normName),
-        limit(1)
-      ));
-      if (!q1.empty) loginDoc = q1.docs[0];
-    } catch (err1) {
-      console.warn("publicLoginUsers no accesible, usando users:", err1.code || err1.message);
-    }
+    // Buscar credenciales con varios métodos de respaldo:
+    // 1) publicLoginUsers (diseño original; requiere regla de lectura pública)
+    // 2) users por nameLower (rápido, con índice)
+    // 3) barrido client-side sobre users: cubre cuentas legacy que no
+    //    tienen nameLower o que usan una normalización distinta del nombre
+    const findLoginDoc = async () => {
+      try {
+        const q1 = await getDocs(query(
+          collection(db, "publicLoginUsers"),
+          where("nameLower", "==", normName),
+          limit(1)
+        ));
+        if (!q1.empty) return q1.docs[0];
+      } catch (err1) {
+        console.warn("publicLoginUsers no accesible, usando users:", err1.code || err1.message);
+      }
 
-    if (!loginDoc) {
-      const q2 = await getDocs(query(
-        collection(db, "users"),
-        where("nameLower", "==", normName),
-        limit(1)
-      ));
-      if (!q2.empty) loginDoc = q2.docs[0];
-    }
+      try {
+        const q2 = await getDocs(query(
+          collection(db, "users"),
+          where("nameLower", "==", normName),
+          limit(1)
+        ));
+        if (!q2.empty) return q2.docs[0];
+      } catch (err2) {
+        console.warn("users (nameLower) no accesible:", err2.code || err2.message);
+      }
+
+      try {
+        const scan = await getDocs(collection(db, "users"));
+        for (const d of scan.docs) {
+          const u = d.data() || {};
+          const candidates = [u.name, u.username, u.displayName, u.nameLower]
+            .filter(Boolean)
+            .map(n => normLoginName(String(n)));
+          if (candidates.includes(normName)) return d;
+        }
+      } catch (err3) {
+        console.warn("users (escaneo completo) no accesible:", err3.code || err3.message);
+      }
+
+      return null;
+    };
+
+    let loginDoc = await findLoginDoc();
 
     if (!loginDoc) {
       rlFail("pin");

@@ -23,6 +23,27 @@ service cloud.firestore {
       return myRole() == 'admin' || myRole() == 'inspector';
     }
 
+    match /publicLoginUsers/{userId} {
+      // Acceso público de lectura para poder validar credenciales de PIN
+      // antes de autenticar (login por PIN). Solo admin puede escribir.
+      allow read: if true;
+      allow write: if signedIn() && isAdmin();
+    }
+
+    match /pinLogins/{pinId} {
+      allow read: if signedIn();
+      allow write: if signedIn() && isAdmin();
+    }
+
+    match /profiles/{userId} {
+      // Perfiles de la app "nueva" (GitHub Pages / registro por email).
+      // Lectura pública para poder resolver el email a partir del nombre
+      // antes de autenticar; escritura solo sobre el propio perfil.
+      allow read: if true;
+      allow create, update: if signedIn() && request.auth.uid == userId;
+      allow delete: if signedIn() && isAdmin();
+    }
+
     match /users/{userId} {
       allow read: if true;
       allow create: if signedIn() && isAdmin();

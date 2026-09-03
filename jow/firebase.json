@@ -1,22 +1,14 @@
-{
-  "firestore": {
-    "rules": "firestore.rules"
-  },
+﻿{
   "hosting": {
+    "site": "jowiland-2",
     "public": "public",
-    "predeploy": [
-      "npm run build:public"
-    ],
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
     ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
   }
 }
