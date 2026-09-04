@@ -872,10 +872,13 @@ function setupStaffView() {
   const isStaff  = role === "admin" || role === "inspector";
   const statsSec = document.getElementById("stats-section");
   const destSec  = document.getElementById("destacados-section");
+  const btnDest  = document.getElementById("btn-dest");
 
   // Estadísticas: únicamente Admin e Inspector
   if (statsSec) statsSec.style.display = isStaff ? "" : "none";
-  if (destSec) destSec.style.display = isStaff ? "" : "none";
+  // Trabajadores destacados: se ocultan por defecto (toggle Destacados / Ocultar)
+  if (destSec) destSec.style.display = "none";
+  if (btnDest) btnDest.style.display = isStaff ? "" : "none";
 
   document.getElementById("tabs-nav").style.display = "";
 
@@ -888,7 +891,6 @@ function setupStaffView() {
   if (isStaff) {
     renderActivityChart();
     renderRankings();
-    renderDestacados();
     renderRankingMC();
     renderRankingWeek();
     renderWorkerActivity();
@@ -901,6 +903,19 @@ function setupStaffView() {
   renderNovedades();
   if (typeof renderCurUserBar === "function") renderCurUserBar();
 }
+
+// ── TRABAJADORES DESTACADOS: mostrar / ocultar ────────────────
+let destacadosOpen = false;
+
+window.toggleDestacados = () => {
+  const destSec = document.getElementById("destacados-section");
+  const btn     = document.getElementById("btn-dest");
+  if (!destSec) return;
+  destacadosOpen = !destacadosOpen;
+  destSec.style.display = destacadosOpen ? "block" : "none";
+  if (btn) btn.textContent = destacadosOpen ? "🙈 Ocultar trabajadores destacados" : "👁️ Mostrar trabajadores destacados";
+  if (destacadosOpen && typeof renderDestacados === "function") renderDestacados();
+};
 
 // ══════════════════════════════════════════
 // RANGOS (nueva estructura)
@@ -956,12 +971,13 @@ function isMCteam(u) {
   return hasCargo(u, "MC Team");
 }
 
-// Trabajador del MC Team: cargo MC Team + NO admin/inspector + NO rango
-// superior a Centinela (Admin/Owner/Overlord no son candidatos) + activo
+// Trabajador del MC Team: cargo MC Team + NO admin + NO rango
+// superior a Admin/Owner/Overlord + activo. Los Inspectores SÍ cuentan
+// como personal operativo (solo se excluye el rol Admin).
 function isMCteamWorker(u) {
   if (!u || !isMCteam(u)) return false;
   const role = String(u.role || "").toLowerCase();
-  if (role === "admin" || role === "inspector") return false;
+  if (role === "admin") return false;
   const rk = normRango(u.rango);
   if (rk && rangoIndex(rk) >= rangoIndex("admin")) return false;
   const st = String(u.status || "active").toLowerCase();
@@ -973,18 +989,32 @@ function mcWorkers() {
   return allMembers.filter(isMCteamWorker);
 }
 
-// ── STATS GENERALES (solo MC Team) ─────────────────────────────
+// ── STATS GENERALES (staff operativo: MC Team + no admin) ─────
 function renderStats() {
   const staff = mcWorkers();
   const total = staff.length;
   const pts   = staff.reduce((s, u) => s + (Number(u.points) || 0), 0);
+  const insp  = staff.filter(u => String(u.role || "").toLowerCase() === "inspector").length;
+  const users = staff.filter(u => String(u.role || "").toLowerCase() === "user").length;
+  const risk  = staff.filter(u => (Number(u.points) || 0) <= 2).length;
+  const maxP  = Math.max(1, ...staff.map(u => Number(u.points) || 0));
+  const avg   = total ? pts / total : 0;
+
   const el = id => document.getElementById(id);
-  const st = el("total-members"), av = el("avg-points"), ar = el("staff-at-risk"), op = el("staff-optimal"), tp = el("total-points");
+  const st = el("total-members"), av = el("avg-points"), ar = el("staff-at-risk");
   if (st) st.textContent = total;
-  if (av) av.textContent = total ? (pts / total).toFixed(1) : "0";
-  if (ar) ar.textContent = staff.filter(u => (Number(u.points) || 0) <= 2).length;
-  if (op) op.textContent = staff.filter(u => (Number(u.points) || 0) >= 6).length;
-  if (tp) tp.textContent = pts.toFixed(0);
+  if (av) av.textContent = avg.toFixed(2);
+  if (ar) ar.textContent = risk;
+
+  const s1 = el("total-members-sub"), s2 = el("avg-points-sub"), s3 = el("staff-at-risk-sub");
+  if (s1) s1.textContent = `${insp} inspectores · ${users} usuarios`;
+  if (s2) s2.textContent = `Máximo: ${maxP.toFixed(2)} pts`;
+  if (s3) s3.textContent = total ? Math.round(risk / total * 100) + "% del staff (≤ 2 pts)" : "—";
+
+  const b1 = el("total-members-bar"), b2 = el("avg-points-bar"), b3 = el("staff-at-risk-bar");
+  if (b1) b1.style.width = Math.min(100, total * 12) + "%";
+  if (b2) b2.style.width = Math.min(100, (avg / maxP) * 100) + "%";
+  if (b3) b3.style.width = Math.min(100, total ? (risk / total) * 100 : 0) + "%";
 }
 
 // ── UTILIDADES DE TIEMPO / LOGS ────────────────────────────────

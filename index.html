@@ -77,6 +77,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
 .stat .slabel{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
 .stat .sval{font-size:28px;font-weight:700}
+.stat .ssub{color:var(--muted);font-size:11px;margin-top:4px}
+.pbar{background:var(--bg);border-radius:99px;height:6px;margin-top:10px;overflow:hidden}
+.pfill{border-radius:99px;height:100%;width:0%;transition:width .5s}
+.dest-body{font-size:14px;line-height:1.7}
+.dest-body b{color:var(--warn)}
+.chart-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));margin-bottom:22px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.chart-card h4{font-size:14px;font-weight:700;margin-bottom:4px}
+.chart-card .csub{color:var(--muted);font-size:11px;margin-bottom:12px}
+.chart-card canvas{max-height:260px}
+.chart-filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
+.chart-filters select{background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:8px 12px;font-family:var(--font);outline:none}
+.chart-filters .flabel{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .c-accent{color:var(--accent)}.c-success{color:var(--success)}.c-warn{color:var(--warn)}.c-purple{color:var(--purple)}
 
 /* TABLE */
@@ -108,6 +121,12 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .pbtn{align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;display:inline-flex;font-size:15px;font-weight:700;height:27px;justify-content:center;transition:all .15s;width:27px;user-select:none;line-height:1}
 .pbtn.plus:hover{background:rgba(62,207,142,.15);border-color:var(--success);color:var(--success)}
 .pbtn.minus:hover{background:rgba(224,85,85,.15);border-color:var(--danger);color:var(--danger)}
+
+/* Valor de puntos (decimales) */
+.pts-input{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font);font-size:13px;font-weight:600;padding:6px 9px;width:80px;outline:none;text-align:center}
+.pts-input:focus{border-color:var(--accent)}
+.btn-active{background:var(--accent);color:#fff;border-color:transparent}
+.chart-type-badge{display:inline-block;background:rgba(91,141,238,.12);border:1px solid rgba(91,141,238,.25);border-radius:6px;color:#9db8f7;font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 8px;margin-left:6px;vertical-align:middle;text-transform:uppercase}
 
 /* MODAL */
 .overlay{align-items:center;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);display:none;inset:0;justify-content:center;padding:20px;position:fixed;z-index:100}
@@ -198,6 +217,7 @@ width:100% !important;
 <div class="nav-item" id="nav-crear" onclick="openCreate()" style="display:none"><span class="ico">➕</span>Crear cuenta</div>
 <div class="nav-section">Puntos</div>
 <div class="nav-item" onclick="goPage('points')"><span class="ico">⭐</span>Gestión de puntos</div>
+<div class="nav-item" onclick="goPage('charts')"><span class="ico">📈</span>Gráficos</div>
 <div class="nav-item" id="nav-config" onclick="goPage('config')"><span class="ico">⚙️</span>Configurar Puntos</div>
 <div class="nav-item" onclick="goPage('logs')"><span class="ico">📜</span>Logs</div>
 </nav>
@@ -219,18 +239,32 @@ width:100% !important;
 <div class="page active" id="page-dashboard">
 <div class="ph"><div class="ph-left"><h2>Dashboard</h2><p>Resumen general</p></div></div>
 <div class="stats">
-<div class="stat"><div class="slabel">Total cuentas</div><div class="sval c-accent" id="st-total">—</div></div>
-<div class="stat" id="st-insp-card"><div class="slabel">Inspectores</div><div class="sval c-success" id="st-insp">—</div></div>
-<div class="stat" id="st-users-card"><div class="slabel">Usuarios</div><div class="sval c-purple" id="st-users">—</div></div>
-<div class="stat"><div class="slabel">Puntos entregados</div><div class="sval c-warn" id="st-pts">—</div></div>
+<div class="stat"><div class="slabel">Miembros staff</div><div class="sval c-accent" id="st-total">—</div><div class="ssub" id="st-total-sub"></div><div class="pbar"><div class="pfill" id="st-total-bar" style="background:var(--accent)"></div></div></div>
+<div class="stat" id="st-insp-card"><div class="slabel">Inspectores</div><div class="sval c-success" id="st-insp">—</div><div class="ssub" id="st-insp-sub"></div><div class="pbar"><div class="pfill" id="st-insp-bar" style="background:var(--success)"></div></div></div>
+<div class="stat" id="st-users-card"><div class="slabel">Usuarios</div><div class="sval c-purple" id="st-users">—</div><div class="ssub" id="st-users-sub"></div><div class="pbar"><div class="pfill" id="st-users-bar" style="background:var(--purple)"></div></div></div>
+<div class="stat"><div class="slabel">Puntos promedio</div><div class="sval c-warn" id="st-avg">—</div><div class="ssub" id="st-avg-sub"></div><div class="pbar"><div class="pfill" id="st-avg-bar" style="background:var(--warn)"></div></div></div>
+<div class="stat"><div class="slabel">En riesgo</div><div class="sval" style="color:var(--danger)" id="st-risk">—</div><div class="ssub" id="st-risk-sub"></div><div class="pbar"><div class="pfill" id="st-risk-bar" style="background:var(--danger)"></div></div></div>
 </div>
+
+<div style="margin-bottom:16px">
+<button class="btn btn-ghost btn-sm" id="btn-dest" onclick="toggleDestacados()">👁️ Mostrar trabajadores destacados</button>
+</div>
+<div id="destacados-wrap" style="display:none;margin-bottom:22px">
+<div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+<div class="stat"><div class="slabel">🌟 Trabajador del día</div><div id="dest-dia" class="dest-body">—</div></div>
+<div class="stat"><div class="slabel">🏅 Trabajador de la semana</div><div id="dest-semana" class="dest-body">—</div></div>
+<div class="stat"><div class="slabel">👑 Trabajador del mes</div><div id="dest-mes" class="dest-body">—</div></div>
+</div>
+</div>
+
 <div class="tcard">
 <div class="ttoolbar"><span class="ttoolbar-title">🏆 Top por puntos</span></div>
 <table>
-<thead><tr><th>#</th><th>Nombre</th><th>Rol</th><th>Puntos</th></tr></thead>
-<tbody id="dash-tbody"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody>
+<thead><tr><th>#</th><th>Nombre</th><th>Rol</th><th>Puntos</th><th>Valor</th><th>Ajustar</th></tr></thead>
+<tbody id="dash-tbody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody>
 </table>
 </div>
+
 </div>
 
 <!-- CUENTAS -->
@@ -275,9 +309,59 @@ width:100% !important;
 <div class="search"><span>🔍</span><input type="text" placeholder="Buscar moderador…" oninput="filterP(this.value)"/></div>
 </div>
 <table>
-<thead><tr><th>Nombre</th><th>Rol</th><th>Puntos actuales</th><th>Ajustar</th></tr></thead>
-<tbody id="pts-tbody"><tr><td colspan="4" class="empty">Cargando…</td></tr></tbody>
+<thead><tr><th>Nombre</th><th>Rol</th><th>Puntos actuales</th><th>Valor</th><th>Ajustar</th></tr></thead>
+<tbody id="pts-tbody"><tr><td colspan="5" class="empty">Cargando…</td></tr></tbody>
 </table>
+</div>
+</div>
+
+<!-- GRÁFICOS -->
+<div class="page" id="page-charts">
+<div class="ph"><div class="ph-left"><h2>Gráficos</h2><p>Análisis visual del staff</p></div></div>
+<div class="chart-filters">
+<span class="flabel">Filtros:</span>
+<select id="cf-cargo" onchange="renderCharts()">
+<option value="">Todos los cargos</option>
+</select>
+<select id="cf-rango" onchange="renderCharts()">
+<option value="">Todos los rangos</option>
+<option value="《🪬》 Overlord">《🪬》 Overlord</option>
+<option value="《🧿》 Owner">《🧿》 Owner</option>
+<option value="《💎》 Admin">《💎》 Admin</option>
+<option value="《🔹》 Centinela">《🔹》 Centinela</option>
+<option value="《🔹》 Vigia">《🔹》 Vigia</option>
+</select>
+</div>
+<div class="chart-grid">
+<div class="chart-card">
+<h4>🏆 Ranking por puntos</h4>
+<div class="csub">Comparación entre miembros del staff</div>
+<div style="display:flex;gap:6px;margin-bottom:10px">
+<button class="btn btn-ghost btn-sm" id="sw-rank-bar" onclick="setRankType('bar')">📊 Columnas</button>
+<button class="btn btn-ghost btn-sm" id="sw-rank-pie" onclick="setRankType('doughnut')">🍩 Circular</button>
+</div>
+<canvas id="ch-rank"></canvas>
+</div>
+<div class="chart-card">
+<h4>📈 Evolución de puntos</h4>
+<div class="csub">Tendencia temporal según registros de cambios</div>
+<canvas id="ch-evo"></canvas>
+</div>
+<div class="chart-card">
+<h4>⚡ Actividad por trabajador</h4>
+<div class="csub">Acciones registradas por cada miembro</div>
+<canvas id="ch-act"></canvas>
+</div>
+<div class="chart-card">
+<h4>🍩 Distribución por rango</h4>
+<div class="csub">Proporción de miembros por rango</div>
+<canvas id="ch-dist"></canvas>
+</div>
+<div class="chart-card">
+<h4>🕐 Actividad por hora del día</h4>
+<div class="csub">Registros de actividad en formato 24h</div>
+<canvas id="ch-hour"></canvas>
+</div>
 </div>
 </div>
 
@@ -384,9 +468,11 @@ width:100% !important;
 <div class="field">
 <label>Rango</label>
 <select id="m-rango">
-<option value="Centinela">Centinela</option>
-<option value="Admin">Admin</option>
-<option value="Owner">Owner</option>
+<option value="《🪬》 Overlord">《🪬》 Overlord</option>
+<option value="《🧿》 Owner">《🧿》 Owner</option>
+<option value="《💎》 Admin">《💎》 Admin</option>
+<option value="《🔹》 Centinela" selected>《🔹》 Centinela</option>
+<option value="《🔹》 Vigia">《🔹》 Vigia</option>
 </select>
 </div>
 
@@ -478,6 +564,7 @@ width:100% !important;
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script type="module">
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import {
@@ -769,8 +856,8 @@ return (h * 60 + m) * 60 * 1000;
 function fmtPts(p) {
 const n = Number(p || 0);
 if (!Number.isFinite(n)) return "0";
-const r = Math.round(n * 10) / 10;
-return r % 1 === 0 ? String(r.toFixed(0)) : r.toFixed(1);
+// Se conservan los decimales tal cual (hasta 2 posiciones) sin redondear
+return String(Math.round(n * 100) / 100);
 }
 
 function stopPointDecrementScheduler() {
@@ -820,7 +907,7 @@ for (const u of allUsers) {
 if (!u || u.role === "admin") continue;
 const oldP = Number(u.points || 0);
 if (!Number.isFinite(oldP)) continue;
-const newP = Math.max(0, Math.round((oldP - dec) * 10) / 10);
+const newP = Math.max(0, Math.round((oldP - dec) * 100) / 100);
 if (newP === oldP) continue;
 try {
 await updateDoc(doc(db, "users", u.uid), { points: newP });
@@ -850,6 +937,7 @@ document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active")
 document.getElementById("page-" + id).classList.add("active");
 const ni = document.querySelector(`.nav-item[onclick="goPage('${id}')"]`);
 if (ni) ni.classList.add("active");
+if (id === "charts" && typeof renderCharts === "function") renderCharts();
 };
 
 window.setLogTypeFilter = v => { logTypeFilter = v; renderLogs(); };
@@ -859,6 +947,211 @@ const el = document.getElementById("insp-panel");
 if (!el) return;
 el.style.display = el.style.display === "none" ? "block" : "none";
 };
+
+// ── GRÁFICOS (centralizados en el panel central) ──────────────
+// Tipos de gráficos:
+//  Lineal  → evolución / tendencia temporal
+//  Columnas → comparación entre miembros / rankings
+//  Circular (doughnut) → distribución / proporción
+let rankChartType = "bar";
+const chartInstances = {};
+
+const CHART_COLORS = ["#5b8dee","#3ecf8e","#f5a623","#a78bfa","#e05555","#4cc9f0","#ffd166","#57cc99","#2ecc71","#e67e22"];
+
+window.setRankType = t => {
+rankChartType = t === "doughnut" ? "doughnut" : "bar";
+const barBtn = document.getElementById("sw-rank-bar");
+const pieBtn = document.getElementById("sw-rank-pie");
+if (barBtn) barBtn.classList.toggle("btn-active", rankChartType === "bar");
+if (pieBtn) pieBtn.classList.toggle("btn-active", rankChartType === "doughnut");
+renderCharts();
+};
+
+function destroyChart(name) {
+if (chartInstances[name]) {
+try { chartInstances[name].destroy(); } catch {}
+delete chartInstances[name];
+}
+}
+
+function currentFilter() {
+const cargo = document.getElementById("cf-cargo")?.value || "";
+const rango = document.getElementById("cf-rango")?.value || "";
+return { cargo, rango };
+}
+
+function populateCargoFilter() {
+const sel = document.getElementById("cf-cargo");
+if (!sel) return;
+const seen = new Set();
+for (const u of allUsers) {
+const cs = u.cargos || [];
+const arr = Array.isArray(cs) ? cs : [String(cs)];
+for (const c of arr) {
+const key = String(c).trim();
+if (key) seen.add(key);
+}
+}
+const cur = sel.value;
+const opts = ['<option value="">Todos los cargos</option>'];
+for (const c of [...seen].sort()) opts.push(`<option value="${esc(c)}">${esc(c)}</option>`);
+sel.innerHTML = opts.join("");
+sel.value = cur;
+}
+
+function filteredChartUsers() {
+const { cargo, rango } = currentFilter();
+return allUsers.filter(u => {
+if (cargo && !(u.cargos || []).some(c => String(c).trim().toLowerCase().includes(cargo.toLowerCase()))) return false;
+if (rango && !String(u.rango || "").includes(rango)) return false;
+return true;
+});
+}
+
+function countActionsBy(uid) {
+let c = 0;
+for (const l of logs) {
+if (!l || l.actorUid !== uid) continue;
+if (String(l.actorRole || "").toLowerCase() === "admin") continue;
+c++;
+}
+return c;
+}
+
+function chartBarOrDoughnut(canvasId, labels, values, labelText, kind, colors) {
+const cv = document.getElementById(canvasId);
+if (!cv) return;
+if (typeof Chart === "undefined") { cv.parentElement.innerHTML = '<div class="empty">Chart.js no cargó.</div>'; return; }
+destroyChart(canvasId);
+const isDough = kind === "doughnut";
+const data = isDough
+? { labels, datasets: [{ data: values, backgroundColor: colors || CHART_COLORS, borderWidth: 0 }] }
+: { labels, datasets: [{ label: labelText, data: values, backgroundColor: CHART_COLORS.slice(0, values.length), borderRadius: 5 }] };
+chartInstances[canvasId] = new Chart(cv, {
+type: isDough ? "doughnut" : "bar",
+data,
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: { legend: { display: isDough, labels: { color: "#dde3f0", boxWidth: 12 } } },
+scales: isDough ? {} : {
+y: { beginAtZero: true, ticks: { color: "#5a6680" }, grid: { color: "rgba(255,255,255,.05)" } },
+x: { ticks: { color: "#5a6680", maxRotation: 45, autoSkip: true } }
+}
+}
+});
+}
+
+function chartLineMulti(canvasId, labels, seriesList) {
+const cv = document.getElementById(canvasId);
+if (!cv) return;
+if (typeof Chart === "undefined") { cv.parentElement.innerHTML = '<div class="empty">Chart.js no cargó.</div>'; return; }
+destroyChart(canvasId);
+const datasets = seriesList.map((s, i) => ({
+label: s.name,
+data: s.series,
+borderColor: CHART_COLORS[i % CHART_COLORS.length],
+backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + "22",
+fill: false,
+tension: 0.3,
+pointRadius: 2.5
+}));
+chartInstances[canvasId] = new Chart(cv, {
+type: "line",
+data: { labels, datasets },
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: { legend: { labels: { color: "#dde3f0", boxWidth: 12 } } },
+scales: {
+y: { beginAtZero: false, ticks: { color: "#5a6680" }, grid: { color: "rgba(255,255,255,.05)" } },
+x: { ticks: { color: "#5a6680", maxRotation: 45, autoSkip: true } }
+}
+}
+});
+}
+
+function renderCharts() {
+if (typeof Chart === "undefined") return;
+populateCargoFilter();
+const users = filteredChartUsers();
+
+if (!users.length) {
+["ch-rank","ch-evo","ch-act","ch-dist","ch-hour"].forEach(id => {
+const cv = document.getElementById(id);
+if (cv) cv.parentElement.innerHTML = '<div class="empty">Sin usuarios para los filtros seleccionados.</div>';
+});
+return;
+}
+
+// 1) Ranking por puntos (Columnas o Circular)
+const rankRows = [...users].sort((a,b) => (Number(b.points||0)-Number(a.points||0))).slice(0, 12);
+chartBarOrDoughnut("ch-rank",
+rankRows.map(u => u.name || "—"),
+rankRows.map(u => Number(u.points || 0)),
+"Puntos",
+rankChartType,
+rankRows.map((_, i) => CHART_COLORS[i % CHART_COLORS.length])
+);
+
+// 2) Evolución de puntos (Línea) — reconstruye desde logs (targetUid + delta)
+const now = Date.now(), step = 24 * 60 * 60 * 1000, count = 14;
+const days = [];
+for (let i = count - 1; i >= 0; i--) {
+const end = now - i * step, start = end - step;
+days.push({ start, end, label: `${new Date(end).getDate()}/${new Date(end).getMonth()+1}` });
+}
+const evoUsers = [...users].sort((a,b) => (Number(b.points||0)-Number(a.points||0))).slice(0, 6);
+const seriesList = evoUsers.map(w => {
+const daily = new Array(count).fill(0);
+for (const l of logs) {
+if (!l || l.type !== "points" || l.targetUid !== w.uid) continue;
+const t = logTimeRaw(l);
+if (!t) continue;
+const bi = days.findIndex(d => t >= d.start && t < d.end);
+if (bi >= 0) daily[bi] += typeof l.delta === "number" ? l.delta : 0;
+}
+let val = Number(w.points) || 0;
+const series = new Array(count).fill(0);
+for (let i = count - 1; i >= 0; i--) {
+series[i] = Math.round(val * 100) / 100;
+val -= daily[i];
+}
+return { name: w.name || "—", series };
+});
+chartLineMulti("ch-evo", days.map(d => d.label), seriesList);
+
+// 3) Actividad por trabajador (Columnas) — excluye admins
+const actUsers = users.filter(u => u.role !== "admin");
+chartBarOrDoughnut("ch-act",
+actUsers.map(u => u.name || "—"),
+actUsers.map(u => countActionsBy(u.uid)),
+"Acciones",
+"bar",
+CHART_COLORS
+);
+
+// 4) Distribución por rango (Circular)
+const rankCount = {};
+for (const u of users) {
+const rk = u.rango && String(u.rango).trim() ? String(u.rango) : "Sin rango";
+rankCount[rk] = (rankCount[rk] || 0) + 1;
+}
+const rankLabels = Object.keys(rankCount);
+chartBarOrDoughnut("ch-dist", rankLabels, rankLabels.map(k => rankCount[k]), "Miembros", "doughnut", CHART_COLORS);
+
+// 5) Actividad por hora del día (Columnas, 24 h)
+const hours = new Array(24).fill(0);
+for (const l of logs) {
+if (!l) continue;
+if (String(l.actorRole || "").toLowerCase() === "admin") continue;
+const t = logTimeRaw(l);
+if (!t) continue;
+hours[new Date(t).getHours()]++;
+}
+const hLabels = Array.from({ length: 24 }, (_, i) => `${i % 12 === 0 ? 12 : i % 12} ${i < 12 ? "AM" : "PM"}`);
+chartBarOrDoughnut("ch-hour", hLabels, hours, "Registros", "bar", CHART_COLORS);
+}
 
 function dayKey(dt) {
 const y = dt.getFullYear();
@@ -1077,6 +1370,7 @@ logsUnsub = onSnapshot(q, snap => {
 logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 renderLogs();
 renderInspectorActivity();
+if (typeof renderCharts === "function") renderCharts();
 }, e => console.error("Logs snapshot error:", e));
 }
 
@@ -1214,6 +1508,59 @@ return `
 }).join("");
 }
 
+// ── TRABAJADORES DESTACADOS (Día / Semana / Mes) ──────────────
+window.toggleDestacados = () => {
+const wrap = document.getElementById("destacados-wrap");
+const btn  = document.getElementById("btn-dest");
+if (!wrap) return;
+const show = wrap.style.display !== "grid";
+wrap.style.display = show ? "grid" : "none";
+if (btn) btn.textContent = show ? "🙈 Ocultar trabajadores destacados" : "👁️ Mostrar trabajadores destacados";
+if (show && typeof renderDestacados === "function") renderDestacados();
+};
+
+function logTimeRaw(l) {
+if (!l) return 0;
+const d = tsToDate(l.createdAt);
+if (d) return d.getTime();
+return typeof l.clientTs === "number" ? l.clientTs : 0;
+}
+
+function periodTopStaff(mode) {
+const now = Date.now();
+const mult = mode === "day" ? 1 : mode === "week" ? 7 : 30;
+const start = now - mult * 24 * 60 * 60 * 1000;
+const counts = new Map();
+for (const l of logs) {
+if (!l) continue;
+if (String(l.actorRole || "").toLowerCase() === "admin") continue;
+const t = logTimeRaw(l);
+if (!t || t < start) continue;
+const uid = l.actorUid || "—";
+counts.set(uid, (counts.get(uid) || 0) + 1);
+}
+let bestUid = null, best = 0;
+for (const [uid, c] of counts) if (c > best) { best = c; bestUid = uid; }
+if (!bestUid) return null;
+const u = allUsers.find(x => x.uid === bestUid);
+return u ? { u, count: best } : null;
+}
+
+function renderDestacados() {
+const defs = [
+{ mode: "day",   id: "dest-dia",    empty: "Sin actividad hoy" },
+{ mode: "week",  id: "dest-semana", empty: "Sin actividad esta semana" },
+{ mode: "month", id: "dest-mes",    empty: "Sin actividad este mes" }
+];
+for (const def of defs) {
+const el = document.getElementById(def.id);
+if (!el) continue;
+const w = periodTopStaff(def.mode);
+if (!w) { el.innerHTML = def.empty; continue; }
+el.innerHTML = `🏆 <b>${esc(w.u.name || "—")}</b><br><span style="color:var(--muted);font-size:12px">🎯 ${w.count} acciones · ⭐ ${fmtPts(w.u.points)} pts · ${def.mode === "day" ? "hoy" : def.mode === "week" ? "7 días" : "30 días"}</span>`;
+}
+}
+
 // ── CARGAR USUARIOS ───────────────────────────────────────────
 async function loadUsers() {
 try {
@@ -1231,26 +1578,79 @@ function renderAll() {
 renderDash();
 renderUsersTable(filteredUsers());
 renderPointsTable(filteredPoints());
+populateCargoFilter();
+renderCharts();
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────
 function renderDash() {
-document.getElementById("st-total").textContent = allUsers.length;
-document.getElementById("st-insp").textContent  = allUsers.filter(u => u.role==="inspector").length;
-document.getElementById("st-users").textContent = allUsers.filter(u => u.role==="user").length;
-document.getElementById("st-pts").textContent   = allUsers.reduce((s,u) => s+(u.points||0), 0);
+// Staff = todos menos admins (inspectores SÍ se incluyen)
+const staff = allUsers.filter(u => u.role !== "admin");
+const insp  = allUsers.filter(u => u.role === "inspector");
+const users = allUsers.filter(u => u.role === "user");
+const total = staff.length;
+const ptsArr = staff.map(u => Number(u.points || 0));
+const avg = total ? ptsArr.reduce((a,b)=>a+b,0) / total : 0;
+const risk = staff.filter(u => Number(u.points||0) <= 2).length;
+const maxP = Math.max(1, ...ptsArr);
+
+document.getElementById("st-total").textContent = total;
+document.getElementById("st-total-sub").textContent = `${insp.length} inspectores · ${users.length} usuarios`;
+document.getElementById("st-total-bar").style.width = Math.min(100, total*10) + "%";
+
+document.getElementById("st-insp").textContent = insp.length;
+document.getElementById("st-insp-sub").textContent = total ? Math.round(insp.length/total*100) + "% del staff" : "—";
+document.getElementById("st-insp-bar").style.width = (total ? insp.length/total*100 : 0) + "%";
+
+document.getElementById("st-users").textContent = users.length;
+document.getElementById("st-users-sub").textContent = total ? Math.round(users.length/total*100) + "% del staff" : "—";
+document.getElementById("st-users-bar").style.width = (total ? users.length/total*100 : 0) + "%";
+
+document.getElementById("st-avg").textContent = (Math.round(avg*100)/100).toString();
+document.getElementById("st-avg-sub").textContent = `Máximo: ${fmtPts(maxP)} pts`;
+document.getElementById("st-avg-bar").style.width = Math.min(100, avg/maxP*100) + "%";
+
+document.getElementById("st-risk").textContent = risk;
+document.getElementById("st-risk-sub").textContent = total ? Math.round(risk/total*100) + "% del staff (≤2 pts)" : "—";
+document.getElementById("st-risk-bar").style.width = (total ? risk/total*100 : 0) + "%";
+
+renderDestacados();
 
 const top = [...allUsers].sort((a,b) => (b.points||0)-(a.points||0)).slice(0, 8);
 const tb = document.getElementById("dash-tbody");
-if (!top.length) { tb.innerHTML='<tr><td colspan="4" class="empty">Sin datos aún.</td></tr>'; return; }
-tb.innerHTML = top.map((u,i) => `
+const canEdit = myRole === "admin" || myRole === "inspector";
+if (!top.length) { tb.innerHTML='<tr><td colspan="6" class="empty">Sin datos aún.</td></tr>'; return; }
+tb.innerHTML = top.map((u,i) => {
+const isSelf = u.uid === myUid;
+const dis = (isSelf || !canEdit) ? 'disabled style="opacity:0.45;cursor:not-allowed"' : '';
+const cells = canEdit ? `
+  <td>${isSelf ? '<span style="color:var(--muted);font-size:11px">—</span>' : `<input type="number" step="0.01" min="0" id="dvin-${u.uid}" value="1" class="pts-input" title="Valor a sumar o restar (decimales)"/>`}</td>
+  <td><div class="pts-row" style="flex-wrap:wrap">
+    <button class="btn btn-success btn-sm" onclick="dashApplyPts('${u.uid}',1)" ${dis}>＋</button>
+    <button class="btn btn-danger btn-sm" onclick="dashApplyPts('${u.uid}',-1)" ${dis}>−</button>
+  </div></td>` : '<td colspan="2"><span style="color:var(--muted);font-size:11px">—</span></td>';
+return `
    <tr>
      <td style="color:var(--muted);font-weight:700;width:30px">${i+1}</td>
      <td><b>${esc(u.name||"—")}</b></td>
      <td>${roleBadge(u.role)}</td>
-     <td><b style="color:var(--warn);font-size:15px">${fmtPts(u.points)}</b></td>
-   </tr>`).join("");
+     <td><b style="color:var(--warn);font-size:15px" id="dpv-${u.uid}">${fmtPts(u.points)}</b></td>
+     ${cells}
+   </tr>`;
+}).join("");
 }
+
+// Acción rápida de puntos desde el Dashboard (misma fuente de datos).
+window.dashApplyPts = async (uid, sign) => {
+if (myRole !== "admin" && myRole !== "inspector") { showToast("Sin permisos para modificar puntos.", "err"); return; }
+const inp = document.getElementById("dvin-" + uid);
+const raw = inp ? inp.value : "";
+const v = parseFloat(String(raw).replace(",", "."));
+if (!Number.isFinite(v) || v <= 0) { showToast("Ingresá un valor numérico válido (ej: 2.5 o 1.25).", "err"); return; }
+await adjPts(uid, sign * v);
+const el = document.getElementById("dpv-" + uid);
+if (el) el.textContent = fmtPts(allUsers.find(x=>x.uid===uid)?.points || 0);
+};
 
 // ── TABLA USUARIOS ────────────────────────────────────────────
 function filteredUsers() {
@@ -1295,19 +1695,21 @@ window.filterP = v => { filterPText = v.toLowerCase(); renderPointsTable(filtere
 
 function renderPointsTable(list) {
 const tb = document.getElementById("pts-tbody");
-if (!list.length) { tb.innerHTML='<tr><td colspan="4" class="empty">Sin moderadores.</td></tr>'; return; }
+if (!list.length) { tb.innerHTML='<tr><td colspan="5" class="empty">Sin moderadores.</td></tr>'; return; }
 tb.innerHTML = list.map(u => {
 const isSelf = u.uid === myUid;
+const dis = isSelf ? 'disabled style="opacity:0.5;cursor:not-allowed"' : '';
 return `
    <tr>
      <td><b>${esc(u.name||"—")}</b></td>
      <td>${roleBadge(u.role)}</td>
      <td><span class="pts-val" id="pv-${u.uid}">${fmtPts(u.points)}</span></td>
+     <td><input type="number" step="0.01" min="0" id="pvin-${u.uid}" value="1" class="pts-input" ${isSelf ? "disabled" : ""} title="Valor a sumar o restar (decimales permitidos)"/></td>
      <td>
-       <div class="pts-row">
-         <button class="pbtn minus" onclick="adjPts('${u.uid}',-1)" ${isSelf ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>−</button>
-         <button class="pbtn plus"  onclick="adjPts('${u.uid}',+1)" ${isSelf ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>+</button>
-         <button class="btn btn-ghost btn-sm" onclick="promptPts('${u.uid}')" ${isSelf ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>± Ingresar</button>
+       <div class="pts-row" style="flex-wrap:wrap">
+         <button class="btn btn-success btn-sm" onclick="applyPts('${u.uid}',1)" ${dis}>＋ Sumar</button>
+         <button class="btn btn-danger btn-sm" onclick="applyPts('${u.uid}',-1)" ${dis}>− Restar</button>
+         <button class="btn btn-ghost btn-sm" onclick="promptPts('${u.uid}')" ${dis}>± Fijar</button>
        </div>
      </td>
    </tr>`;
@@ -1315,7 +1717,27 @@ return `
 }
 
 // ── PUNTOS ────────────────────────────────────────────────────
+// Suma o resta el valor decimal escrito en la columna "Valor".
+window.applyPts = async (uid, sign) => {
+if (myRole !== "admin" && myRole !== "inspector") {
+showToast("No tenés permisos para modificar puntos.", "err");
+return;
+}
+const inp = document.getElementById("pvin-" + uid);
+const raw = inp ? inp.value : "";
+const v = parseFloat(String(raw).replace(",", "."));
+if (!Number.isFinite(v) || v <= 0) {
+showToast("Ingresá un valor numérico válido en la columna Valor (ej: 2.5 o 1.25).", "err");
+return;
+}
+await adjPts(uid, sign * v);
+};
+
 window.adjPts = async (uid, delta) => {
+if (myRole !== "admin" && myRole !== "inspector") {
+showToast("No tenés permisos para modificar puntos.", "err");
+return;
+}
 if (uid === myUid) {
 showToast("No podés modificar tus propios puntos!", "err");
 return;
@@ -1332,14 +1754,15 @@ return;
 const reasonRaw = prompt("Motivo del cambio de puntos:", "");
 if (reasonRaw === null && myRole !== "admin") return;
 const reason = (reasonRaw || "").trim() || "Sin motivo";
+// Se conservan los decimales: no se redondea el valor almacenado.
 const nv = Math.max(0, (u.points||0) + delta);
 try {
 await updateDoc(doc(db,"users",uid), { points: nv });
 u.points = nv;
 const el = document.getElementById("pv-"+uid);
 if (el) el.textContent = fmtPts(nv);
-renderDash();
-showToast((delta>0?"➕":"➖") + " " + Math.abs(delta) + " pt a " + (u.name||"usuario"), "ok");
+renderAll();
+showToast((delta>0?"➕":"➖") + " " + fmtPts(Math.abs(delta)) + " pt a " + (u.name||"usuario"), "ok");
 const nText = buildPointsNovedad(u.name || "Un usuario", delta, nv, reason);
 await logNovedad(nText);
 await writeLog({
@@ -1364,10 +1787,10 @@ return;
 }
 const u = allUsers.find(x => x.uid===uid);
 if (!u) return;
-const raw = prompt(`Ajustar puntos de ${u.name||"usuario"} (actual: ${u.points||0})\n\nEscribí positivo para sumar o negativo para restar.\nEj: 5 suma 5 puntos | -3 resta 3 puntos`);
+const raw = prompt(`Ajustar puntos de ${u.name||"usuario"} (actual: ${fmtPts(u.points)})\n\nEscribí positivo para sumar o negativo para restar.\nEj: 2.5 suma 2.5 puntos | -1.25 resta 1.25 puntos`);
 if (raw===null) return;
-const n = parseInt(raw, 10);
-if (isNaN(n)) return showToast("Número inválido.","err");
+const n = parseFloat(String(raw).replace(",", "."));
+if (isNaN(n)) return showToast("Número inválido.", "err");
 const reasonRaw = prompt("Motivo del cambio de puntos:", "");
 if (reasonRaw === null && myRole !== "admin") return;
 const reason = (reasonRaw || "").trim() || "Sin motivo";
@@ -1375,6 +1798,10 @@ adjPtsWithReason(uid, n, reason);
 };
 
 async function adjPtsWithReason(uid, delta, reason) {
+if (myRole !== "admin" && myRole !== "inspector") {
+showToast("No tenés permisos para modificar puntos.", "err");
+return;
+}
 if (uid === myUid) {
 showToast("No podés modificar tus propios puntos!", "err");
 return;
@@ -1394,8 +1821,8 @@ await updateDoc(doc(db,"users",uid), { points: nv });
 u.points = nv;
 const el = document.getElementById("pv-"+uid);
 if (el) el.textContent = fmtPts(nv);
-renderDash();
-showToast((delta>0?"➕":"➖") + " " + Math.abs(delta) + " pt a " + (u.name||"usuario"), "ok");
+renderAll();
+showToast((delta>0?"➕":"➖") + " " + fmtPts(Math.abs(delta)) + " pt a " + (u.name||"usuario"), "ok");
 const nText = buildPointsNovedad(u.name || "Un usuario", delta, nv, reason);
 await logNovedad(nText);
 await writeLog({

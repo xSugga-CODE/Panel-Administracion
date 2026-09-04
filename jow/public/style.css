@@ -293,6 +293,24 @@ body {
 .stat-label { display: block; color: var(--muted); font-size: .88rem; margin-bottom: 6px; }
 .stat-card strong { font-size: 2rem; color: #fff; }
 
+/* Sub-info y barras de progreso en tarjetas de estadísticas */
+.stat-sub { display: block; color: var(--muted); font-size: 11px; margin-top: 4px; }
+
+.stat-bar-wrap {
+  height: 5px;
+  background: rgba(255,255,255,.07);
+  border-radius: 99px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.stat-bar {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  transition: width .5s ease;
+}
+
 /* ── TABS ── */
 .tabs-container {
   display: flex;

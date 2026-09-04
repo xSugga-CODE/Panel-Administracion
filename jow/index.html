@@ -71,35 +71,36 @@
       </div>
     </header>
 
-    <!-- STATS -->
+    <!-- STATS (mejoradas con sub-info y barras) -->
     <section class="stats-grid" id="stats-section">
       <article class="stat-card">
         <span class="stat-label">Miembros staff</span>
         <strong id="total-members">0</strong>
+        <span class="stat-sub" id="total-members-sub">—</span>
+        <div class="stat-bar-wrap"><div class="stat-bar" id="total-members-bar"></div></div>
       </article>
       <article class="stat-card">
         <span class="stat-label">Puntos promedio</span>
         <strong id="avg-points">0</strong>
+        <span class="stat-sub" id="avg-points-sub">—</span>
+        <div class="stat-bar-wrap"><div class="stat-bar" id="avg-points-bar"></div></div>
       </article>
       <article class="stat-card">
         <span class="stat-label">En riesgo</span>
         <strong id="staff-at-risk">0</strong>
-      </article>
-      <article class="stat-card">
-        <span class="stat-label">Óptimos</span>
-        <strong id="staff-optimal">0</strong>
-      </article>
-      <article class="stat-card">
-        <span class="stat-label">Puntos totales</span>
-        <strong id="total-points">0</strong>
+        <span class="stat-sub" id="staff-at-risk-sub">—</span>
+        <div class="stat-bar-wrap"><div class="stat-bar" id="staff-at-risk-bar"></div></div>
       </article>
     </section>
 
-    <!-- TRABAJADORES DESTACADOS DEL MC TEAM (solo Admin e Inspector) -->
+    <!-- TRABAJADORES DESTACADOS DEL MC TEAM (con mostrar/ocultar) -->
+    <div style="margin:16px 0">
+      <button class="btn-ghost" id="btn-dest" onclick="toggleDestacados()">👁️ Mostrar trabajadores destacados</button>
+    </div>
     <section class="stats-detail" id="destacados-section" style="display:none">
       <div class="section-head">
         <h3>⭐ Trabajadores destacados del MC Team</h3>
-        <p>Reconocimiento por rendimiento. Solo se consideran trabajadores con el cargo <b>MC Team</b>. Los administradores e inspectores quedan separados de estas estadísticas.</p>
+        <p>Reconocimiento por rendimiento. Solo se consideran trabajadores con el cargo <b>MC Team</b>.</p>
       </div>
       <div class="destacado-grid">
         <article class="destacado-card">
@@ -139,7 +140,6 @@
         <h2>Tabla de Puntos</h2>
         <div class="cur-user-bar" id="cur-user-bar" style="display:none"></div>
         <div class="card">
-          <p style="color:#9ba8d6;margin-bottom:16px">Clasificación en tiempo real del MC Team. Solo se muestran trabajadores con el cargo MC Team; los admins e inspectores gestionan desde <b>setupAdmin.html → Gestionar puntos</b>.</p>
           <table>
             <thead>
               <tr id="pts-thead-row"><th>#</th><th>Nombre</th><th>Rango</th><th>Puntos</th><th>Estado</th></tr>
