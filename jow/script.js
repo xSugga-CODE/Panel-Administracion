@@ -107,7 +107,7 @@ async function comparePinHash(pin, pinHash, pinSalt) {
 }
 
 async function restorePinSession() {
-  const storedUid = sessionStorage.getItem(PIN_SESSION_KEY);
+  const storedUid = localStorage.getItem(PIN_SESSION_KEY);
   if (!storedUid) {
     showLoginScreen();
     return;
@@ -116,14 +116,14 @@ async function restorePinSession() {
   try {
     const snap = await getDoc(doc(db, "users", storedUid));
     if (!snap.exists()) {
-      sessionStorage.removeItem(PIN_SESSION_KEY);
+      localStorage.removeItem(PIN_SESSION_KEY);
       showLoginScreen();
       return;
     }
 
     const data = snap.data();
     if (data.status === "inactive") {
-      sessionStorage.removeItem(PIN_SESSION_KEY);
+      localStorage.removeItem(PIN_SESSION_KEY);
       showLoginScreen();
       return;
     }
@@ -132,7 +132,7 @@ async function restorePinSession() {
     bootApp();
   } catch (e) {
     console.error("Error recreating PIN session:", e);
-    sessionStorage.removeItem(PIN_SESSION_KEY);
+    localStorage.removeItem(PIN_SESSION_KEY);
     showLoginScreen();
   }
 }
@@ -234,12 +234,19 @@ onAuthStateChanged(auth, async fbUser => {
       if (data.status === "inactive") { showErr("Tu cuenta está inactiva."); await signOut(auth); return; }
       const role = String(data.role || "user").toLowerCase();
       currentUser = { uid, ...data, role };
-      if (sessionStorage.getItem(PIN_SESSION_KEY) !== uid) {
-        try { sessionStorage.removeItem(PIN_SESSION_KEY); } catch {}
+      if (localStorage.getItem(PIN_SESSION_KEY) !== uid) {
+        try { localStorage.removeItem(PIN_SESSION_KEY); } catch {}
       }
       await logLoginOnce();
       bootApp();
-    } catch(e) { showErr("Error al cargar tu perfil: " + e.message); }
+    } catch(e) { 
+      console.error("Auth state error:", e);
+      if (e.code === "unavailable" || e.code === "network-request-failed") {
+        showErr("Error de conexión. Verificá tu internet e intentá de nuevo.");
+      } else {
+        showErr("Error al cargar tu perfil: " + e.message);
+      }
+    }
   } else {
     await restorePinSession();
   }
@@ -375,7 +382,7 @@ window.loginWithPin = async () => {
       }
     }
 
-    sessionStorage.setItem(PIN_SESSION_KEY, uid);
+    localStorage.setItem(PIN_SESSION_KEY, uid);
     rlReset("pin");
     bootApp();
   } catch (e) {
@@ -425,7 +432,7 @@ try {
 // ── LOGOUT ─────────────────────────────────────────────────────
 window.doLogout = async () => {
   try {
-    sessionStorage.removeItem(PIN_SESSION_KEY);
+    localStorage.removeItem(PIN_SESSION_KEY);
   } catch {}
 
   if (auth.currentUser) {
@@ -889,6 +896,7 @@ function setupStaffView() {
   document.querySelector(".tab").classList.add("active");
 
   if (isStaff) {
+    populateUserFilter();
     renderActivityChart();
     renderRankings();
     renderRankingMC();
@@ -1210,9 +1218,20 @@ function workerActivityInRange(u, startMs) {
 
 function periodWorkers(mode) {
   const now = Date.now();
-  const mult = mode === "day" ? 1 : mode === "week" ? 7 : 30;
+  const mult = filterState.period || (mode === "day" ? 1 : mode === "week" ? 7 : 30);
   const start = now - mult * 24 * 60 * 60 * 1000;
-  const rows = mcWorkers().map(u => {
+  
+  let workers = mcWorkers();
+  
+  // Apply filters
+  if (filterState.user) {
+    workers = workers.filter(u => u.uid === filterState.user);
+  }
+  if (filterState.rango) {
+    workers = workers.filter(u => normRango(u.rango) === filterState.rango);
+  }
+  
+  const rows = workers.map(u => {
     const act = workerActivityInRange(u, start);
     return { u, count: act.count, deltaPts: act.deltaPts };
   }).sort((a, b) => (b.count - a.count) || ((b.u.points || 0) - (a.u.points || 0)));
@@ -1253,7 +1272,8 @@ function renderDestacados() {
 // ══════════════════════════════════════════
 const PALETTE = ["#5865f2", "#3ecf8e", "#ffd166", "#ff9f43", "#ff5c75", "#4cc9f0", "#a78bfa", "#57cc99"];
 
-const modeStates = { mc: "cols", week: "cols", worker: "cols" };
+const modeStates = { mc: "cols", week: "cols", worker: "cols", evo: "line", general: "line" };
+const filterState = { user: "", rango: "", period: 14 };
 
 function setModeState(key, m, btn) {
   modeStates[key] = m;
@@ -1264,11 +1284,55 @@ function setModeState(key, m, btn) {
   if (key === "mc") renderRankingMC();
   if (key === "week") renderRankingWeek();
   if (key === "worker") renderWorkerActivity();
+  if (key === "evo") renderEvolutionPts();
+  if (key === "general") renderActivityGeneral();
 }
 
 window.setRankModeMC     = (m, btn) => setModeState("mc", m, btn);
 window.setRankModeWeek   = (m, btn) => setModeState("week", m, btn);
 window.setRankModeWorker = (m, btn) => setModeState("worker", m, btn);
+window.setRankModeEvo    = (m, btn) => setModeState("evo", m, btn);
+window.setRankModeGeneral= (m, btn) => setModeState("general", m, btn);
+
+// ── FILTROS ─────────────────────────────────────────────────────
+window.applyFilters = () => {
+  filterState.user = document.getElementById("filter-user")?.value || "";
+  filterState.rango = document.getElementById("filter-rango")?.value || "";
+  filterState.period = parseInt(document.getElementById("filter-period")?.value || "14", 10);
+  
+  // Re-render all charts with new filters
+  renderRankingMC();
+  renderRankingWeek();
+  renderWorkerActivity();
+  renderEvolutionPts();
+  renderActivityGeneral();
+};
+
+window.resetFilters = () => {
+  const userSelect = document.getElementById("filter-user");
+  const rangoSelect = document.getElementById("filter-rango");
+  const periodSelect = document.getElementById("filter-period");
+  
+  if (userSelect) userSelect.value = "";
+  if (rangoSelect) rangoSelect.value = "";
+  if (periodSelect) periodSelect.value = "14";
+  
+  applyFilters();
+};
+
+function populateUserFilter() {
+  const userSelect = document.getElementById("filter-user");
+  if (!userSelect) return;
+  
+  userSelect.innerHTML = '<option value="">Todos</option>';
+  const workers = mcWorkers().sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  workers.forEach(u => {
+    const option = document.createElement("option");
+    option.value = u.uid;
+    option.textContent = u.name || "—";
+    userSelect.appendChild(option);
+  });
+}
 
 function svgDonut(items, centerLabel) {
   const total = items.reduce((s, it) => s + (Number(it.value) || 0), 0);
@@ -1312,11 +1376,21 @@ function renderRankingMC() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  const rows = mcWorkers()
+  let workers = mcWorkers();
+  
+  // Apply filters
+  if (filterState.user) {
+    workers = workers.filter(u => u.uid === filterState.user);
+  }
+  if (filterState.rango) {
+    workers = workers.filter(u => normRango(u.rango) === filterState.rango);
+  }
+
+  const rows = workers
     .map(u => ({ name: u.name || "—", value: Number(u.points) || 0, rango: u.rango }))
     .sort((a, b) => b.value - a.value);
 
-  if (!rows.length) { box.innerHTML = '<div class="chart-empty">Sin trabajadores con cargo MC Team.</div>'; return; }
+  if (!rows.length) { box.innerHTML = '<div class="chart-empty">Sin trabajadores con cargo MC Team que coincidan con los filtros.</div>'; return; }
 
   if (modeStates.mc === "circ") {
     const items = rows.map((r, i) => ({ label: r.name, value: r.value, color: PALETTE[i % PALETTE.length] }));
@@ -1399,6 +1473,45 @@ function multiLineChartSVG(labels, series, h) {
     </svg>`;
 }
 
+function barChartSVG(labels, series, h) {
+  const H = h || 230, W = 760, pl = 44, pr = 16, pt = 18, pb = 32;
+  const iw = W - pl - pr, ih = H - pt - pb;
+  let maxV = 1;
+  for (const s of series) for (const v of s.values) maxV = Math.max(maxV, Number(v) || 0);
+  const n = labels.length;
+  const barWidth = Math.max(8, (iw / n) * 0.6);
+  const gap = (iw - (barWidth * n)) / (n + 1);
+  const xPos = i => pl + gap + i * (barWidth + gap);
+  const yPos = v => pt + ih - (ih * v) / maxV;
+  let grid = "", xl = "", bars = "";
+  const gridCount = 4;
+  for (let g = 0; g <= gridCount; g++) {
+    const val = Math.round((maxV * g) / gridCount);
+    const gy = yPos(val);
+    grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
+    grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
+  }
+  labels.forEach((lb, i) => {
+    if (n > 10 && i % 2 === 1) return;
+    xl += `<text x="${xPos(i) + barWidth/2}" y="${H - 8}" text-anchor="middle" font-size="${n > 10 ? 8 : 9}" fill="#7c86ad">${lb}</text>`;
+  });
+  for (const s of series) {
+    s.values.forEach((v, i) => {
+      const hBar = (Number(v) || 0) / maxV * ih;
+      const y = pt + ih - hBar;
+      bars += `<rect x="${xPos(i)}" y="${y}" width="${barWidth}" height="${hBar}" fill="${s.color}" rx="3"/>`;
+    });
+  }
+  return `
+    <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img">
+      ${grid}
+      <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+      <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+      ${xl}
+      ${bars}
+    </svg>`;
+}
+
 // Evolución de puntos: reconstruye el valor diario de cada trabajador
 // del MC Team a partir de los registros (delta) y los puntos actuales.
 function renderEvolutionPts() {
@@ -1408,10 +1521,21 @@ function renderEvolutionPts() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  const workers = mcWorkers().sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 6);
-  if (!workers.length) { el.innerHTML = '<div class="chart-empty">Sin trabajadores del MC Team.</div>'; if (legendEl) legendEl.innerHTML = ""; return; }
+  let workers = mcWorkers();
+  
+  // Apply filters
+  if (filterState.user) {
+    workers = workers.filter(u => u.uid === filterState.user);
+  }
+  if (filterState.rango) {
+    workers = workers.filter(u => normRango(u.rango) === filterState.rango);
+  }
+  
+  workers = workers.sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 6);
+  
+  if (!workers.length) { el.innerHTML = '<div class="chart-empty">Sin trabajadores del MC Team que coincidan con los filtros.</div>'; if (legendEl) legendEl.innerHTML = ""; return; }
 
-  const now = Date.now(), step = 24 * 60 * 60 * 1000, count = 14;
+  const now = Date.now(), step = 24 * 60 * 60 * 1000, count = filterState.period || 14;
   const days = [];
   for (let i = count - 1; i >= 0; i--) {
     const end = now - i * step, start = end - step;
@@ -1442,7 +1566,17 @@ function renderEvolutionPts() {
     values: days.map(d => d.vals[w.uid])
   }));
 
-  el.innerHTML = multiLineChartSVG(days.map(d => d.label), series);
+  if (modeStates.evo === "line") {
+    el.innerHTML = multiLineChartSVG(days.map(d => d.label), series);
+  } else {
+    // Modo columnas: mostrar suma de puntos por día
+    const dailyTotals = days.map(d => ({
+      label: d.label,
+      value: workers.reduce((sum, w) => sum + (d.vals[w.uid] || 0), 0)
+    }));
+    el.innerHTML = barChartSVG(dailyTotals.map(d => d.label), [{ name: "Total puntos", color: "#3ecf8e", values: dailyTotals.map(d => d.value) }]);
+  }
+  
   if (legendEl) {
     legendEl.innerHTML = series.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${esc(s.name)}</span>`).join("");
   }
@@ -1455,15 +1589,29 @@ function renderActivityGeneral() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  const now = Date.now(), step = 24 * 60 * 60 * 1000, count = 14;
+  const now = Date.now(), step = 24 * 60 * 60 * 1000, count = filterState.period || 14;
   const days = [];
   for (let i = count - 1; i >= 0; i--) {
     const end = now - i * step, start = end - step;
     days.push({ start, end, label: labelShortDay(new Date(end)), total: 0 });
   }
+  
+  let workers = mcWorkers();
+  
+  // Apply filters
+  if (filterState.user) {
+    workers = workers.filter(u => u.uid === filterState.user);
+  }
+  if (filterState.rango) {
+    workers = workers.filter(u => normRango(u.rango) === filterState.rango);
+  }
+  
+  const workerUids = new Set(workers.map(u => u.uid));
+  
   for (const l of logs) {
     if (!l) continue;
     const uid = l.actorUid;
+    if (!workerUids.has(uid)) continue;
     const u = allMembers.find(x => x.uid === uid);
     if (!u || !isMCteamWorker(u)) continue;
     const t = logTime(l);
@@ -1473,14 +1621,17 @@ function renderActivityGeneral() {
   }
 
   if (!days.some(d => d.total)) {
-    el.innerHTML = '<div class="chart-empty">Sin actividad registrada del MC Team.</div>';
+    el.innerHTML = '<div class="chart-empty">Sin actividad registrada del MC Team con los filtros actuales.</div>';
     return;
   }
 
-  el.innerHTML = multiLineChartSVG(
-    days.map(d => d.label),
-    [{ name: "MC Team", color: "#3ecf8e", values: days.map(d => d.total) }]
-  );
+  const data = [{ name: "MC Team", color: "#3ecf8e", values: days.map(d => d.total) }];
+  
+  if (modeStates.general === "line") {
+    el.innerHTML = multiLineChartSVG(days.map(d => d.label), data);
+  } else {
+    el.innerHTML = barChartSVG(days.map(d => d.label), data);
+  }
 }
 
 // ── IDENTIFICACIÓN DEL USUARIO ACTUAL ──────────────────────────
@@ -1515,24 +1666,46 @@ function renderAll() {
   if (typeof renderCurUserBar === "function") renderCurUserBar();
 }
 
-// ── TABLA PUNTOS (solo MC Team, sin edición) ───────────────────
+// ── TABLA PUNTOS (con controles para Admins e Inspectores) ───────────────────
 function renderPointsTable() {
   const tb = document.getElementById("pts-full-body");
+  const theadRow = document.getElementById("pts-thead-row");
+  const role = currentUser?.role;
+  const isStaff = role === "admin" || role === "inspector";
 
-  // La tabla muestra únicamente trabajadores con cargo MC Team. Los admins e
-  // inspectores gestionan puntos desde setupAdmin.html → Gestionar puntos.
+  // La tabla muestra únicamente trabajadores con cargo MC Team.
   const list = mcWorkers().sort((a,b) => (b.points||0)-(a.points||0));
 
   if (typeof renderCurUserBar === "function") renderCurUserBar();
 
+  // Actualizar cabecera para mostrar/ocultar columna de acciones
+  if (theadRow) {
+    if (isStaff) {
+      theadRow.innerHTML = '<th>#</th><th>Nombre</th><th>Rango</th><th>Puntos</th><th>Estado</th><th>Acciones</th>';
+    } else {
+      theadRow.innerHTML = '<th>#</th><th>Nombre</th><th>Rango</th><th>Puntos</th><th>Estado</th>';
+    }
+  }
+
   if (!list.length) {
-    tb.innerHTML = `<tr><td colspan="5" class="t-empty">Sin trabajadores del MC Team.</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="${isStaff ? 6 : 5}" class="t-empty">Sin trabajadores del MC Team.</td></tr>`;
     return;
   }
 
   tb.innerHTML = list.map((u, i) => {
     const pts  = u.points || 0;
     const isMe = currentUser && u.uid === currentUser.uid;
+    const canEdit = isStaff && !isMe;
+    
+    const actionsCell = canEdit ? `
+      <td>
+        <div class="pts-actions">
+          <button class="pts-btn pts-add" onclick="adjustPoints('${u.uid}', 1)" title="Sumar 1 punto">➕</button>
+          <button class="pts-btn pts-sub" onclick="adjustPoints('${u.uid}', -1)" title="Restar 1 punto">➖</button>
+          <button class="pts-btn pts-set" onclick="setPoints('${u.uid}')" title="Establecer valor exacto">⚙️</button>
+        </div>
+      </td>` : '<td></td>';
+
     return `
       <tr ${isMe ? 'class="my-row"' : ""}>
         <td class="rank-col">${i+1}</td>
@@ -1549,13 +1722,47 @@ function renderPointsTable() {
           </div>
         </td>
         <td id="ps-${u.uid}">${ptStateBadge(pts)}</td>
+        ${actionsCell}
       </tr>`;
   }).join("");
 }
 
 // ── AJUSTAR PUNTOS ─────────────────────────────────────────────
-// Unificado: se ingresa SIEMPRE el VALOR FINAL de puntos (decimales permitidos).
-// No hay opciones de sumar/restar: la cifra introducida queda como puntos del miembro.
+// Sumar o restar puntos rápidamente
+window.adjustPoints = async (uid, delta) => {
+  const role = currentUser?.role;
+  if (role !== 'admin' && role !== 'inspector') return;
+  if (uid === currentUser.uid) { showToast('No podés modificar tus propios puntos!', 'err'); return; }
+  const member = allMembers.find(u => u.uid === uid);
+  if (!member) return;
+
+  if (role === 'inspector') {
+    const cd = checkInspectorCooldown(uid);
+    if (!cd.ok) { showToast(`Cooldown activo. Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, 'err'); return; }
+  }
+
+  const oldVal = member.points || 0;
+  const newVal = Math.max(0, Math.round((oldVal + delta) * 10) / 10);
+  if (newVal === oldVal) return;
+  
+  const reason = delta > 0 ? 'Suma rápida' : 'Resta rápida';
+
+  member.points = newVal; updatePointCells(uid, newVal);
+  try {
+    await updateDoc(doc(db, 'users', uid), { points: newVal });
+    await writeLog({ type: 'points', actorUid: currentUser.uid, actorRole: role, actorName: currentUser.name||'', targetUid: uid, targetName: member.name||'', delta: delta, reason, newPoints: newVal });
+    if (role === 'inspector') {
+      writeCooldown(currentUser.uid, uid, Date.now());
+      showToast(`Puntos ${delta > 0 ? 'sumados' : 'restados'}: ${delta > 0 ? '+' : ''}${delta}`, 'ok');
+    } else {
+      await logNovedad(`🔧 Admin ${currentUser.name||''} ${delta > 0 ? 'sumó' : 'restó'} ${Math.abs(delta)} pts a ${member.name||'usuario'}. Motivo: ${reason}`);
+      showToast(`Puntos ${delta > 0 ? 'sumados' : 'restados'}: ${delta > 0 ? '+' : ''}${delta}`, 'ok');
+    }
+    renderAll();
+  } catch (e) { member.points = oldVal; updatePointCells(uid, oldVal); showToast('Error al guardar: '+e.message,'err'); }
+};
+
+// Establecer valor exacto de puntos
 window.setPoints = async (uid) => {
   const role = currentUser?.role;
   if (role !== 'admin' && role !== 'inspector') return;

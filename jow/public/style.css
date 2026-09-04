@@ -274,6 +274,52 @@ body {
 
 .btn-ghost:disabled { opacity: .45; cursor: not-allowed; }
 
+/* ── POINTS ACTIONS ── */
+.pts-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.pts-btn {
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 6px 10px;
+  transition: background .15s, color .15s, border-color .15s;
+  min-width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pts-btn:hover {
+  background: rgba(88,101,242,.12);
+  border-color: rgba(88,101,242,.35);
+  color: #e9eeff;
+}
+
+.pts-btn.pts-add:hover {
+  background: rgba(62,207,142,.15);
+  border-color: rgba(62,207,142,.4);
+  color: #3ecf8e;
+}
+
+.pts-btn.pts-sub:hover {
+  background: rgba(255,156,67,.15);
+  border-color: rgba(255,156,67,.4);
+  color: #ff9c43;
+}
+
+.pts-btn.pts-set:hover {
+  background: rgba(88,101,242,.15);
+  border-color: rgba(88,101,242,.4);
+  color: #7280ff;
+}
+
 /* ── STATS ── */
 .stats-grid {
   display: grid;
