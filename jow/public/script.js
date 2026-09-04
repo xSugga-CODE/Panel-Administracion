@@ -1878,21 +1878,6 @@ window.adjustPoints = async (uid, delta) => {
   } catch (e) { member.points = oldVal; updatePointCells(uid, oldVal); showToast('Error al guardar: '+e.message,'err'); }
 };
 
-  member.points = newVal; updatePointCells(uid, newVal);
-  try {
-    await updateDoc(doc(db, 'users', uid), { points: newVal });
-    await writeLog({ type: 'points', actorUid: currentUser.uid, actorRole: role, actorName: currentUser.name||'', targetUid: uid, targetName: member.name||'', delta: +((newVal - oldVal).toFixed(1)), reason, newPoints: newVal });
-    if (role === 'inspector') {
-      writeCooldown(currentUser.uid, uid, Date.now());
-      showToast('Puntos establecidos: ' + newVal, 'ok');
-    } else {
-      await logNovedad(`🔧 Admin ${currentUser.name||''} estableció ${member.name||'usuario'} a ${newVal} pts. Motivo: ${reason}`);
-      showToast('Puntos establecidos: ' + newVal, 'ok');
-    }
-    renderAll();
-  } catch (e) { member.points = oldVal; updatePointCells(uid, oldVal); showToast('Error al guardar: '+e.message,'err'); }
-};
-
 function updatePointCells(uid, pts) {
   const pn = document.getElementById("pn-" + uid);
   const pb = document.getElementById("pb-" + uid);

@@ -1002,7 +1002,14 @@ sel.value = cur;
 function filteredChartUsers() {
 const { cargo, rango } = currentFilter();
 return allUsers.filter(u => {
-if (cargo && !(u.cargos || []).some(c => String(c).trim().toLowerCase().includes(cargo.toLowerCase()))) return false;
+// Filtrar por cargo - usar hasCargo si existe, si no lógica manual
+if (cargo) {
+  const cargos = u.cargos || [];
+  const arr = Array.isArray(cargos) ? cargos : [String(cargos)];
+  const hasCargoMatch = arr.some(c => String(c).trim().toLowerCase() === cargo.toLowerCase());
+  if (!hasCargoMatch) return false;
+}
+// Filtrar por rango
 if (rango && !String(u.rango || "").includes(rango)) return false;
 return true;
 });
@@ -1075,6 +1082,15 @@ function renderCharts() {
 if (typeof Chart === "undefined") return;
 populateCargoFilter();
 const users = filteredChartUsers();
+
+// Si allUsers está vacío, todavía estamos cargando
+if (!allUsers.length) {
+["ch-rank","ch-evo","ch-act","ch-dist","ch-hour"].forEach(id => {
+const cv = document.getElementById(id);
+if (cv) cv.parentElement.innerHTML = '<div class="empty">Cargando usuarios...</div>';
+});
+return;
+}
 
 if (!users.length) {
 ["ch-rank","ch-evo","ch-act","ch-dist","ch-hour"].forEach(id => {
