@@ -1153,6 +1153,9 @@ const hLabels = Array.from({ length: 24 }, (_, i) => `${i % 12 === 0 ? 12 : i % 
 chartBarOrDoughnut("ch-hour", hLabels, hours, "Registros", "bar", CHART_COLORS);
 }
 
+// Hacer renderCharts global para que los selectores HTML puedan accederla
+window.renderCharts = renderCharts;
+
 function dayKey(dt) {
 const y = dt.getFullYear();
 const m = String(dt.getMonth() + 1).padStart(2, "0");

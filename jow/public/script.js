@@ -1272,8 +1272,9 @@ function renderDestacados() {
 // ══════════════════════════════════════════
 const PALETTE = ["#5865f2", "#3ecf8e", "#ffd166", "#ff9f43", "#ff5c75", "#4cc9f0", "#a78bfa", "#57cc99"];
 
-const modeStates = { mc: "cols", week: "cols", worker: "cols", evo: "line", general: "line" };
-const filterState = { user: "", rango: "", period: 14 };
+const modeStates = { mc: "cols", week: "cols", worker: "cols", evo: "line", general: "line", admin: "line", admins: "cols" };
+const filterState = { user: "", rango: "", cargo: "" };
+const evoTimeState = 14;
 
 function setModeState(key, m, btn) {
   modeStates[key] = m;
@@ -1286,6 +1287,8 @@ function setModeState(key, m, btn) {
   if (key === "worker") renderWorkerActivity();
   if (key === "evo") renderEvolutionPts();
   if (key === "general") renderActivityGeneral();
+  if (key === "admin") renderActivityChart();
+  if (key === "admins") renderRankingAdmins();
 }
 
 window.setRankModeMC     = (m, btn) => setModeState("mc", m, btn);
@@ -1293,16 +1296,19 @@ window.setRankModeWeek   = (m, btn) => setModeState("week", m, btn);
 window.setRankModeWorker = (m, btn) => setModeState("worker", m, btn);
 window.setRankModeEvo    = (m, btn) => setModeState("evo", m, btn);
 window.setRankModeGeneral= (m, btn) => setModeState("general", m, btn);
+window.setAdminChartMode = (m, btn) => setModeState("admin", m, btn);
+window.setRankModeAdmins = (m, btn) => setModeState("admins", m, btn);
+window.setEvoTime       = (days, btn) => { evoTimeState = days; renderEvolutionPts(); };
 
 // ── FILTROS ─────────────────────────────────────────────────────
 window.applyFilters = () => {
   filterState.user = document.getElementById("filter-user")?.value || "";
   filterState.rango = document.getElementById("filter-rango")?.value || "";
-  filterState.period = parseInt(document.getElementById("filter-period")?.value || "14", 10);
+  filterState.cargo = document.getElementById("filter-cargo")?.value || "";
   
   // Re-render all charts with new filters
   renderRankingMC();
-  renderRankingWeek();
+  renderRankingAdmins();
   renderWorkerActivity();
   renderEvolutionPts();
   renderActivityGeneral();
@@ -1311,11 +1317,11 @@ window.applyFilters = () => {
 window.resetFilters = () => {
   const userSelect = document.getElementById("filter-user");
   const rangoSelect = document.getElementById("filter-rango");
-  const periodSelect = document.getElementById("filter-period");
+  const cargoSelect = document.getElementById("filter-cargo");
   
   if (userSelect) userSelect.value = "";
   if (rangoSelect) rangoSelect.value = "";
-  if (periodSelect) periodSelect.value = "14";
+  if (cargoSelect) cargoSelect.value = "";
   
   applyFilters();
 };
@@ -1385,6 +1391,9 @@ function renderRankingMC() {
   if (filterState.rango) {
     workers = workers.filter(u => normRango(u.rango) === filterState.rango);
   }
+  if (filterState.cargo) {
+    workers = workers.filter(u => hasCargo(u, filterState.cargo));
+  }
 
   const rows = workers
     .map(u => ({ name: u.name || "—", value: Number(u.points) || 0, rango: u.rango }))
@@ -1397,6 +1406,40 @@ function renderRankingMC() {
     box.innerHTML = svgDonut(items, "MC Team");
   } else {
     box.innerHTML = rankListHTML(rows, "⭐", true) + '<div class="chart-note">Ordenados por puntos actuales · con rango actual</div>';
+  }
+}
+
+// Ranking de Admins general - adaptable al filtro de cargo
+function renderRankingAdmins() {
+  const box = document.getElementById("rank-admins-box");
+  if (!box) return;
+  const role = currentUser?.role;
+  if (role !== "admin" && role !== "inspector") return;
+
+  let users = allUsers.filter(u => u.status === "active");
+  
+  // Apply filters
+  if (filterState.user) {
+    users = users.filter(u => u.uid === filterState.user);
+  }
+  if (filterState.rango) {
+    users = users.filter(u => normRango(u.rango) === filterState.rango);
+  }
+  if (filterState.cargo) {
+    users = users.filter(u => hasCargo(u, filterState.cargo));
+  }
+
+  const rows = users
+    .map(u => ({ name: u.name || "—", value: Number(u.points) || 0, rango: u.rango }))
+    .sort((a, b) => b.value - a.value);
+
+  if (!rows.length) { box.innerHTML = '<div class="chart-empty">Sin usuarios que coincidan con los filtros.</div>'; return; }
+
+  if (modeStates.admins === "circ") {
+    const items = rows.map((r, i) => ({ label: r.name, value: r.value, color: PALETTE[i % PALETTE.length] }));
+    box.innerHTML = svgDonut(items, filterState.cargo || "Todos");
+  } else {
+    box.innerHTML = rankListHTML(rows, "👥", true) + `<div class="chart-note">Ranking ${filterState.cargo ? 'de ' + filterState.cargo : 'general'} · ordenados por puntos</div>`;
   }
 }
 
@@ -1425,16 +1468,76 @@ function renderWorkerActivity() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  const rows = periodWorkers("month")
-    .map(r => ({ name: r.u.name || "—", value: r.count, rango: r.u.rango }));
+  let workers = allUsers.filter(u => u.status === "active" && u.role !== "admin");
+  
+  // Apply filters
+  if (filterState.user) {
+    workers = workers.filter(u => u.uid === filterState.user);
+  }
+  if (filterState.rango) {
+    workers = workers.filter(u => normRango(u.rango) === filterState.rango);
+  }
+  if (filterState.cargo) {
+    workers = workers.filter(u => hasCargo(u, filterState.cargo));
+  }
+
+  const rows = workers
+    .map(r => ({ 
+      name: r.name || "—", 
+      value: countActionsBy(r.uid), 
+      rango: r.rango,
+      points: r.points || 0,
+      deltaPts: r.deltaPts || 0
+    }))
+    .filter(r => r.value > 0)
+    .sort((a, b) => b.value - a.value);
 
   if (!rows.length) { el.innerHTML = '<div class="chart-empty">Sin actividad registrada.</div>'; return; }
 
   if (modeStates.worker === "circ") {
     const items = rows.map((r, i) => ({ label: r.name, value: r.value, color: PALETTE[i % PALETTE.length] }));
     el.innerHTML = svgDonut(items, "Acciones") + '<div class="chart-note">Distribución de acciones (30 días) · circular para proporciones</div>';
+  } else if (modeStates.worker === "line") {
+    // Modo lineal: mostrar evolución de puntos
+    const series = rows.map((r, i) => ({
+      name: r.name,
+      color: PALETTE[i % PALETTE.length],
+      values: [r.points] // Simplificado: mostrar puntos actuales
+    }));
+    el.innerHTML = multiLineChartSVG(rows.map(r => r.name), series);
   } else {
-    el.innerHTML = rankListHTML(rows, "🎯", false) + '<div class="chart-note">Acciones por trabajador en los últimos 30 días</div>';
+    // Modo columnas: mostrar puntos, promedio y variación
+    const maxVal = Math.max(1, ...rows.map(r => r.points));
+    el.innerHTML = `
+      <div class="worker-activity-grid">
+        ${rows.map((r, i) => {
+          const pct = Math.min((r.points / maxVal) * 100, 100);
+          return `
+            <div class="worker-activity-item">
+              <div class="worker-name">${esc(r.name)}</div>
+              <div class="worker-stats">
+                <div class="stat-row">
+                  <span class="stat-label">Puntos:</span>
+                  <span class="stat-value">${r.points.toFixed(1)}</span>
+                </div>
+                <div class="stat-row">
+                  <span class="stat-label">Acciones:</span>
+                  <span class="stat-value">${r.value}</span>
+                </div>
+                <div class="stat-row">
+                  <span class="stat-label">Variación:</span>
+                  <span class="stat-value ${r.deltaPts > 0 ? 'positive' : r.deltaPts < 0 ? 'negative' : 'neutral'}">${r.deltaPts > 0 ? '+' : ''}${r.deltaPts.toFixed(1)}</span>
+                </div>
+              </div>
+              <div class="worker-bar">
+                <div class="worker-bar-fill" style="width: ${pct}%; background: ${PALETTE[i % PALETTE.length]}"></div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <div class="chart-note">Puntos, acciones y variación por trabajador (30 días)</div>
+    `;
   }
 }
 
@@ -1535,7 +1638,7 @@ function renderEvolutionPts() {
   
   if (!workers.length) { el.innerHTML = '<div class="chart-empty">Sin trabajadores del MC Team que coincidan con los filtros.</div>'; if (legendEl) legendEl.innerHTML = ""; return; }
 
-  const now = Date.now(), step = 24 * 60 * 60 * 1000, count = filterState.period || 14;
+  const now = Date.now(), step = 24 * 60 * 60 * 1000, count = evoTimeState || 14;
   const days = [];
   for (let i = count - 1; i >= 0; i--) {
     const end = now - i * step, start = end - step;
@@ -1700,9 +1803,9 @@ function renderPointsTable() {
     const actionsCell = canEdit ? `
       <td>
         <div class="pts-actions">
-          <button class="pts-btn pts-add" onclick="adjustPoints('${u.uid}', 1)" title="Sumar 1 punto">➕</button>
-          <button class="pts-btn pts-sub" onclick="adjustPoints('${u.uid}', -1)" title="Restar 1 punto">➖</button>
-          <button class="pts-btn pts-set" onclick="setPoints('${u.uid}')" title="Establecer valor exacto">⚙️</button>
+          <input type="number" class="pts-input" id="pts-input-${u.uid}" min="0" max="7" step="0.1" placeholder="0.0" style="width: 60px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(141,153,255,.25); background: rgba(15,20,40,.8); color: #e9eeff; font-size: 12px; outline: none;" value="">
+          <button class="pts-btn pts-add" onclick="adjustPoints('${u.uid}', 1)" title="Sumar valor">➕</button>
+          <button class="pts-btn pts-sub" onclick="adjustPoints('${u.uid}', -1)" title="Restar valor">➖</button>
         </div>
       </td>` : '<td></td>';
 
@@ -1728,7 +1831,7 @@ function renderPointsTable() {
 }
 
 // ── AJUSTAR PUNTOS ─────────────────────────────────────────────
-// Sumar o restar puntos rápidamente
+// Sumar o restar puntos usando el valor del input
 window.adjustPoints = async (uid, delta) => {
   const role = currentUser?.role;
   if (role !== 'admin' && role !== 'inspector') return;
@@ -1741,8 +1844,19 @@ window.adjustPoints = async (uid, delta) => {
     if (!cd.ok) { showToast(`Cooldown activo. Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, 'err'); return; }
   }
 
+  // Obtener valor del input
+  const inputEl = document.getElementById(`pts-input-${uid}`);
+  const inputValue = inputEl ? parseFloat(inputEl.value) : 0;
+  
+  if (!Number.isFinite(inputValue) || inputValue <= 0) {
+    showToast('Ingresá un valor válido (mayor a 0).', 'err');
+    return;
+  }
+
   const oldVal = member.points || 0;
-  const newVal = Math.max(0, Math.round((oldVal + delta) * 10) / 10);
+  const actualDelta = delta > 0 ? inputValue : -inputValue;
+  const newVal = Math.max(0, Math.round((oldVal + actualDelta) * 10) / 10);
+  
   if (newVal === oldVal) return;
   
   const reason = delta > 0 ? 'Suma rápida' : 'Resta rápida';
@@ -1750,39 +1864,19 @@ window.adjustPoints = async (uid, delta) => {
   member.points = newVal; updatePointCells(uid, newVal);
   try {
     await updateDoc(doc(db, 'users', uid), { points: newVal });
-    await writeLog({ type: 'points', actorUid: currentUser.uid, actorRole: role, actorName: currentUser.name||'', targetUid: uid, targetName: member.name||'', delta: delta, reason, newPoints: newVal });
+    await writeLog({ type: 'points', actorUid: currentUser.uid, actorRole: role, actorName: currentUser.name||'', targetUid: uid, targetName: member.name||'', delta: actualDelta, reason, newPoints: newVal });
     if (role === 'inspector') {
       writeCooldown(currentUser.uid, uid, Date.now());
-      showToast(`Puntos ${delta > 0 ? 'sumados' : 'restados'}: ${delta > 0 ? '+' : ''}${delta}`, 'ok');
+      showToast(`Puntos ${delta > 0 ? 'sumados' : 'restados'}: ${delta > 0 ? '+' : ''}${inputValue}`, 'ok');
     } else {
-      await logNovedad(`🔧 Admin ${currentUser.name||''} ${delta > 0 ? 'sumó' : 'restó'} ${Math.abs(delta)} pts a ${member.name||'usuario'}. Motivo: ${reason}`);
-      showToast(`Puntos ${delta > 0 ? 'sumados' : 'restados'}: ${delta > 0 ? '+' : ''}${delta}`, 'ok');
+      await logNovedad(`🔧 Admin ${currentUser.name||''} ${delta > 0 ? 'sumó' : 'restó'} ${inputValue} pts a ${member.name||'usuario'}. Motivo: ${reason}`);
+      showToast(`Puntos ${delta > 0 ? 'sumados' : 'restados'}: ${delta > 0 ? '+' : ''}${inputValue}`, 'ok');
     }
+    // Limpiar el input después de aplicar
+    if (inputEl) inputEl.value = '';
     renderAll();
   } catch (e) { member.points = oldVal; updatePointCells(uid, oldVal); showToast('Error al guardar: '+e.message,'err'); }
 };
-
-// Establecer valor exacto de puntos
-window.setPoints = async (uid) => {
-  const role = currentUser?.role;
-  if (role !== 'admin' && role !== 'inspector') return;
-  if (uid === currentUser.uid) { showToast('No podés modificar tus propios puntos!', 'err'); return; }
-  const member = allMembers.find(u => u.uid === uid);
-  if (!member) return;
-
-  if (role === 'inspector') {
-    const cd = checkInspectorCooldown(uid);
-    if (!cd.ok) { showToast(`Cooldown activo. Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, 'err'); return; }
-  }
-
-  const valStr = prompt('Ingresá el valor final de puntos (decimales permitidos):', String(member.points || 0));
-  if (valStr === null) return;
-  const newVal0 = parseFloat(String(valStr).replace(',', '.'));
-  if (!Number.isFinite(newVal0) || newVal0 < 0) { showToast('Valor inválido. Usá un número mayor o igual a 0.', 'err'); return; }
-  const newVal = Math.round(newVal0 * 10) / 10;
-  const oldVal = member.points || 0;
-  if (newVal === oldVal) return;
-  const reason = prompt('Motivo del cambio (opcional):', '') || 'Ajuste manual';
 
   member.points = newVal; updatePointCells(uid, newVal);
   try {

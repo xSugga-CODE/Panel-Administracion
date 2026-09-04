@@ -211,11 +211,14 @@
               </select>
             </div>
             <div>
-              <label style="font-size: 12px; color: var(--muted);">Periodo:</label>
-              <select id="filter-period" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
-                <option value="7">7 días</option>
-                <option value="14" selected>14 días</option>
-                <option value="30">30 días</option>
+              <label style="font-size: 12px; color: var(--muted);">Cargo:</label>
+              <select id="filter-cargo" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
+                <option value="">Todos</option>
+                <option value="Inspector">Inspector</option>
+                <option value="Moderador">Moderador</option>
+                <option value="Editor">Editor</option>
+                <option value="MC Team">MC Team</option>
+                <option value="Dev">Dev</option>
               </select>
             </div>
             <button class="btn-ghost" onclick="resetFilters()" style="margin-left: auto;">🔄 Resetear filtros</button>
@@ -237,13 +240,13 @@
 
           <div class="card chart-card">
             <div class="chart-head">
-              <h3>📊 Ranking semanal del MC Team</h3>
+              <h3>� Ranking de Admins</h3>
               <div class="chart-toolbar">
-                <button class="period-btn active" data-mode="cols" onclick="setRankModeWeek('cols',this)">Columnas</button>
-                <button class="period-btn" data-mode="circ" onclick="setRankModeWeek('circ',this)">Circular</button>
+                <button class="period-btn active" data-mode="cols" onclick="setRankModeAdmins('cols',this)">Columnas</button>
+                <button class="period-btn" data-mode="circ" onclick="setRankModeAdmins('circ',this)">Circular</button>
               </div>
             </div>
-            <div class="chart-container" id="rank-week-box"><div class="chart-empty">Cargando ranking…</div></div>
+            <div class="chart-container" id="rank-admins-box"><div class="chart-empty">Cargando ranking…</div></div>
           </div>
         </div>
 
@@ -251,6 +254,11 @@
         <div class="card chart-card">
           <div class="chart-head">
             <h3>📈 Evolución de puntos del MC Team</h3>
+            <div class="chart-toolbar">
+              <button class="period-btn active" data-time="7" onclick="setEvoTime('7',this)">7 días</button>
+              <button class="period-btn" data-time="14" onclick="setEvoTime('14',this)">14 días</button>
+              <button class="period-btn" data-time="30" onclick="setEvoTime('30',this)">30 días</button>
+            </div>
             <div class="chart-toolbar">
               <button class="period-btn active" data-mode="line" onclick="setRankModeEvo('line',this)">Lineal</button>
               <button class="period-btn" data-mode="cols" onclick="setRankModeEvo('cols',this)">Columnas</button>
@@ -267,6 +275,7 @@
               <h3>🎯 Actividad por trabajador</h3>
               <div class="chart-toolbar">
                 <button class="period-btn active" data-mode="cols" onclick="setRankModeWorker('cols',this)">Columnas</button>
+                <button class="period-btn" data-mode="line" onclick="setRankModeWorker('line',this)">Lineal</button>
                 <button class="period-btn" data-mode="circ" onclick="setRankModeWorker('circ',this)">Circular</button>
               </div>
             </div>
@@ -279,6 +288,7 @@
               <div class="chart-toolbar">
                 <button class="period-btn active" data-mode="line" onclick="setRankModeGeneral('line',this)">Lineal</button>
                 <button class="period-btn" data-mode="cols" onclick="setRankModeGeneral('cols',this)">Columnas</button>
+                <button class="period-btn" data-mode="circ" onclick="setRankModeGeneral('circ',this)">Circular</button>
               </div>
             </div>
             <div class="chart-container" id="act-general-chart"><div class="chart-empty">Cargando actividad…</div></div>
@@ -294,6 +304,11 @@
               <button class="period-btn active" data-period="day" onclick="setChartPeriod('day',this)">Día</button>
               <button class="period-btn" data-period="week" onclick="setChartPeriod('week',this)">Semana</button>
               <button class="period-btn" data-period="month" onclick="setChartPeriod('month',this)">Mes</button>
+            </div>
+            <div class="chart-toolbar">
+              <button class="period-btn active" data-mode="line" onclick="setAdminChartMode('line',this)">Lineal</button>
+              <button class="period-btn" data-mode="cols" onclick="setAdminChartMode('cols',this)">Columnas</button>
+              <button class="period-btn" data-mode="circ" onclick="setAdminChartMode('circ',this)">Circular</button>
             </div>
           </div>
           <div class="chart-container" id="activity-chart"><div class="chart-empty">Cargando actividad…</div></div>
