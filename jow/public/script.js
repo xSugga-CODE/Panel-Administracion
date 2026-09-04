@@ -1218,7 +1218,7 @@ function workerActivityInRange(u, startMs) {
 
 function periodWorkers(mode) {
   const now = Date.now();
-  const mult = filterState.period || (mode === "day" ? 1 : mode === "week" ? 7 : 30);
+  const mult = mode === "day" ? 1 : mode === "week" ? 7 : 30;
   const start = now - mult * 24 * 60 * 60 * 1000;
   
   let workers = mcWorkers();
@@ -1692,7 +1692,7 @@ function renderActivityGeneral() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  const now = Date.now(), step = 24 * 60 * 60 * 1000, count = filterState.period || 14;
+  const now = Date.now(), step = 24 * 60 * 60 * 1000, count = 14;
   const days = [];
   for (let i = count - 1; i >= 0; i--) {
     const end = now - i * step, start = end - step;
