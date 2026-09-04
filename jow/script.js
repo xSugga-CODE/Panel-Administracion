@@ -1274,7 +1274,7 @@ const PALETTE = ["#5865f2", "#3ecf8e", "#ffd166", "#ff9f43", "#ff5c75", "#4cc9f0
 
 const modeStates = { mc: "cols", week: "cols", worker: "cols", evo: "line", general: "line", admin: "line", admins: "cols" };
 const filterState = { user: "", rango: "", cargo: "" };
-const evoTimeState = 14;
+let evoTimeState = "14";
 
 function setModeState(key, m, btn) {
   modeStates[key] = m;
@@ -1416,7 +1416,7 @@ function renderRankingAdmins() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  let users = allUsers.filter(u => u.status === "active");
+  let users = allMembers.filter(u => u.status === "active");
   
   // Apply filters
   if (filterState.user) {
@@ -1468,7 +1468,7 @@ function renderWorkerActivity() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  let workers = allUsers.filter(u => u.status === "active" && u.role !== "admin");
+  let workers = allMembers.filter(u => u.status === "active" && u.role !== "admin");
   
   // Apply filters
   if (filterState.user) {
@@ -1638,7 +1638,7 @@ function renderEvolutionPts() {
   
   if (!workers.length) { el.innerHTML = '<div class="chart-empty">Sin trabajadores del MC Team que coincidan con los filtros.</div>'; if (legendEl) legendEl.innerHTML = ""; return; }
 
-  const now = Date.now(), step = 24 * 60 * 60 * 1000, count = evoTimeState || 14;
+  const now = Date.now(), step = 24 * 60 * 60 * 1000, count = (evoTimeState === "7" ? 1 : evoTimeState === "14" ? 7 : 30);
   const days = [];
   for (let i = count - 1; i >= 0; i--) {
     const end = now - i * step, start = end - step;
