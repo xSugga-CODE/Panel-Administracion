@@ -191,27 +191,84 @@ body {
 .hero h1 { font-size: 2.6rem; line-height: 1.1; color: #fff; margin-bottom: 12px; }
 .hero p   { color: var(--text2); }
 
-/* ── USER CARD ── */
-#user-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  text-align: center;
-  padding: 24px 20px;
-  border-radius: 20px;
-  position: relative;
+/* ── USER STATS PANEL ── */
+#user-stats-section {
+  margin-bottom: 16px;
 }
 
-.uc-avatar {
-  width: 56px; height: 56px;
+.user-stat {
+  grid-column: 1 / -1;
+  padding: 16px 20px;
+}
+
+.user-info-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.user-avatar {
+  width: 48px; height: 48px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.user-rango {
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.user-cargos {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.user-points-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-width: 80px;
+}
+
+.user-pts-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.user-pts-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--warn);
+}
+
+/* ── HERO SIDE (logout button) ── */
+.hero-side {
+  display: flex;
+  align-items: center;
+}
   margin-bottom: 4px;
 }
 
@@ -924,6 +981,8 @@ li { color: #c2cceb; margin-bottom: 8px; }
   width: 100%;
   height: auto;
   display: block;
+  max-width: 280px;
+  margin: 0 auto;
 }
 
 .chart-empty {
@@ -1253,8 +1312,16 @@ li { color: #c2cceb; margin-bottom: 8px; }
     font-size: 1.5rem;
   }
 
-  #user-card {
-    padding: 18px 16px;
+  .user-info-grid {
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+  }
+
+  .user-points-section {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: space-between;
+    margin-top: 8px;
   }
 
   .stats-grid {

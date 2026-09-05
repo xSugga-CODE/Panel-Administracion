@@ -59,17 +59,29 @@
         <h1>Panel de Staff Discord</h1>
         <p>Base administrativa para controlar actividad, puntos, rangos, cargos y seguimiento del staff.</p>
       </div>
-      <div class="hero-side card compact-card" id="user-card">
-        <div class="uc-avatar" id="uc-avatar">?</div>
-        <div>
-          <div class="uc-name" id="uc-name">—</div>
-          <div class="uc-role" id="uc-role">—</div>
-          <div class="uc-pts" id="uc-pts" style="display:none"></div>
-          <div class="uc-rango" id="uc-rango" style="display:none"></div>
-        </div>
+      <div class="hero-side">
         <button class="logout-btn" onclick="doLogout()">Salir</button>
       </div>
     </header>
+
+    <!-- PANEL SUPERIOR DEL USUARIO ACTUAL -->
+    <section class="stats-grid" id="user-stats-section" style="display:none">
+      <article class="stat-card user-stat">
+        <span class="stat-label">Tu perfil</span>
+        <div class="user-info-grid">
+          <div class="user-avatar" id="uc-avatar">?</div>
+          <div class="user-details">
+            <div class="user-name" id="uc-name">—</div>
+            <div class="user-rango" id="uc-rango">—</div>
+            <div class="user-cargos" id="uc-cargos">—</div>
+          </div>
+          <div class="user-points-section">
+            <div class="user-pts-label">Puntos</div>
+            <div class="user-pts-value" id="uc-pts">0</div>
+          </div>
+        </div>
+      </article>
+    </section>
 
     <!-- STATS (mejoradas con sub-info y barras) -->
     <section class="stats-grid" id="stats-section">
@@ -124,12 +136,13 @@
     <!-- TABS -->
     <nav class="tabs-container" id="tabs-nav">
       <button class="tab active" onclick="switchTab('points-tab',this)">⭐ Puntos</button>
-      <button class="tab"        onclick="switchTab('graficos-tab',this)">📊 Gráficos</button>
+      <button class="tab" id="graficos-tab-btn" style="display:none" onclick="switchTab('graficos-tab',this)">📊 Gráficos</button>
       <button class="tab"        onclick="switchTab('staff-tab',this)">👥 Staff</button>
       <button class="tab"        onclick="switchTab('guide-tab',this)">📖 Guía</button>
       <button class="tab"        onclick="switchTab('rangos-tab',this)">🏅 Rangos y Cargos</button>
       <button class="tab"        onclick="switchTab('rules-tab',this)">📋 Normas</button>
       <button class="tab"        onclick="switchTab('novedades-tab',this)">🔔 Novedades</button>
+      <button class="tab" id="my-perfil-tab-btn" style="display:none" onclick="switchTab('user-view',this)">🙋 Mi perfil</button>
       <button class="tab" id="logs-tab-btn" style="display:none" onclick="switchTab('logs-tab',this)">📜 Logs</button>
     </nav>
 
@@ -138,7 +151,6 @@
       <!-- ── PUNTOS ── -->
       <section id="points-tab" class="tab-content active" style="display:none">
         <h2>Tabla de Puntos</h2>
-        <div class="cur-user-bar" id="cur-user-bar" style="display:none"></div>
         <div class="card">
           <table>
             <thead>
@@ -194,6 +206,10 @@
         <div class="card" style="margin-bottom: 16px;">
           <div class="chart-head">
             <h3>🔍 Filtros</h3>
+            <div style="display: flex; gap: 8px; margin-left: auto;">
+              <button class="btn-ghost" onclick="refreshCharts()" style="font-size: 12px; padding: 6px 12px;">🔄 Refrescar</button>
+              <button class="btn-ghost" id="reset-data-btn" onclick="resetChartData()" style="font-size: 12px; padding: 6px 12px; display: none;">🗑️ Reiniciar datos</button>
+            </div>
           </div>
           <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
             <div>
@@ -229,18 +245,7 @@
         <div class="chart-grid two-col">
           <div class="card chart-card">
             <div class="chart-head">
-              <h3>🏆 Ranking del MC Team</h3>
-              <div class="chart-toolbar">
-                <button class="period-btn active" data-mode="cols" onclick="setRankModeMC('cols',this)">Columnas</button>
-                <button class="period-btn" data-mode="circ" onclick="setRankModeMC('circ',this)">Circular</button>
-              </div>
-            </div>
-            <div class="chart-container" id="rank-mc-box"><div class="chart-empty">Cargando ranking…</div></div>
-          </div>
-
-          <div class="card chart-card">
-            <div class="chart-head">
-              <h3>� Ranking de Admins</h3>
+              <h3>🏆 Ranking de Admins</h3>
               <div class="chart-toolbar">
                 <button class="period-btn active" data-mode="cols" onclick="setRankModeAdmins('cols',this)">Columnas</button>
                 <button class="period-btn" data-mode="circ" onclick="setRankModeAdmins('circ',this)">Circular</button>
@@ -253,7 +258,7 @@
         <!-- NIVEL 3: GRÁFICOS PRINCIPALES -->
         <div class="card chart-card">
           <div class="chart-head">
-            <h3>📈 Evolución de puntos del MC Team</h3>
+            <h3>📈 Evolución general del equipo</h3>
             <div class="chart-toolbar">
               <button class="period-btn active" data-time="7" onclick="setEvoTime('7',this)">Día</button>
               <button class="period-btn" data-time="14" onclick="setEvoTime('14',this)">Semana</button>
@@ -269,32 +274,7 @@
           <div class="chart-legend" id="evo-pts-legend"></div>
         </div>
 
-        <div class="chart-grid two-col">
-          <div class="card chart-card">
-            <div class="chart-head">
-              <h3>🎯 Actividad por trabajador</h3>
-              <div class="chart-toolbar">
-                <button class="period-btn active" data-mode="cols" onclick="setRankModeWorker('cols',this)">Columnas</button>
-                <button class="period-btn" data-mode="line" onclick="setRankModeWorker('line',this)">Lineal</button>
-                <button class="period-btn" data-mode="circ" onclick="setRankModeWorker('circ',this)">Circular</button>
-              </div>
-            </div>
-            <div class="chart-container" id="act-worker-chart"><div class="chart-empty">Cargando actividad…</div></div>
-          </div>
 
-          <div class="card chart-card">
-            <div class="chart-head">
-              <h3>🌐 Actividad general del equipo</h3>
-              <div class="chart-toolbar">
-                <button class="period-btn active" data-mode="line" onclick="setRankModeGeneral('line',this)">Lineal</button>
-                <button class="period-btn" data-mode="cols" onclick="setRankModeGeneral('cols',this)">Columnas</button>
-                <button class="period-btn" data-mode="circ" onclick="setRankModeGeneral('circ',this)">Circular</button>
-              </div>
-            </div>
-            <div class="chart-container" id="act-general-chart"><div class="chart-empty">Cargando actividad…</div></div>
-            <div class="chart-note">Acciones registradas por trabajadores del MC Team en los últimos 14 días</div>
-          </div>
-        </div>
 
         <!-- ACTIVIDAD DE ADMINS (separada del MC Team) -->
         <div class="card chart-card">
@@ -314,6 +294,31 @@
           <div class="chart-container" id="activity-chart"><div class="chart-empty">Cargando actividad…</div></div>
           <div class="chart-legend" id="chart-legend"></div>
         </div>
+
+        <!-- ACTIVIDAD DE INSPECTORES -->
+        <div class="card chart-card">
+          <div class="chart-head">
+            <h3>📊 Actividad de Inspectores</h3>
+            <div class="chart-note-inline">Puntos asignados y acciones realizadas por inspectores</div>
+          </div>
+          <div id="inspector-activity-chart">
+            <table>
+              <thead>
+                <tr>
+                  <th>Inspector</th>
+                  <th>Puntos asignados hoy</th>
+                  <th>Acciones hoy</th>
+                  <th>Última acción</th>
+                  <th>Hace</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="inspector-activity-body">
+                <tr><td colspan="6" class="t-empty">Cargando…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       <!-- ── LOGS ── -->
@@ -323,29 +328,9 @@
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
             <p style="color:#9ba8d6;margin:0">Accesos y cambios de puntos. Visible solo para inspectores y admins.</p>
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-              <button class="btn-ghost" onclick="toggleInspectorPanelJow()">📊 Actividad inspectores</button>
               <button class="btn-ghost" id="logs-export-btn" style="display:none" onclick="exportLogsJow()">📥 Exportar</button>
             </div>
           </div>
-        </div>
-
-        <div class="card" id="insp-panel-jow" style="display:none">
-          <h3>📊 Actividad de inspectores (hoy)</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Inspector</th>
-                <th>Puntos asignados hoy</th>
-                <th>Acciones hoy</th>
-                <th>Última acción</th>
-                <th>Hace</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody id="insp-jow-body">
-              <tr><td colspan="6" class="t-empty">Cargando…</td></tr>
-            </tbody>
-          </table>
         </div>
 
         <div class="card">

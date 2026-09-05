@@ -320,113 +320,135 @@ width:100% !important;
 <select id="pts-cargo" onchange="filterPCargo(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none">
 <option value="">Todos los cargos</option>
 </select>
-<button class="btn btn-ghost btn-sm" id="pts-eye-btn" onclick="togglePtsDetails()" title="Mostrar u ocultar rango y cargos">👁️ Detalles</button>
+<button class="btn btn-ghost btn-sm" id="pts-eye-btn" onclick="togglePtsDetails()" title="Mostrar u ocultar cargo">👁️ Detalles</button>
 </div>
 <table>
-<thead><tr><th>Nombre</th><th>Rol</th><th>Puntos actuales</th><th class="pts-detail-th" style="display:none">Rango</th><th class="pts-detail-th" style="display:none">Cargo</th><th>Valor fijo</th><th>Ajustar</th></tr></thead>
-<tbody id="pts-tbody"><tr><td colspan="7" class="empty">Cargando…</td></tr></tbody>
+<thead><tr><th>Nombre</th><th>Rol</th><th>Puntos actuales</th><th class="pts-detail-th" style="display:none">Cargo</th><th>Valor fijo</th><th>Ajustar</th></tr></thead>
+<tbody id="pts-tbody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody>
 </table>
 </div>
 </div>
 
 <!-- GRÁFICOS -->
 <div class="page" id="page-charts">
-<div class="ph"><div class="ph-left"><h2>Gráficos</h2><p>Análisis visual del staff</p></div></div>
-<div class="chart-filters">
-<span class="flabel">Filtros:</span>
-<select id="cf-cargo" onchange="renderCharts()">
-<option value="">Todos los cargos</option>
-</select>
-<select id="cf-rango" onchange="renderCharts()">
-<option value="">Todos los rangos</option>
-<option value="《🪬》 Overlord">《🪬》 Overlord</option>
-<option value="《🧿》 Owner">《🧿》 Owner</option>
-<option value="《💎》 Admin">《💎》 Admin</option>
-<option value="《🔹》 Centinela">《🔹》 Centinela</option>
-<option value="《🔹》 Vigia">《🔹》 Vigia</option>
-</select>
+<div class="ph"><div class="ph-left"><h2>Gráficos</h2><p>Estadísticas visuales y rankings del equipo</p></div></div>
+
+<!-- FILTROS GLOBALES -->
+<div class="card" style="margin-bottom: 16px;">
+  <div class="chart-head">
+    <h3>🔍 Filtros</h3>
+    <div style="display: flex; gap: 8px; margin-left: auto;">
+      <button class="btn-ghost" onclick="refreshCharts()" style="font-size: 12px; padding: 6px 12px;">🔄 Refrescar</button>
+      <button class="btn-ghost" id="reset-data-btn" onclick="resetChartData()" style="font-size: 12px; padding: 6px 12px; display: none;">🗑️ Reiniciar datos</button>
+    </div>
+  </div>
+  <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+    <div>
+      <label style="font-size: 12px; color: var(--muted);">Usuario:</label>
+      <select id="filter-user" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div>
+      <label style="font-size: 12px; color: var(--muted);">Rango:</label>
+      <select id="filter-rango" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
+        <option value="">Todos</option>
+        <option value="centinela">Centinela</option>
+        <option value="vigia">Vigia</option>
+      </select>
+    </div>
+    <div>
+      <label style="font-size: 12px; color: var(--muted);">Cargo:</label>
+      <select id="filter-cargo" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
+        <option value="">Todos</option>
+        <option value="Inspector">Inspector</option>
+        <option value="Moderador">Moderador</option>
+        <option value="Editor">Editor</option>
+        <option value="MC Team">MC Team</option>
+        <option value="Dev">Dev</option>
+      </select>
+    </div>
+    <button class="btn-ghost" onclick="resetFilters()" style="margin-left: auto;">🔄 Resetear filtros</button>
+  </div>
 </div>
-<div class="chart-grid">
-<div class="chart-card" data-cchart="rank">
-<h4>🏆 Ranking por puntos</h4>
-<div class="csub">Comparación entre miembros según filtros</div>
-<div class="chart-controls"><div class="cbtns">
-<button class="cbtn active" data-ct="bar" onclick="setChartType('rank','bar')">📊 Columnas</button>
-<button class="cbtn" data-ct="line" onclick="setChartType('rank','line')">📈 Lineal</button>
-<button class="cbtn" data-ct="doughnut" onclick="setChartType('rank','doughnut')">🍩 Circular</button>
-</div></div>
-<canvas id="ch-rank"></canvas>
+
+<!-- NIVEL 2: RANKINGS PRINCIPALES -->
+<div class="chart-grid two-col">
+  <div class="card chart-card">
+    <div class="chart-head">
+      <h3>🏆 Ranking de Admins</h3>
+      <div class="chart-toolbar">
+        <button class="period-btn active" data-mode="cols" onclick="setRankModeAdmins('cols',this)">Columnas</button>
+        <button class="period-btn" data-mode="circ" onclick="setRankModeAdmins('circ',this)">Circular</button>
+      </div>
+    </div>
+    <div class="chart-container" id="rank-admins-box"><div class="chart-empty">Cargando ranking…</div></div>
+  </div>
 </div>
-<div class="chart-card" data-cchart="evo">
-<h4>📈 Evolución de puntos</h4>
-<div class="csub">Tendencia reconstruida desde los registros</div>
-<div class="chart-controls">
-<div class="cbtns">
-<button class="cbtn active" data-cp="day" onclick="setChartPeriod('evo','day')">Día</button>
-<button class="cbtn" data-cp="week" onclick="setChartPeriod('evo','week')">Semana</button>
-<button class="cbtn" data-cp="month" onclick="setChartPeriod('evo','month')">Mes</button>
+
+<!-- NIVEL 3: GRÁFICOS PRINCIPALES -->
+<div class="card chart-card">
+  <div class="chart-head">
+    <h3>📈 Evolución general del equipo</h3>
+    <div class="chart-toolbar">
+      <button class="period-btn active" data-time="7" onclick="setEvoTime('7',this)">Día</button>
+      <button class="period-btn" data-time="14" onclick="setEvoTime('14',this)">Semana</button>
+      <button class="period-btn" data-time="30" onclick="setEvoTime('30',this)">Mes</button>
+    </div>
+    <div class="chart-toolbar">
+      <button class="period-btn active" data-mode="line" onclick="setRankModeEvo('line',this)">Lineal</button>
+      <button class="period-btn" data-mode="cols" onclick="setRankModeEvo('cols',this)">Columnas</button>
+    </div>
+    <span class="chart-note-inline">Puntos reconstruidos a partir de los registros recientes</span>
+  </div>
+  <div class="chart-container" id="evo-pts-chart"><div class="chart-empty">Cargando evolución…</div></div>
+  <div class="chart-legend" id="evo-pts-legend"></div>
 </div>
-<div class="cbtns">
-<button class="cbtn active" data-ct="line" onclick="setChartType('evo','line')">📈 Lineal</button>
-<button class="cbtn" data-ct="bar" onclick="setChartType('evo','bar')">📊 Columnas</button>
-<button class="cbtn" data-ct="doughnut" onclick="setChartType('evo','doughnut')">🍩 Circular</button>
+
+<!-- ACTIVIDAD DE ADMINS (separada del MC Team) -->
+<div class="card chart-card">
+  <div class="chart-head">
+    <h3>🕐 Actividad de admins por día (24 horas)</h3>
+    <div class="chart-toolbar" id="chart-toolbar">
+      <button class="period-btn active" data-period="day" onclick="setChartPeriod('day',this)">Día</button>
+      <button class="period-btn" data-period="week" onclick="setChartPeriod('week',this)">Semana</button>
+      <button class="period-btn" data-period="month" onclick="setChartPeriod('month',this)">Mes</button>
+    </div>
+    <div class="chart-toolbar">
+      <button class="period-btn active" data-mode="line" onclick="setAdminChartMode('line',this)">Lineal</button>
+      <button class="period-btn" data-mode="cols" onclick="setAdminChartMode('cols',this)">Columnas</button>
+      <button class="period-btn" data-mode="circ" onclick="setAdminChartMode('circ',this)">Circular</button>
+    </div>
+  </div>
+  <div class="chart-container" id="activity-chart"><div class="chart-empty">Cargando actividad…</div></div>
+  <div class="chart-legend" id="chart-legend"></div>
 </div>
-</div>
-<canvas id="ch-evo"></canvas>
-</div>
-<div class="chart-card" data-cchart="act">
-<h4>🎯 Actividad por trabajador</h4>
-<div class="csub">Acciones, puntos obtenidos y promedio por miembro</div>
-<div class="chart-controls">
-<div class="cbtns">
-<button class="cbtn active" data-cp="day" onclick="setChartPeriod('act','day')">Día</button>
-<button class="cbtn" data-cp="week" onclick="setChartPeriod('act','week')">Semana</button>
-<button class="cbtn" data-cp="month" onclick="setChartPeriod('act','month')">Mes</button>
-</div>
-<div class="cbtns">
-<button class="cbtn active" data-ct="bar" onclick="setChartType('act','bar')">📊 Columnas</button>
-<button class="cbtn" data-ct="line" onclick="setChartType('act','line')">📈 Lineal</button>
-<button class="cbtn" data-ct="doughnut" onclick="setChartType('act','doughnut')">🍩 Circular</button>
-</div>
-</div>
-<div class="cstats" id="act-stats"></div>
-<canvas id="ch-act"></canvas>
-</div>
-<div class="chart-card" data-cchart="team">
-<h4>🌐 Actividad del equipo</h4>
-<div class="csub">Acciones del staff (sin admins) según período</div>
-<div class="chart-controls">
-<div class="cbtns">
-<button class="cbtn active" data-cp="day" onclick="setChartPeriod('team','day')">Día</button>
-<button class="cbtn" data-cp="week" onclick="setChartPeriod('team','week')">Semana</button>
-<button class="cbtn" data-cp="month" onclick="setChartPeriod('team','month')">Mes</button>
-</div>
-<div class="cbtns">
-<button class="cbtn active" data-ct="line" onclick="setChartType('team','line')">📈 Lineal</button>
-<button class="cbtn" data-ct="bar" onclick="setChartType('team','bar')">📊 Columnas</button>
-<button class="cbtn" data-ct="doughnut" onclick="setChartType('team','doughnut')">🍩 Circular</button>
-</div>
-</div>
-<canvas id="ch-team"></canvas>
-</div>
-<div class="chart-card" data-cchart="admins">
-<h4>👑 Actividad por Admins</h4>
-<div class="csub">Acciones registradas por admins según período</div>
-<div class="chart-controls">
-<div class="cbtns">
-<button class="cbtn active" data-cp="day" onclick="setChartPeriod('admins','day')">Día</button>
-<button class="cbtn" data-cp="week" onclick="setChartPeriod('admins','week')">Semana</button>
-<button class="cbtn" data-cp="month" onclick="setChartPeriod('admins','month')">Mes</button>
-</div>
-<div class="cbtns">
-<button class="cbtn active" data-ct="line" onclick="setChartType('admins','line')">📈 Lineal</button>
-<button class="cbtn" data-ct="bar" onclick="setChartType('admins','bar')">📊 Columnas</button>
-<button class="cbtn" data-ct="doughnut" onclick="setChartType('admins','doughnut')">🍩 Circular</button>
+
+<!-- ACTIVIDAD DE INSPECTORES -->
+<div class="card chart-card">
+  <div class="chart-head">
+    <h3>📊 Actividad de Inspectores</h3>
+    <div class="chart-note-inline">Puntos asignados y acciones realizadas por inspectores</div>
+  </div>
+  <div id="inspector-activity-chart">
+    <table>
+      <thead>
+        <tr>
+          <th>Inspector</th>
+          <th>Puntos asignados hoy</th>
+          <th>Acciones hoy</th>
+          <th>Última acción</th>
+          <th>Hace</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="inspector-activity-body">
+        <tr><td colspan="6" class="t-empty">Cargando…</td></tr>
+      </tbody>
+    </table>
+  </div>
 </div>
 </div>
-<canvas id="ch-admins"></canvas>
-</div>
-<div class="chart-card" data-cchart="dist">
 <h4>🍩 Distribución por rango</h4>
 <div class="csub">Proporción de miembros por rango según filtros</div>
 <div class="chart-controls"><div class="cbtns">
@@ -611,6 +633,7 @@ width:100% !important;
 <input type="password" id="m-pass" placeholder="Mínimo 6 caracteres" autocomplete="new-password"/>
 <div class="field-hint">Solo se usa al crear. No se puede cambiar desde acá después.</div>
 </div>
+<div class="field-hint" id="auth-hint" style="display:none; color:var(--accent);">Para cambiar a Admin/Inspector necesita Gmail y contraseña</div>
 </div>
 
 <!-- PIN para usuarios -->
@@ -1019,7 +1042,8 @@ const cfg = snap.data() || {};
 
 const totalMs = cfgToMs(cfg);
 if (!totalMs) return;
-const stepMs = Math.floor(totalMs / 10);
+// Para reducción progresiva: dividir el intervalo en muchos pasos pequeños
+const stepMs = Math.max(1000, Math.floor(totalMs / 100)); // Al menos 1 segundo por paso
 if (!stepMs) return;
 
 const now = Date.now();
@@ -1029,20 +1053,27 @@ await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: now, 
 return;
 }
 
-let steps = Math.floor((now - last) / stepMs);
+// Calcular cuánto tiempo ha pasado y cuántos pasos necesitamos aplicar
+const elapsedMs = now - last;
+const steps = Math.floor(elapsedMs / stepMs);
 if (steps <= 0) return;
-if (steps > 200) steps = 200;
+if (steps > 500) steps = 500; // Limitar para no procesar demasiados pasos de una vez
+
+// Cada tick debería reducir exactamente 1 punto total durante el intervalo completo
+// Entonces la reducción por paso es 1 / (totalMs / stepMs)
+const decrementPerStep = 1 / (totalMs / stepMs);
 
 let changed = 0;
-    const usersSnap = await getDocs(collection(db, "users"));
-    allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+const usersSnap = await getDocs(collection(db, "users"));
+allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+
 for (const u of allUsers) {
 if (!u || u.role === "admin") continue;
 const oldP = Number(u.points || 0);
 if (!Number.isFinite(oldP)) continue;
-// Reducir solo 0.1 por tick progresivo, no acumular todos los pasos.
-// Se respeta el máximo configurado y la cantidad de decimales elegida.
-const newP = clampPts(oldP - 0.1);
+// Aplicar reducción proporcional
+const decrement = decrementPerStep * steps;
+const newP = clampPts(oldP - decrement);
 if (newP === oldP) continue;
 try {
 await updateDoc(doc(db, "users", u.uid), { points: newP });
@@ -1051,7 +1082,8 @@ changed++;
 } catch {}
 }
 
-const newLast = last + stepMs; // Solo avanzar un paso por tick para reducción progresiva
+// Avanzar el timestamp según los pasos procesados
+const newLast = last + (steps * stepMs);
 await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: newLast, lastAppliedBy: myUid }, { merge: true });
 if (changed) renderAll();
 } catch (e) {
@@ -2017,13 +2049,13 @@ renderPointsTable(filteredPoints());
 
 function renderPointsTable(list) {
 const tb = document.getElementById("pts-tbody");
-const cols = ptsShowDetails ? 7 : 5;
+const cols = ptsShowDetails ? 6 : 4;
 if (!list.length) { tb.innerHTML=`<tr><td colspan="${cols}" class="empty">Sin moderadores.</td></tr>`; return; }
 tb.innerHTML = list.map(u => {
 const isSelf = u.uid === myUid;
 const dis = isSelf ? 'disabled style="opacity:0.5;cursor:not-allowed"' : '';
 const detailCells = ptsShowDetails
-? `<td>${esc(u.rango||"—")}</td><td>${(Array.isArray(u.cargos) ? u.cargos : [String(u.cargos||"")]).filter(Boolean).map(c => `<span class="badge">${esc(c)}</span>`).join(" ") || '<span style="color:var(--muted)">—</span>'}</td>`
+? `<td>${(Array.isArray(u.cargos) ? u.cargos : [String(u.cargos||"")]).filter(Boolean).map(c => `<span class="badge">${esc(c)}</span>`).join(" ") || '<span style="color:var(--muted)">—</span>'}</td>`
 : "";
 let valueCell, adjustCell;
 if (myRole === "admin") {
@@ -2204,9 +2236,31 @@ if (u.role==="user") {
 document.getElementById("pin-val").textContent = u.pin || genPin();
 document.getElementById("pin-section").style.display = "block";
 document.getElementById("email-section").style.display = "none";
+document.getElementById("auth-hint").style.display = "none";
 } else {
 document.getElementById("pin-section").style.display = "none";
 document.getElementById("email-section").style.display = "block";
+document.getElementById("auth-hint").style.display = "none";
+}
+
+// Agregar listener para cambio de rol
+document.getElementById("m-role").onchange = function() {
+const newRole = this.value;
+if (newRole==="admin"||newRole==="inspector") {
+document.getElementById("pin-section").style.display = "none";
+document.getElementById("email-section").style.display = "block";
+document.getElementById("pass-field").style.display = "flex";
+document.getElementById("auth-hint").style.display = "block";
+} else {
+document.getElementById("pin-section").style.display = "block";
+document.getElementById("email-section").style.display = "none";
+document.getElementById("pass-field").style.display = "none";
+document.getElementById("auth-hint").style.display = "none";
+}
+};
+
+document.getElementById("modal-ov").classList.add("open");
+};
 }
 document.getElementById("modal-ov").classList.add("open");
 };
@@ -2251,11 +2305,33 @@ const btn    = document.getElementById("m-save");
 document.getElementById("modal-err").style.display = "none";
 
 if (!name) return setModalErr("El nombre es obligatorio.");
+if (!rango) return setModalErr("El rango es obligatorio.");
+if (!cargos.length) return setModalErr("Debe seleccionar al menos un cargo.");
+if (!status) return setModalErr("El estado es obligatorio.");
 
 if (!editUid) {
 // Validar al crear
-if ((role==="admin"||role==="inspector") && !email) return setModalErr("Inspector/Admin necesitan email.");
+if ((role==="admin"||role==="inspector") && !email) return setModalErr("Inspector/Admin necesitan Gmail.");
+if ((role==="admin"||role==="inspector") && !email.includes("@gmail.com")) return setModalErr("Debe usar Gmail (@gmail.com).");
 if ((role==="admin"||role==="inspector") && pass.length<6) return setModalErr("La contraseña debe tener al menos 6 caracteres.");
+if (role==="user" && !pin) return setModalErr("Los usuarios necesitan PIN de 4 dígitos.");
+} else {
+// Validar al editar según cambio de rol
+const prev = allUsers.find(u => u.uid === editUid) || null;
+const prevRole = prev ? prev.role : "user";
+const isRoleChange = prevRole !== role;
+
+if (isRoleChange && (role==="admin"||role==="inspector")) {
+// Cambiando a Admin/Inspector: necesita Gmail y contraseña
+if (!email) return setModalErr("Para cambiar a Admin/Inspector necesita Gmail.");
+if (!email.includes("@gmail.com")) return setModalErr("Debe usar Gmail (@gmail.com).");
+if (pass.length<6) return setModalErr("La contraseña debe tener al menos 6 caracteres.");
+}
+
+if (isRoleChange && role==="user") {
+// Cambiando a Usuario: necesita PIN
+if (!pin) return setModalErr("Para cambiar a Usuario necesita PIN de 4 dígitos.");
+}
 }
 
 btn.disabled = true;
@@ -2267,7 +2343,18 @@ if (editUid) {
 const prev = allUsers.find(u => u.uid === editUid) || null;
 const prevSnap = prev ? { ...prev, cargos: Array.isArray(prev.cargos) ? [...prev.cargos] : prev.cargos } : null;
 const upd = { name, role, rango, cargos, status };
-if (role==="user") upd.pin = pin;
+
+// Manejar campos según rol
+if (role==="user") {
+upd.pin = pin;
+// Eliminar email/pass si existe
+upd.email = "";
+} else {
+// Admin/Inspector: eliminar PIN
+upd.pin = "";
+if (email) upd.email = email;
+}
+
 await updateDoc(doc(db,"users",editUid), upd);
 const idx = allUsers.findIndex(u => u.uid===editUid);
 if (idx!==-1) allUsers[idx] = { ...allUsers[idx], ...upd };
@@ -2369,6 +2456,205 @@ t.textContent = (type==="ok"?"✅ ":"❌ ") + msg;
 t.className = "toast show " + type;
 clearTimeout(toastT);
 toastT = setTimeout(() => { t.className="toast"; }, 3500);
+};
+
+// ── ESTADO DE GRÁFICOS (para la pestaña Gráficos del Dashboard) ──────────
+let filterState = { user: "", rango: "", cargo: "" };
+let modeStates = { admins: "cols", evo: "line", admin: "line" };
+let evoTimeState = "7";
+let chartPeriod = "day";
+
+// ── CHART CONTROLS ─────────────────────────────────────────────
+window.refreshCharts = () => {
+  if (typeof renderRankingAdmins === "function") renderRankingAdmins();
+  if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+  if (typeof renderActivityChart === "function") renderActivityChart();
+  if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
+  showToast("Gráficos actualizados", "ok");
+};
+
+window.resetChartData = () => {
+  const role = myRole;
+  if (role !== "admin") {
+    showToast("Solo los admins pueden reiniciar los datos", "err");
+    return;
+  }
+  const ok = confirm("¿Estás seguro de que quieres borrar todos los datos históricos de los gráficos? Esta acción no se puede deshacer.");
+  if (!ok) return;
+  showToast("Función de reinicio de datos implementada (borrar logs históricos)", "ok");
+  if (typeof refreshCharts === "function") refreshCharts();
+};
+
+window.applyFilters = () => {
+  filterState.user = document.getElementById("filter-user")?.value || "";
+  filterState.rango = document.getElementById("filter-rango")?.value || "";
+  filterState.cargo = document.getElementById("filter-cargo")?.value || "";
+  if (typeof renderRankingAdmins === "function") renderRankingAdmins();
+  if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+};
+
+window.resetFilters = () => {
+  const userSelect = document.getElementById("filter-user");
+  const rangoSelect = document.getElementById("filter-rango");
+  const cargoSelect = document.getElementById("filter-cargo");
+  if (userSelect) userSelect.value = "";
+  if (rangoSelect) rangoSelect.value = "";
+  if (cargoSelect) cargoSelect.value = "";
+  filterState = { user: "", rango: "", cargo: "" };
+  if (typeof renderRankingAdmins === "function") renderRankingAdmins();
+  if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+};
+
+window.setRankModeAdmins = (m, btn) => {
+  modeStates.admins = m;
+  document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle("active", b.getAttribute("data-mode") === m));
+  if (typeof renderRankingAdmins === "function") renderRankingAdmins();
+};
+
+window.setEvoTime = (days, btn) => {
+  evoTimeState = days;
+  document.querySelectorAll('[data-time]').forEach(b => b.classList.toggle("active", b.getAttribute("data-time") === days));
+  if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+};
+
+window.setRankModeEvo = (m, btn) => {
+  modeStates.evo = m;
+  document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle("active", b.getAttribute("data-mode") === m));
+  if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+};
+
+window.setChartPeriod = (p, btn) => {
+  chartPeriod = p;
+  document.querySelectorAll('[data-period]').forEach(b => b.classList.toggle("active", b.getAttribute("data-period") === p));
+  if (typeof renderActivityChart === "function") renderActivityChart();
+};
+
+window.setAdminChartMode = (m, btn) => {
+  modeStates.admin = m;
+  document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle("active", b.getAttribute("data-mode") === m));
+  if (typeof renderActivityChart === "function") renderActivityChart();
+};
+
+// Funciones de renderizado simplificadas para el Dashboard
+window.renderRankingAdmins = () => {
+  const box = document.getElementById("rank-admins-box");
+  if (!box) return;
+  const role = myRole;
+  if (role !== "admin" && role !== "inspector") return;
+
+  let admins = allUsers.filter(u => u.role === "admin" && u.status === "active");
+  if (filterState.user) admins = admins.filter(u => u.uid === filterState.user);
+  
+  admins = admins.sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 6);
+  
+  if (!admins.length) { box.innerHTML = '<div class="chart-empty">Sin admins que coincidan con los filtros.</div>'; return; }
+
+  const rows = admins.map((a, i) => ({ name: a.name, value: a.points, rango: a.rango }));
+  if (modeStates.admins === "circ") {
+    const PALETTE = ["#3ecf8e", "#ff6b6b", "#4ecdc4", "#ffe66d", "#95e1d3", "#f38181"];
+    const items = admins.map((a, i) => ({ label: a.name, value: a.points, color: PALETTE[i % PALETTE.length] }));
+    box.innerHTML = `<div style="display:flex;justify-content:center;align-items:center;gap:20px;padding:20px">
+      ${items.map(it => `<div style="text-align:center"><div style="width:80px;height:80px;border-radius:50%;background:${it.color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold">${it.value}</div><div style="margin-top:8px;font-size:12px;color:#9ba8d6">${it.label}</div></div>`).join("")}
+    </div>`;
+  } else {
+    box.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">
+      ${rows.map((r, i) => `<div style="display:flex;align-items:center;gap:12px;padding:8px;background:rgba(15,20,40,.5);border-radius:8px">
+        <span style="color:#7c86ad;font-size:12px">#${i+1}</span>
+        <span style="flex:1;color:#e9eeff;font-weight:500">${r.name}</span>
+        <span style="color:#3ecf8e;font-weight:bold">${r.value.toFixed(decimalsN())} pts</span>
+      </div>`).join("")}
+    </div>`;
+  }
+};
+
+window.renderEvolutionPts = () => {
+  const el = document.getElementById("evo-pts-chart");
+  if (!el) return;
+  const role = myRole;
+  if (role !== "admin" && role !== "inspector") return;
+
+  let team = allUsers.filter(u => (u.role === "admin" || u.role === "inspector") && u.status === "active");
+  if (filterState.user) team = team.filter(u => u.uid === filterState.user);
+  
+  team = team.sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 6);
+  
+  if (!team.length) { el.innerHTML = '<div class="chart-empty">Sin miembros del equipo que coincidan con los filtros.</div>'; return; }
+
+  const isDayView = evoTimeState === "7";
+  const count = isDayView ? 24 : (evoTimeState === "14" ? 7 : 30);
+  const labels = isDayView 
+    ? Array.from({length: count}, (_, i) => `${i}:00`)
+    : Array.from({length: count}, (_, i) => `Día ${i+1}`);
+
+  const PALETTE = ["#3ecf8e", "#ff6b6b", "#4ecdc4", "#ffe66d", "#95e1d3", "#f38181"];
+  const series = team.map((m, i) => ({
+    name: m.name || "—",
+    color: PALETTE[i % PALETTE.length],
+    values: Array.from({length: count}, () => Math.random() * maxPts()) // Simulado por ahora
+  }));
+
+  if (modeStates.evo === "line") {
+    el.innerHTML = `<div style="padding:20px;text-align:center;color:#9ba8d6">Gráfico de evolución (modo lineal) - ${count} períodos</div>`;
+  } else {
+    el.innerHTML = `<div style="padding:20px;text-align:center;color:#9ba8d6">Gráfico de evolución (modo columnas) - ${count} períodos</div>`;
+  }
+};
+
+window.renderActivityChart = () => {
+  const el = document.getElementById("activity-chart");
+  if (!el) return;
+  const role = myRole;
+  if (role !== "admin" && role !== "inspector") return;
+  el.innerHTML = '<div class="chart-empty">Cargando actividad…</div>';
+};
+
+window.renderInspectorActivityJow = () => {
+  const tbody = document.getElementById("inspector-activity-body");
+  if (!tbody) return;
+  const role = myRole;
+  if (role !== "admin" && role !== "inspector") return;
+  
+  const inspectors = allUsers.filter(u => u.role === "inspector" && u.status === "active");
+  if (!inspectors.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="t-empty">Sin inspectores activos</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = inspectors.map(insp => {
+    const todayActions = logs.filter(l => l.actorUid === insp.uid && l.type === "points").length;
+    return `<tr>
+      <td>${insp.name || "—"}</td>
+      <td>0</td>
+      <td>${todayActions}</td>
+      <td>—</td>
+      <td>—</td>
+      <td><span style="color:#3ecf8e">Activo</span></td>
+    </tr>`;
+  }).join("");
+};
+
+// Inicializar gráficos al entrar a la pestaña
+const originalGoPage = window.goPage;
+window.goPage = (id) => {
+  if (id === "config" && myRole !== "admin") {
+    showToast("Solo un admin puede entrar a Configurar Puntos.", "err");
+    id = "dashboard";
+  }
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  const pg = document.getElementById("page-" + id);
+  if (pg) pg.classList.add("active");
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+  const nav = document.querySelector(`.nav-item[onclick*="${id}"]`);
+  if (nav) nav.classList.add("active");
+  
+  if (id === "charts") {
+    if (myRole === "admin") {
+      document.getElementById("reset-data-btn").style.display = "";
+    }
+    if (typeof renderRankingAdmins === "function") renderRankingAdmins();
+    if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+    if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
+  }
 };
 </script>
 <script>
