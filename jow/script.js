@@ -46,6 +46,22 @@ let logsUnsub   = null;
 let logTypeFilter = "";
 let logSearch     = "";
 const MAX_PTS   = 7;
+let maxPointsCfg = MAX_PTS;
+let decimalsCfg  = 1;
+function maxPtsCfg()     { return maxPointsCfg; }
+function decimalsCfgJow() { return decimalsCfg; }
+async function loadPointsConfig() {
+  try {
+    const snap = await getDoc(doc(db, "settings", "pointDecrement"));
+    if (snap.exists()) {
+      const d = snap.data() || {};
+      if (Number(d.maxPoints) >= 1) maxPointsCfg = Number(d.maxPoints);
+      if ([0,1,2].includes(Number(d.decimals))) decimalsCfg = Number(d.decimals);
+    }
+  } catch (e) {
+    console.error("Error cargando config de puntos:", e);
+  }
+}
 const PTS_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const PTS_COOLDOWN_PREFIX = "jowiland:ptcd:";
 
@@ -460,7 +476,7 @@ async function bootApp() {
   const ucPts = document.getElementById("uc-pts");
   const pts = Number(currentUser.points || 0);
   ucPts.style.display = "block";
-  ucPts.textContent = `⭐ ${pts.toFixed(1)} puntos`;
+  ucPts.textContent = `⭐ ${pts.toFixed(decimalsCfgJow())} puntos`;
 
   // Rango del usuario en la tarjeta (identificación tras login con PIN)
   const urEl = document.getElementById("uc-rango");
@@ -472,16 +488,19 @@ async function bootApp() {
     }
   }
 
+  await loadPointsConfig();
   await loadNovedades();
   await loadMembers();
 
-  // Los usuarios (trabajadores) ven su vista personal; el staff ve el panel completo.
-  if (role === "user") {
-    setupUserView();
-  } else {
-    setupStaffView();
-  }
+  // Todos ven el panel completo (tabla de puntos, staff, guía, rangos, normas y
+  // novedades); los controles y pestañas administrativas se ocultan según rol.
+  setupStaffView();
   setupLogsTab();
+  if (role === "user") {
+    const perfilBtn = document.getElementById("my-perfil-tab-btn");
+    if (perfilBtn) perfilBtn.style.display = "";
+    renderUserProfileCard();
+  }
 }
 
 function setupLogsTab() {
@@ -848,26 +867,31 @@ async function logNovedad(texto) {
 // ══════════════════════════════════════════
 // VISTA USUARIO
 // ══════════════════════════════════════════
-function setupUserView() {
-  document.getElementById("stats-section").style.display = "none";
-  document.getElementById("tabs-nav").style.display      = "none";
-  document.querySelectorAll(".tab-content").forEach(el => { el.style.display="none"; el.classList.remove("active"); });
-
+function renderUserProfileCard() {
   const uv = document.getElementById("user-view");
-  uv.style.display = "block";
-  uv.classList.add("active");
-
-  const pts = currentUser.points || 0;
+  if (!uv) return;
+  const pts = Number(currentUser.points || 0);
   const whoEl = document.getElementById("my-pts-who");
   if (whoEl) whoEl.innerHTML = `👋 Bienvenido/a, <b>${esc(currentUser.name || "—")}</b>`;
-  document.getElementById("my-pts-value").textContent = pts.toFixed(1);
-  document.getElementById("my-pts-bar").style.width   = `${Math.min((pts/MAX_PTS)*100,100)}%`;
-  document.getElementById("my-pts-bar").className     = "upc-bar " + ptBarClass(pts);
-  document.getElementById("my-pts-state").innerHTML   = ptStateFull(pts);
-
+  const valEl = document.getElementById("my-pts-value");
+  if (valEl) valEl.textContent = pts.toFixed(decimalsCfgJow());
+  const barEl = document.getElementById("my-pts-bar");
+  if (barEl) {
+    barEl.style.width = `${Math.min((pts/maxPtsCfg())*100,100)}%`;
+    barEl.className   = "upc-bar " + ptBarClass(pts);
+  }
+  const stateEl = document.getElementById("my-pts-state");
+  if (stateEl) stateEl.innerHTML = ptStateFull(pts);
   const ucPts = document.getElementById("uc-pts");
-  ucPts.style.display = "block";
-  ucPts.textContent   = `⭐ ${pts.toFixed(1)} puntos`;
+  if (ucPts) {
+    ucPts.style.display = "block";
+    ucPts.textContent   = `⭐ ${pts.toFixed(decimalsCfgJow())} puntos`;
+  }
+}
+
+// Compatibilidad: la vista completa ahora la administra setupStaffView.
+function setupUserView() {
+  renderUserProfileCard();
 }
 
 // ══════════════════════════════════════════
@@ -886,6 +910,12 @@ function setupStaffView() {
   if (btnDest) btnDest.style.display = ""; // Botón visible para todos
 
   document.getElementById("tabs-nav").style.display = "";
+
+  // Visibilidad de pestañas por rol: Gráficos y Logs solo staff; "Mi perfil" solo usuarios
+  const grafBtn = document.getElementById("graficos-tab-btn");
+  if (grafBtn) grafBtn.style.display = isStaff ? "" : "none";
+  const perfilBtn2 = document.getElementById("my-perfil-tab-btn");
+  if (perfilBtn2) perfilBtn2.style.display = role === "user" ? "" : "none";
 
   // Activar primera pestaña
   document.querySelectorAll(".tab-content").forEach(el => { el.style.display="none"; el.classList.remove("active"); });
@@ -1231,7 +1261,7 @@ function periodWorkers(mode) {
 
 function renderDestacados() {
   const role = currentUser?.role;
-  if (role !== "admin" && role !== "inspector") return;
+  // Todos los usuarios pueden ver los destacados (según especificaciones)
 
   const defs = [
     { mode: "day",   id: "destacado-day",   empty: "Sin datos hoy" },
@@ -1248,10 +1278,10 @@ function renderDestacados() {
     const pts = Number(u.points) || 0;
     el.innerHTML = `
       <div class="dc-name">${esc(u.name || "—")}</div>
-      <div class="dc-pts">⭐ ${pts.toFixed(1)} puntos</div>
+      <div class="dc-pts">⭐ ${pts.toFixed(decimalsCfgJow())} puntos</div>
       <div class="dc-meta">
         <span>🎯 ${winner.count} acciones</span>
-        <span>${winner.deltaPts > 0 ? "➕" : winner.deltaPts < 0 ? "➖" : "·"} ${Math.abs(winner.deltaPts).toFixed(1)} pts</span>
+        <span>${winner.deltaPts > 0 ? "➕" : winner.deltaPts < 0 ? "➖" : "·"} ${Math.abs(winner.deltaPts).toFixed(decimalsCfgJow())} pts</span>
         <span>#${winner.place} de ${rows.length}</span>
       </div>`;
   }
@@ -1780,11 +1810,15 @@ function renderPointsTable() {
     const isAdmin = role === "admin";
     const isInspector = role === "inspector";
     
+    const stepVal = decimalsCfgJow() === 0 ? "1" : decimalsCfgJow() === 1 ? "0.1" : "0.01";
+    const placeholderVal = decimalsCfgJow() === 0 ? "0" : decimalsCfgJow() === 1 ? "0.0" : "0.00";
+    const maxVal = maxPtsCfg();
+    
     const actionsCell = canEdit ? `
       <td>
         <div class="pts-actions">
           ${isAdmin ? `
-            <input type="number" class="pts-input" id="pts-input-${u.uid}" min="0" max="7" step="0.1" placeholder="0.0" style="width: 60px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(141,153,255,.25); background: rgba(15,20,40,.8); color: #e9eeff; font-size: 12px; outline: none;" value="" onkeydown="if(event.key==='Enter') setPoints('${u.uid}')">
+            <input type="number" class="pts-input" id="pts-input-${u.uid}" min="0" max="${maxVal}" step="${stepVal}" placeholder="${placeholderVal}" style="width: 60px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(141,153,255,.25); background: rgba(15,20,40,.8); color: #e9eeff; font-size: 12px; outline: none;" value="" onkeydown="if(event.key==='Enter') setPoints('${u.uid}')">
             <button class="pts-btn pts-set" onclick="setPoints('${u.uid}')" title="Establecer valor (Enter)">⚙️</button>
           ` : `
             <button class="pts-btn pts-add" onclick="adjustPoints('${u.uid}', 1)" title="Sumar +1">➕</button>
@@ -1803,9 +1837,9 @@ function renderPointsTable() {
         </td>
         <td><span class="rango-tag">${fmtRango(u.rango)}</span></td>
         <td>
-          <span class="pts-number" id="pn-${u.uid}" style="color:${ptColor(pts)}">${pts.toFixed(1)}</span>
+          <span class="pts-number" id="pn-${u.uid}" style="color:${ptColor(pts)}">${pts.toFixed(decimalsCfgJow())}</span>
           <div class="pts-mini-bar-wrap">
-            <div class="pts-mini-bar ${ptBarClass(pts)}" id="pb-${u.uid}" style="width:${Math.min((pts/MAX_PTS)*100,100)}%"></div>
+            <div class="pts-mini-bar ${ptBarClass(pts)}" id="pb-${u.uid}" style="width:${Math.min((pts/maxPtsCfg())*100,100)}%"></div>
           </div>
         </td>
         <td id="ps-${u.uid}">${ptStateBadge(pts)}</td>
@@ -1829,7 +1863,9 @@ window.adjustPoints = async (uid, delta) => {
   }
 
   const oldVal = member.points || 0;
-  const newVal = Math.max(0, Math.round((oldVal + delta) * 10) / 10);
+  const rawNewVal = oldVal + delta;
+  const factor = Math.pow(10, decimalsCfgJow());
+  const newVal = Math.max(0, Math.round(rawNewVal * factor) / factor);
   
   if (newVal === oldVal) return;
   
@@ -1868,7 +1904,8 @@ window.setPoints = async (uid) => {
   }
 
   const oldVal = member.points || 0;
-  const newVal = Math.round(inputValue * 10) / 10;
+  const factor = Math.pow(10, decimalsCfgJow());
+  const newVal = Math.max(0, Math.min(maxPtsCfg(), Math.round(inputValue * factor) / factor));
   
   if (newVal === oldVal) return;
   const reason = 'Establecer valor directo';
@@ -1890,10 +1927,10 @@ function updatePointCells(uid, pts) {
   const pb = document.getElementById("pb-" + uid);
   const ps = document.getElementById("ps-" + uid);
   const av = document.getElementById("av-" + uid);
-  if (pn) { pn.textContent = pts.toFixed(1); pn.style.color = ptColor(pts); }
-  if (pb) { pb.style.width = `${Math.min((pts/MAX_PTS)*100,100)}%`; pb.className = `pts-mini-bar ${ptBarClass(pts)}`; }
+  if (pn) { pn.textContent = pts.toFixed(decimalsCfgJow()); pn.style.color = ptColor(pts); }
+  if (pb) { pb.style.width = `${Math.min((pts/maxPtsCfg())*100,100)}%`; pb.className = `pts-mini-bar ${ptBarClass(pts)}`; }
   if (ps) ps.innerHTML = ptStateBadge(pts);
-  if (av) av.textContent = pts.toFixed(1);
+  if (av) av.textContent = pts.toFixed(decimalsCfgJow());
 }
 
 // ── TABLA STAFF (con rango, cargos, estado) ─────────────────────

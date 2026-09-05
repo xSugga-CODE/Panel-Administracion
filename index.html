@@ -156,6 +156,16 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .spinner{animation:spin 1s linear infinite;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;height:13px;width:13px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* CHARTS: controles de tipo / período por gráfico */
+.chart-controls{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.cbtns{display:flex;gap:6px;flex-wrap:wrap}
+.cbtn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600;padding:5px 10px;transition:background .15s,color .15s,border-color .15s}
+.cbtn:hover{color:var(--text)}
+.cbtn.active{background:rgba(91,141,238,.16);border-color:var(--accent);color:var(--accent)}
+.cstats{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;line-height:1.7;margin-bottom:10px;padding:8px 12px}
+.cstats b{color:var(--text)}
+.chart-card canvas{max-height:280px}
+
 @media(max-width:680px){
 .sidebar{display:none}
 .main{margin-left:0;padding:16px}
@@ -260,7 +270,7 @@ width:100% !important;
 <div class="tcard">
 <div class="ttoolbar"><span class="ttoolbar-title">🏆 Top por puntos</span></div>
 <table>
-<thead><tr><th>#</th><th>Nombre</th><th>Rol</th><th>Puntos</th><th>Valor</th><th>Ajustar</th></tr></thead>
+<thead><tr><th>#</th><th>Nombre</th><th>Rol</th><th>Puntos</th><th>Valor fijo</th><th>Ajustar</th></tr></thead>
 <tbody id="dash-tbody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody>
 </table>
 </div>
@@ -303,14 +313,18 @@ width:100% !important;
 
 <!-- PUNTOS -->
 <div class="page" id="page-points">
-<div class="ph"><div class="ph-left"><h2>Gestión de puntos</h2><p>Sumá o restá puntos a moderadores</p></div></div>
+<div class="ph"><div class="ph-left"><h2>Gestión de puntos</h2><p>Valor fijo (Admin) · Ajuste +1/−1 (Inspección)</p></div></div>
 <div class="tcard">
 <div class="ttoolbar">
 <div class="search"><span>🔍</span><input type="text" placeholder="Buscar moderador…" oninput="filterP(this.value)"/></div>
+<select id="pts-cargo" onchange="filterPCargo(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none">
+<option value="">Todos los cargos</option>
+</select>
+<button class="btn btn-ghost btn-sm" id="pts-eye-btn" onclick="togglePtsDetails()" title="Mostrar u ocultar rango y cargos">👁️ Detalles</button>
 </div>
 <table>
-<thead><tr><th>Nombre</th><th>Rol</th><th>Puntos actuales</th><th>Valor</th><th>Ajustar</th></tr></thead>
-<tbody id="pts-tbody"><tr><td colspan="5" class="empty">Cargando…</td></tr></tbody>
+<thead><tr><th>Nombre</th><th>Rol</th><th>Puntos actuales</th><th class="pts-detail-th" style="display:none">Rango</th><th class="pts-detail-th" style="display:none">Cargo</th><th>Valor fijo</th><th>Ajustar</th></tr></thead>
+<tbody id="pts-tbody"><tr><td colspan="7" class="empty">Cargando…</td></tr></tbody>
 </table>
 </div>
 </div>
@@ -333,33 +347,103 @@ width:100% !important;
 </select>
 </div>
 <div class="chart-grid">
-<div class="chart-card">
+<div class="chart-card" data-cchart="rank">
 <h4>🏆 Ranking por puntos</h4>
-<div class="csub">Comparación entre miembros del staff</div>
-<div style="display:flex;gap:6px;margin-bottom:10px">
-<button class="btn btn-ghost btn-sm" id="sw-rank-bar" onclick="setRankType('bar')">📊 Columnas</button>
-<button class="btn btn-ghost btn-sm" id="sw-rank-pie" onclick="setRankType('doughnut')">🍩 Circular</button>
-</div>
+<div class="csub">Comparación entre miembros según filtros</div>
+<div class="chart-controls"><div class="cbtns">
+<button class="cbtn active" data-ct="bar" onclick="setChartType('rank','bar')">📊 Columnas</button>
+<button class="cbtn" data-ct="line" onclick="setChartType('rank','line')">📈 Lineal</button>
+<button class="cbtn" data-ct="doughnut" onclick="setChartType('rank','doughnut')">🍩 Circular</button>
+</div></div>
 <canvas id="ch-rank"></canvas>
 </div>
-<div class="chart-card">
+<div class="chart-card" data-cchart="evo">
 <h4>📈 Evolución de puntos</h4>
-<div class="csub">Tendencia temporal según registros de cambios</div>
+<div class="csub">Tendencia reconstruida desde los registros</div>
+<div class="chart-controls">
+<div class="cbtns">
+<button class="cbtn active" data-cp="day" onclick="setChartPeriod('evo','day')">Día</button>
+<button class="cbtn" data-cp="week" onclick="setChartPeriod('evo','week')">Semana</button>
+<button class="cbtn" data-cp="month" onclick="setChartPeriod('evo','month')">Mes</button>
+</div>
+<div class="cbtns">
+<button class="cbtn active" data-ct="line" onclick="setChartType('evo','line')">📈 Lineal</button>
+<button class="cbtn" data-ct="bar" onclick="setChartType('evo','bar')">📊 Columnas</button>
+<button class="cbtn" data-ct="doughnut" onclick="setChartType('evo','doughnut')">🍩 Circular</button>
+</div>
+</div>
 <canvas id="ch-evo"></canvas>
 </div>
-<div class="chart-card">
-<h4>⚡ Actividad por trabajador</h4>
-<div class="csub">Acciones registradas por cada miembro</div>
+<div class="chart-card" data-cchart="act">
+<h4>🎯 Actividad por trabajador</h4>
+<div class="csub">Acciones, puntos obtenidos y promedio por miembro</div>
+<div class="chart-controls">
+<div class="cbtns">
+<button class="cbtn active" data-cp="day" onclick="setChartPeriod('act','day')">Día</button>
+<button class="cbtn" data-cp="week" onclick="setChartPeriod('act','week')">Semana</button>
+<button class="cbtn" data-cp="month" onclick="setChartPeriod('act','month')">Mes</button>
+</div>
+<div class="cbtns">
+<button class="cbtn active" data-ct="bar" onclick="setChartType('act','bar')">📊 Columnas</button>
+<button class="cbtn" data-ct="line" onclick="setChartType('act','line')">📈 Lineal</button>
+<button class="cbtn" data-ct="doughnut" onclick="setChartType('act','doughnut')">🍩 Circular</button>
+</div>
+</div>
+<div class="cstats" id="act-stats"></div>
 <canvas id="ch-act"></canvas>
 </div>
-<div class="chart-card">
+<div class="chart-card" data-cchart="team">
+<h4>🌐 Actividad del equipo</h4>
+<div class="csub">Acciones del staff (sin admins) según período</div>
+<div class="chart-controls">
+<div class="cbtns">
+<button class="cbtn active" data-cp="day" onclick="setChartPeriod('team','day')">Día</button>
+<button class="cbtn" data-cp="week" onclick="setChartPeriod('team','week')">Semana</button>
+<button class="cbtn" data-cp="month" onclick="setChartPeriod('team','month')">Mes</button>
+</div>
+<div class="cbtns">
+<button class="cbtn active" data-ct="line" onclick="setChartType('team','line')">📈 Lineal</button>
+<button class="cbtn" data-ct="bar" onclick="setChartType('team','bar')">📊 Columnas</button>
+<button class="cbtn" data-ct="doughnut" onclick="setChartType('team','doughnut')">🍩 Circular</button>
+</div>
+</div>
+<canvas id="ch-team"></canvas>
+</div>
+<div class="chart-card" data-cchart="admins">
+<h4>👑 Actividad por Admins</h4>
+<div class="csub">Acciones registradas por admins según período</div>
+<div class="chart-controls">
+<div class="cbtns">
+<button class="cbtn active" data-cp="day" onclick="setChartPeriod('admins','day')">Día</button>
+<button class="cbtn" data-cp="week" onclick="setChartPeriod('admins','week')">Semana</button>
+<button class="cbtn" data-cp="month" onclick="setChartPeriod('admins','month')">Mes</button>
+</div>
+<div class="cbtns">
+<button class="cbtn active" data-ct="line" onclick="setChartType('admins','line')">📈 Lineal</button>
+<button class="cbtn" data-ct="bar" onclick="setChartType('admins','bar')">📊 Columnas</button>
+<button class="cbtn" data-ct="doughnut" onclick="setChartType('admins','doughnut')">🍩 Circular</button>
+</div>
+</div>
+<canvas id="ch-admins"></canvas>
+</div>
+<div class="chart-card" data-cchart="dist">
 <h4>🍩 Distribución por rango</h4>
-<div class="csub">Proporción de miembros por rango</div>
+<div class="csub">Proporción de miembros por rango según filtros</div>
+<div class="chart-controls"><div class="cbtns">
+<button class="cbtn active" data-ct="doughnut" onclick="setChartType('dist','doughnut')">🍩 Circular</button>
+<button class="cbtn" data-ct="bar" onclick="setChartType('dist','bar')">📊 Columnas</button>
+<button class="cbtn" data-ct="line" onclick="setChartType('dist','line')">📈 Lineal</button>
+</div></div>
 <canvas id="ch-dist"></canvas>
 </div>
-<div class="chart-card">
+<div class="chart-card" data-cchart="hour">
 <h4>🕐 Actividad por hora del día</h4>
 <div class="csub">Registros de actividad en formato 24h</div>
+<div class="chart-controls"><div class="cbtns">
+<button class="cbtn active" data-ct="bar" onclick="setChartType('hour','bar')">📊 Columnas</button>
+<button class="cbtn" data-ct="line" onclick="setChartType('hour','line')">📈 Lineal</button>
+<button class="cbtn" data-ct="doughnut" onclick="setChartType('hour','doughnut')">🍩 Circular</button>
+</div></div>
 <canvas id="ch-hour"></canvas>
 </div>
 </div>
@@ -384,9 +468,23 @@ width:100% !important;
 </div>
 </div>
 <div class="field">
+<label>Máximo de puntos</label>
+<input type="number" id="config-max" min="1" max="99" step="1" value="7" style="width:120px;text-align:center;"/>
+<p class="field-hint">Ningún trabajador podrá superar este valor (por defecto: 7).</p>
+</div>
+<div class="field">
+<label>Decimales</label>
+<select id="config-decimals" style="width:auto;max-width:220px;">
+<option value="0">0 decimales (ej: 5)</option>
+<option value="1" selected>1 decimal (ej: 1.5)</option>
+<option value="2">2 decimales (ej: 1.35)</option>
+</select>
+<p class="field-hint">Precisión usada al mostrar y guardar los puntos.</p>
+</div>
+<div class="field">
 <label>Resumen</label>
 <div style="padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
-<p id="config-summary">Cada <strong>0h 0m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>0h 0m</strong>)</p>
+<p id="config-summary">Cada <strong>0h 0m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>0h 0m</strong>) · Máximo: <strong>7</strong> pts · Decimales: <strong>1</strong></p>
 </div>
 </div>
 <button class="btn btn-primary" id="config-save" onclick="saveConfig()" style="width:100%;margin-top:8px;">💾 Guardar Configuración</button>
@@ -484,16 +582,12 @@ width:100% !important;
 <span style="font-size:14px">Inspector</span>
 </label>
 <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
-<input type="checkbox" class="cargo-checkbox" value="Mod">
-<span style="font-size:14px">Mod</span>
+<input type="checkbox" class="cargo-checkbox" value="Moderador">
+<span style="font-size:14px">Moderador</span>
 </label>
 <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
-<input type="checkbox" class="cargo-checkbox" value="Colaborador">
-<span style="font-size:14px">Colaborador</span>
-</label>
-<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
-<input type="checkbox" class="cargo-checkbox" value="MC team">
-<span style="font-size:14px">MC team</span>
+<input type="checkbox" class="cargo-checkbox" value="MC Team">
+<span style="font-size:14px">MC Team</span>
 </label>
 <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
 <input type="checkbox" class="cargo-checkbox" value="Dev">
@@ -502,10 +596,6 @@ width:100% !important;
 <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
 <input type="checkbox" class="cargo-checkbox" value="Editor">
 <span style="font-size:14px">Editor</span>
-</label>
-<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
-<input type="checkbox" class="cargo-checkbox" value="Marketing">
-<span style="font-size:14px">Marketing</span>
 </label>
 </div>
 </div>
@@ -599,13 +689,25 @@ let editUid      = null;
 let filterText   = "";
 let filterRoleV  = "";
 let filterPText  = "";
-let currentConfig = { hours: 24, minutes: 0 }; // Valor por defecto
+let currentConfig = { hours: 24, minutes: 0, maxPoints: 7, decimals: 1 }; // Valor por defecto
 let pointDecrementTimer = null;
 let pointDecrementBusy = false;
 let logs         = [];
 let logsUnsub    = null;
 let logTypeFilter = "";
 let logSearch     = "";
+let filterPCargo   = "";
+let ptsShowDetails = false;
+// Estado de gráficos: tipo por gráfico y período para los temporales
+const chartState = {
+rank:   { type: "bar" },
+evo:    { type: "line", period: "week" },
+act:    { type: "bar", period: "day" },
+team:   { type: "line", period: "week" },
+admins: { type: "line", period: "day" },
+dist:   { type: "doughnut" },
+hour:   { type: "bar" }
+};
 
 const RL_OPTS = { windowMs: 5 * 60 * 1000, maxAttempts: 6, lockMs: 10 * 60 * 1000 };
 const RL_PREFIX = "jowiland-admin:rl:";
@@ -724,7 +826,7 @@ const extra = e.code === "auth/too-many-requests" ? 10 * 60 * 1000 : 0;
 const fail = rlFail("email", extra);
 err.textContent = fail.locked
 ? `Demasiados intentos. Esperá ${fmtWait(fail.waitMs)} y probá de nuevo.`
-: friendlyErr(e.code);
+: (friendlyErr(e.code) || e.message || "Error al iniciar sesión.");
 err.style.display = "block";
 btn.disabled = false;
 btn.textContent = "Ingresar al panel";
@@ -761,10 +863,12 @@ document.getElementById("st-insp-card").style.display = "none";
 document.getElementById("st-users-card").style.display = "none";
 }
 
-if (myRole === "admin") {
 await loadConfig();
+if (myRole === "admin") {
 document.getElementById("config-hours").addEventListener("input", updateConfigSummary);
 document.getElementById("config-minutes").addEventListener("input", updateConfigSummary);
+document.getElementById("config-max").addEventListener("input", updateConfigSummary);
+document.getElementById("config-decimals").addEventListener("change", updateConfigSummary);
 document.getElementById("config-save").addEventListener("click", window.saveConfig);
 } else {
 const btn = document.getElementById("config-save");
@@ -786,21 +890,23 @@ document.getElementById("app").style.display = "none";
 // ── CONFIGURACIÓN DE DECREMENTO DE PUNTOS ───────────────────────────────────────────
 async function loadConfig() {
 try {
-console.log("Loading config...");
 const snap = await getDoc(doc(db, "settings", "pointDecrement"));
 if (snap.exists()) {
-currentConfig = snap.data();
-console.log("Loaded config from Firestore:", currentConfig);
+const d = snap.data() || {};
+currentConfig = {
+hours: Number(d.hours) > 0 ? Number(d.hours) : 24,
+minutes: Number(d.minutes) >= 0 ? Number(d.minutes) : 0,
+maxPoints: Number(d.maxPoints) >= 1 ? Number(d.maxPoints) : 7,
+decimals: [0,1,2].includes(Number(d.decimals)) ? Number(d.decimals) : 1
+};
 }
-// Cargar valores en los inputs
-    document.getElementById("config-hours").value = currentConfig.hours || 24;
-    document.getElementById("config-minutes").value = currentConfig.minutes || 0;
-    const h0 = Number(currentConfig?.hours);
-    const m0 = Number(currentConfig?.minutes);
-    document.getElementById("config-hours").value = Number.isFinite(h0) ? h0 : 24;
-    document.getElementById("config-minutes").value = Number.isFinite(m0) ? m0 : 0;
+if (document.getElementById("config-hours")) {
+document.getElementById("config-hours").value = currentConfig.hours;
+document.getElementById("config-minutes").value = currentConfig.minutes;
+document.getElementById("config-max").value = currentConfig.maxPoints;
+document.getElementById("config-decimals").value = String(currentConfig.decimals);
+}
 updateConfigSummary();
-console.log("Set inputs to:", currentConfig.hours, "hours,", currentConfig.minutes, "minutes");
 } catch (e) {
 console.error("Error loading config:", e);
 }
@@ -809,15 +915,17 @@ console.error("Error loading config:", e);
 function updateConfigSummary() {
 const hours = parseInt(document.getElementById("config-hours").value) || 0;
 const minutes = parseInt(document.getElementById("config-minutes").value) || 0;
-const totalMinutes = hours * 60 + minutes;
+const maxP = parseInt(document.getElementById("config-max").value) || 7;
+const dec = [0,1,2].includes(parseInt(document.getElementById("config-decimals").value)) ? parseInt(document.getElementById("config-decimals").value) : 1;
+const totalMinutes = Math.max(1, hours * 60 + minutes);
 const intervalMinutes = totalMinutes / 10; // Dividimos 1 punto en 10 partes de 0.1
 
 // Convertir intervalMinutes a horas y minutos para mostrar
 const intervalHours = Math.floor(intervalMinutes / 60);
-const intervalMins = Math.round(intervalMinutes % 60);
+const intervalMins = Math.max(1, Math.round(intervalMinutes % 60));
 
-document.getElementById("config-summary").innerHTML = 
-`Cada <strong>${hours}h ${minutes}m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>${intervalHours}h ${intervalMins}m</strong>)`;
+document.getElementById("config-summary").innerHTML =
+`Cada <strong>${hours}h ${minutes}m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>${intervalHours}h ${intervalMins}m</strong>) · Máximo: <strong>${maxP}</strong> pts · Decimales: <strong>${dec}</strong>`;
 }
 
 window.saveConfig = async (e) => {
@@ -828,19 +936,24 @@ return;
 }
 const hours = parseInt(document.getElementById("config-hours").value) || 0;
 const minutes = parseInt(document.getElementById("config-minutes").value) || 0;
+const maxPoints = parseInt(document.getElementById("config-max").value) || 7;
+const decimals = [0,1,2].includes(parseInt(document.getElementById("config-decimals").value)) ? parseInt(document.getElementById("config-decimals").value) : 1;
 
 if (hours === 0 && minutes === 0) {
 showToast("Ingresá un tiempo válido!", "err");
 return;
 }
+if (!(maxPoints >= 1)) {
+showToast("El máximo de puntos debe ser al menos 1.", "err");
+return;
+}
 
-currentConfig = { hours, minutes, updatedAt: serverTimestamp() };
+currentConfig = { hours, minutes, maxPoints, decimals, updatedAt: serverTimestamp() };
 try {
-console.log("Saving config:", currentConfig);
 await setDoc(doc(db, "settings", "pointDecrement"), currentConfig, { merge: true });
-console.log("Config saved successfully");
 showToast("✅ Configuración guardada!", "ok");
 startPointDecrementScheduler();
+renderAll();
 } catch (e) {
 console.error("Error saving config:", e);
 showToast("Error al guardar: " + e.message, "err");
@@ -853,11 +966,32 @@ const m = parseInt(cfg?.minutes, 10) || 0;
 return (h * 60 + m) * 60 * 1000;
 }
 
+function decimalsN() {
+const d = parseInt(currentConfig?.decimals, 10);
+return [0,1,2].includes(d) ? d : 1;
+}
+
+function maxPts() {
+const m = Number(currentConfig?.maxPoints);
+return Number.isFinite(m) && m >= 1 ? m : 7;
+}
+
+// Redondea un valor a la cantidad de decimales configurados
+function roundPts(n) {
+const d = decimalsN();
+return Math.round(n * Math.pow(10, d)) / Math.pow(10, d);
+}
+
+// Limita el valor entre 0 y el máximo configurado, con la precisión elegida
+function clampPts(n) {
+const r = roundPts(n);
+return Math.max(0, Math.min(maxPts(), r));
+}
+
 function fmtPts(p) {
 const n = Number(p || 0);
 if (!Number.isFinite(n)) return "0";
-// Se conservan los decimales tal cual (hasta 2 posiciones) sin redondear
-return String(Math.round(n * 100) / 100);
+return n.toFixed(decimalsN());
 }
 
 function stopPointDecrementScheduler() {
@@ -899,8 +1033,6 @@ let steps = Math.floor((now - last) / stepMs);
 if (steps <= 0) return;
 if (steps > 200) steps = 200;
 
-// Reducción progresiva: reducir 0.1 por paso, no todo de golpe
-const dec = steps * 0.1;
 let changed = 0;
     const usersSnap = await getDocs(collection(db, "users"));
     allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
@@ -908,8 +1040,9 @@ for (const u of allUsers) {
 if (!u || u.role === "admin") continue;
 const oldP = Number(u.points || 0);
 if (!Number.isFinite(oldP)) continue;
-// Reducir solo 0.1 por tick progresivo, no acumular todos los pasos
-const newP = Math.max(0, Math.round((oldP - 0.1) * 100) / 100);
+// Reducir solo 0.1 por tick progresivo, no acumular todos los pasos.
+// Se respeta el máximo configurado y la cantidad de decimales elegida.
+const newP = clampPts(oldP - 0.1);
 if (newP === oldP) continue;
 try {
 await updateDoc(doc(db, "users", u.uid), { points: newP });
@@ -955,19 +1088,40 @@ el.style.display = el.style.display === "none" ? "block" : "none";
 //  Lineal  → evolución / tendencia temporal
 //  Columnas → comparación entre miembros / rankings
 //  Circular (doughnut) → distribución / proporción
-let rankChartType = "bar";
 const chartInstances = {};
 
 const CHART_COLORS = ["#5b8dee","#3ecf8e","#f5a623","#a78bfa","#e05555","#4cc9f0","#ffd166","#57cc99","#2ecc71","#e67e22"];
 
-window.setRankType = t => {
-rankChartType = t === "doughnut" ? "doughnut" : "bar";
-const barBtn = document.getElementById("sw-rank-bar");
-const pieBtn = document.getElementById("sw-rank-pie");
-if (barBtn) barBtn.classList.toggle("btn-active", rankChartType === "bar");
-if (pieBtn) pieBtn.classList.toggle("btn-active", rankChartType === "doughnut");
+// Cambia el tipo de un gráfico específico (line / bar / doughnut)
+window.setChartType = (key, type) => {
+if (!chartState[key]) return;
+chartState[key].type = type;
+updateChartButtons();
 renderCharts();
 };
+
+// Cambia el período (Día / Semana / Mes) de un gráfico temporal
+window.setChartPeriod = (key, period) => {
+if (!chartState[key]) return;
+chartState[key].period = period;
+updateChartButtons();
+renderCharts();
+};
+
+// Sincroniza los botones activos de cada tarjeta de gráfico
+function updateChartButtons() {
+document.querySelectorAll(".chart-card[data-cchart]").forEach(card => {
+const key = card.dataset.cchart;
+const st = chartState[key];
+if (!st) return;
+card.querySelectorAll(".cbtn").forEach(b => {
+const ct = b.getAttribute("data-ct");
+const cp = b.getAttribute("data-cp");
+const on = (ct && ct === st.type) || (cp && cp === st.period);
+b.classList.toggle("active", on);
+});
+});
+}
 
 function destroyChart(name) {
 if (chartInstances[name]) {
@@ -1027,17 +1181,20 @@ c++;
 return c;
 }
 
-function chartBarOrDoughnut(canvasId, labels, values, labelText, kind, colors) {
+// Dibuja un gráfico simple (line / bar / doughnut) según el tipo elegido
+function renderSingleChart(canvasId, type, labels, values, labelText, colors) {
 const cv = document.getElementById(canvasId);
 if (!cv) return;
 if (typeof Chart === "undefined") { cv.parentElement.innerHTML = '<div class="empty">Chart.js no cargó.</div>'; return; }
 destroyChart(canvasId);
-const isDough = kind === "doughnut";
+const isDough = type === "doughnut";
+const isLine  = type === "line";
+const palette = colors || CHART_COLORS;
 const data = isDough
-? { labels, datasets: [{ data: values, backgroundColor: colors || CHART_COLORS, borderWidth: 0 }] }
-: { labels, datasets: [{ label: labelText, data: values, backgroundColor: CHART_COLORS.slice(0, values.length), borderRadius: 5 }] };
+? { labels, datasets: [{ data: values, backgroundColor: palette, borderWidth: 0 }] }
+: { labels, datasets: [{ label: labelText, data: values, backgroundColor: isLine ? palette.slice(0, values.length).map(c => c + "33") : palette.slice(0, values.length), borderColor: palette.slice(0, values.length), borderWidth: isLine ? 2 : 1, borderRadius: 5, fill: isLine ? false : true, tension: 0.3, pointRadius: isLine ? 2.5 : 0 }] };
 chartInstances[canvasId] = new Chart(cv, {
-type: isDough ? "doughnut" : "bar",
+type: isDough ? "doughnut" : isLine ? "line" : "bar",
 data,
 options: {
 responsive: true,
@@ -1080,14 +1237,52 @@ x: { ticks: { color: "#5a6680", maxRotation: 45, autoSkip: true } }
 });
 }
 
+function periodStart(period) {
+const mult = period === "day" ? 1 : period === "week" ? 7 : 30;
+return Date.now() - mult * 24 * 60 * 60 * 1000;
+}
+
+// Genera los intervalos de tiempo para un período dado
+function bucketsFor(period) {
+const now = Date.now();
+const out = [];
+if (period === "day") {
+const step = 60 * 60 * 1000, n = 24;
+for (let i = n - 1; i >= 0; i--) {
+const end = now - i * step, start = end - step;
+const h = new Date(end).getHours();
+out.push({ start, end, label: `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? "AM" : "PM"}` });
+}
+} else if (period === "week") {
+const step = 24 * 60 * 60 * 1000, n = 7;
+for (let i = n - 1; i >= 0; i--) {
+const end = now - i * step, start = end - step;
+out.push({ start, end, label: `${new Date(end).getDate()}/${new Date(end).getMonth() + 1}` });
+}
+} else {
+const step = 24 * 60 * 60 * 1000, n = 30;
+for (let i = n - 1; i >= 0; i--) {
+const end = now - i * step, start = end - step;
+out.push({ start, end, label: `${new Date(end).getDate()}/${new Date(end).getMonth() + 1}` });
+}
+}
+return out;
+}
+
+function logInWindow(l, start, end) {
+const t = logTimeRaw(l);
+return t > 0 && t >= start && t < end;
+}
+
 function renderCharts() {
 if (typeof Chart === "undefined") return;
 populateCargoFilter();
 const users = filteredChartUsers();
+const CH_IDS = ["ch-rank","ch-evo","ch-act","ch-team","ch-admins","ch-dist","ch-hour"];
 
 // Si allUsers está vacío, todavía estamos cargando
 if (!allUsers.length) {
-["ch-rank","ch-evo","ch-act","ch-dist","ch-hour"].forEach(id => {
+CH_IDS.forEach(id => {
 const cv = document.getElementById(id);
 if (cv) cv.parentElement.innerHTML = '<div class="empty">Cargando usuarios...</div>';
 });
@@ -1095,80 +1290,140 @@ return;
 }
 
 if (!users.length) {
-["ch-rank","ch-evo","ch-act","ch-dist","ch-hour"].forEach(id => {
+CH_IDS.forEach(id => {
 const cv = document.getElementById(id);
 if (cv) cv.parentElement.innerHTML = '<div class="empty">Sin usuarios para los filtros seleccionados.</div>';
 });
 return;
 }
 
-// 1) Ranking por puntos (Columnas o Circular)
+updateChartButtons();
+
+// 1) Ranking por puntos (Columnas / Lineal / Circular)
 const rankRows = [...users].sort((a,b) => (Number(b.points||0)-Number(a.points||0))).slice(0, 12);
-chartBarOrDoughnut("ch-rank",
+renderSingleChart("ch-rank", chartState.rank.type,
 rankRows.map(u => u.name || "—"),
 rankRows.map(u => Number(u.points || 0)),
 "Puntos",
-rankChartType,
-rankRows.map((_, i) => CHART_COLORS[i % CHART_COLORS.length])
-);
+rankRows.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]));
 
-// 2) Evolución de puntos (Línea) — reconstruye desde logs (targetUid + delta)
-const now = Date.now(), step = 24 * 60 * 60 * 1000, count = 14;
-const days = [];
-for (let i = count - 1; i >= 0; i--) {
-const end = now - i * step, start = end - step;
-days.push({ start, end, label: `${new Date(end).getDate()}/${new Date(end).getMonth()+1}` });
-}
+// 2) Evolución de puntos (Día/Semana/Mes + Lineal/Columnas/Circular)
+const evoB = bucketsFor(chartState.evo.period);
 const evoUsers = [...users].sort((a,b) => (Number(b.points||0)-Number(a.points||0))).slice(0, 6);
+if (chartState.evo.type === "line") {
 const seriesList = evoUsers.map(w => {
-const daily = new Array(count).fill(0);
+const daily = evoB.map(b => {
+let s = 0;
 for (const l of logs) {
 if (!l || l.type !== "points" || l.targetUid !== w.uid) continue;
-const t = logTimeRaw(l);
-if (!t) continue;
-const bi = days.findIndex(d => t >= d.start && t < d.end);
-if (bi >= 0) daily[bi] += typeof l.delta === "number" ? l.delta : 0;
+if (logInWindow(l, b.start, b.end)) s += typeof l.delta === "number" ? l.delta : 0;
 }
+return s;
+});
 let val = Number(w.points) || 0;
-const series = new Array(count).fill(0);
-for (let i = count - 1; i >= 0; i--) {
+const series = new Array(evoB.length).fill(0);
+for (let i = evoB.length - 1; i >= 0; i--) {
 series[i] = Math.round(val * 100) / 100;
 val -= daily[i];
 }
 return { name: w.name || "—", series };
 });
-chartLineMulti("ch-evo", days.map(d => d.label), seriesList);
+chartLineMulti("ch-evo", evoB.map(b => b.label), seriesList);
+} else {
+renderSingleChart("ch-evo", chartState.evo.type, evoUsers.map(u => u.name || "—"), evoUsers.map(u => Number(u.points || 0)), "Puntos", evoUsers.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]));
+}
 
-// 3) Actividad por trabajador (Columnas) — excluye admins
-const actUsers = users.filter(u => u.role !== "admin");
-chartBarOrDoughnut("ch-act",
-actUsers.map(u => u.name || "—"),
-actUsers.map(u => countActionsBy(u.uid)),
-"Acciones",
-"bar",
-CHART_COLORS
-);
+// 3) Actividad por trabajador (puntos obtenidos, promedio y evolución)
+const actStart = periodStart(chartState.act.period);
+const actUsers = users.filter(u => String(u.role || "") !== "admin");
+const actRows = actUsers.map(u => {
+let count = 0, pts = 0;
+for (const l of logs) {
+if (!l || l.actorUid !== u.uid) continue;
+if (String(l.actorRole || "").toLowerCase() === "admin") continue;
+const t = logTimeRaw(l);
+if (t > 0 && t >= actStart) {
+count++;
+if (l.type === "points" && typeof l.delta === "number" && l.delta > 0) pts += l.delta;
+}
+}
+return { u, count, pts };
+}).filter(r => r.count > 0 || Number(r.u.points || 0) > 0).sort((a,b) => (b.count - a.count) || (Number(b.u.points || 0) - Number(a.u.points || 0)));
 
-// 4) Distribución por rango (Circular)
+const actTotalPts = actRows.reduce((s, r) => s + (r.pts || 0), 0);
+const actTotalCount = actRows.reduce((s, r) => s + (r.count || 0), 0);
+const actProm = actUsers.length ? Math.round((actTotalPts / actUsers.length) * 100) / 100 : 0;
+const actStats = document.getElementById("act-stats");
+if (actStats) {
+actStats.innerHTML = `⭐ <b>Puntos obtenidos:</b> ${fmtPts(actTotalPts)} &nbsp;·&nbsp; 📊 <b>Promedio:</b> ${fmtPts(actProm)} pts por trabajador &nbsp;·&nbsp; 🎯 <b>Acciones:</b> ${actTotalCount} <span style="opacity:.6">(${chartState.act.period === "day" ? "hoy" : chartState.act.period === "week" ? "7 días" : "30 días"})</span>`;
+}
+
+if (chartState.act.type === "line") {
+const actB = bucketsFor(chartState.act.period);
+const topAct = actRows.slice(0, 6);
+const actSeries = topAct.map(r => ({
+name: r.u.name || "—",
+series: actB.map(b => {
+let c = 0;
+for (const l of logs) {
+if (!l || l.actorUid !== r.u.uid) continue;
+if (String(l.actorRole || "").toLowerCase() === "admin") continue;
+if (logInWindow(l, b.start, b.end)) c++;
+}
+return c;
+})
+}));
+if (!actSeries.length) actSeries.push({ name: "Sin actividad", series: actB.map(() => 0) });
+chartLineMulti("ch-act", actB.map(b => b.label), actSeries);
+} else {
+renderSingleChart("ch-act", chartState.act.type, actRows.map(r => r.u.name || "—"), actRows.map(r => r.count || 0), "Acciones", actRows.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]));
+}
+
+// 4) Actividad del equipo (acciones del staff, sin admins)
+const teamB = bucketsFor(chartState.team.period);
+const teamVals = teamB.map(b => {
+let c = 0;
+for (const l of logs) {
+if (!l) continue;
+if (String(l.actorRole || "").toLowerCase() === "admin") continue;
+if (logInWindow(l, b.start, b.end)) c++;
+}
+return c;
+});
+renderSingleChart("ch-team", chartState.team.type, teamB.map(b => b.label), teamVals, "Acciones del equipo", CHART_COLORS);
+
+// 5) Actividad por Admins
+const admB = bucketsFor(chartState.admins.period);
+const admVals = admB.map(b => {
+let c = 0;
+for (const l of logs) {
+if (!l) continue;
+if (String(l.actorRole || "").toLowerCase() !== "admin") continue;
+if (logInWindow(l, b.start, b.end)) c++;
+}
+return c;
+});
+renderSingleChart("ch-admins", chartState.admins.type, admB.map(b => b.label), admVals, "Acciones de admins", CHART_COLORS);
+
+// 6) Distribución por rango
 const rankCount = {};
 for (const u of users) {
 const rk = u.rango && String(u.rango).trim() ? String(u.rango) : "Sin rango";
 rankCount[rk] = (rankCount[rk] || 0) + 1;
 }
 const rankLabels = Object.keys(rankCount);
-chartBarOrDoughnut("ch-dist", rankLabels, rankLabels.map(k => rankCount[k]), "Miembros", "doughnut", CHART_COLORS);
+renderSingleChart("ch-dist", chartState.dist.type, rankLabels, rankLabels.map(k => rankCount[k]), "Miembros", CHART_COLORS);
 
-// 5) Actividad por hora del día (Columnas, 24 h)
+// 7) Actividad por hora del día (24 h)
 const hours = new Array(24).fill(0);
 for (const l of logs) {
 if (!l) continue;
 if (String(l.actorRole || "").toLowerCase() === "admin") continue;
 const t = logTimeRaw(l);
-if (!t) continue;
-hours[new Date(t).getHours()]++;
+if (t && t > 0) hours[new Date(t).getHours()]++;
 }
 const hLabels = Array.from({ length: 24 }, (_, i) => `${i % 12 === 0 ? 12 : i % 12} ${i < 12 ? "AM" : "PM"}`);
-chartBarOrDoughnut("ch-hour", hLabels, hours, "Registros", "bar", CHART_COLORS);
+renderSingleChart("ch-hour", chartState.hour.type, hLabels, hours, "Registros", CHART_COLORS);
 }
 
 // Hacer renderCharts global para que los selectores HTML puedan accederla
@@ -1391,6 +1646,7 @@ logsUnsub = onSnapshot(q, snap => {
 logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 renderLogs();
 renderInspectorActivity();
+if (typeof renderDestacados === "function") renderDestacados();
 if (typeof renderCharts === "function") renderCharts();
 }, e => console.error("Logs snapshot error:", e));
 }
@@ -1644,12 +1900,21 @@ if (!top.length) { tb.innerHTML='<tr><td colspan="6" class="empty">Sin datos aú
 tb.innerHTML = top.map((u,i) => {
 const isSelf = u.uid === myUid;
 const dis = (isSelf || !canEdit) ? 'disabled style="opacity:0.45;cursor:not-allowed"' : '';
-const cells = canEdit ? `
-  <td>${isSelf ? '<span style="color:var(--muted);font-size:11px">—</span>' : `<input type="number" step="0.01" min="0" id="dvin-${u.uid}" value="1" class="pts-input" title="Valor a sumar o restar (decimales)"/>`}</td>
+let cells;
+if (!canEdit) {
+cells = '<td colspan="2"><span style="color:var(--muted);font-size:11px">—</span></td>';
+} else if (myRole === "admin") {
+const stepVal = decimalsN() === 0 ? "1" : decimalsN() === 1 ? "0.1" : "0.01";
+const placeholderVal = decimalsN() === 0 ? "0" : decimalsN() === 1 ? "0.0" : "0.00";
+cells = `<td>${isSelf ? '<span style="color:var(--muted);font-size:11px">—</span>' : `<div class="pts-row"><input type="number" step="${stepVal}" min="0" id="dvin-${u.uid}" class="pts-input" style="width:80px" placeholder="${placeholderVal}" title="Valor fijo a establecer (Enter para guardar)" onkeydown="if(event.key==='Enter')dashSetPts('${u.uid}')"/><button class="btn btn-primary btn-sm" onclick="dashSetPts('${u.uid}')" ${dis}>💾 Fijar</button></div>`}</td>
+  <td><span style="color:var(--muted);font-size:11px">—</span></td>`;
+} else {
+cells = `<td><span style="color:var(--muted);font-size:11px">—</span></td>
   <td><div class="pts-row" style="flex-wrap:wrap">
-    <button class="btn btn-success btn-sm" onclick="dashApplyPts('${u.uid}',1)" ${dis}>＋</button>
-    <button class="btn btn-danger btn-sm" onclick="dashApplyPts('${u.uid}',-1)" ${dis}>−</button>
-  </div></td>` : '<td colspan="2"><span style="color:var(--muted);font-size:11px">—</span></td>';
+    <button class="btn btn-success btn-sm" onclick="dashApplyPts('${u.uid}',1)" ${dis} title="Sumar +1">＋</button>
+    <button class="btn btn-danger btn-sm" onclick="dashApplyPts('${u.uid}',-1)" ${dis} title="Restar -1">−</button>
+  </div></td>`;
+}
 return `
    <tr>
      <td style="color:var(--muted);font-weight:700;width:30px">${i+1}</td>
@@ -1664,11 +1929,19 @@ return `
 // Acción rápida de puntos desde el Dashboard (misma fuente de datos).
 window.dashApplyPts = async (uid, sign) => {
 if (myRole !== "admin" && myRole !== "inspector") { showToast("Sin permisos para modificar puntos.", "err"); return; }
+await adjPts(uid, sign * 1);
+const el = document.getElementById("dpv-" + uid);
+if (el) el.textContent = fmtPts(allUsers.find(x=>x.uid===uid)?.points || 0);
+};
+
+// Admin: establecer un valor fijo desde el Dashboard (Enter o botón Fijar)
+window.dashSetPts = async (uid) => {
+if (myRole !== "admin") { showToast("Solo un admin puede fijar el valor.", "err"); return; }
 const inp = document.getElementById("dvin-" + uid);
 const raw = inp ? inp.value : "";
 const v = parseFloat(String(raw).replace(",", "."));
-if (!Number.isFinite(v) || v <= 0) { showToast("Ingresá un valor numérico válido (ej: 2.5 o 1.25).", "err"); return; }
-await adjPts(uid, sign * v);
+if (!Number.isFinite(v) || v < 0) { showToast("Ingresá un valor válido (ej: 7 o 3.5).", "err"); return; }
+await setPtsFixed(uid, v);
 const el = document.getElementById("dpv-" + uid);
 if (el) el.textContent = fmtPts(allUsers.find(x=>x.uid===uid)?.points || 0);
 };
@@ -1709,51 +1982,80 @@ tb.innerHTML = list.map(u => `
 function filteredPoints() {
 let list = allUsers.filter(u => u.role !== "admin");
 if (filterPText) list = list.filter(u => (u.name||"").toLowerCase().includes(filterPText));
+if (filterPCargo) {
+list = list.filter(u => {
+const cs = u.cargos || [];
+const arr = Array.isArray(cs) ? cs : [String(cs)];
+return arr.some(c => String(c).trim().toLowerCase() === filterPCargo.toLowerCase());
+});
+}
 return list;
 }
 
 window.filterP = v => { filterPText = v.toLowerCase(); renderPointsTable(filteredPoints()); };
 
+window.filterPCargo = v => {
+filterPCargo = v;
+const sel = document.getElementById("pts-cargo");
+if (sel && sel.options.length <= 1) {
+sel.innerHTML = ['<option value="">Todos los cargos</option>','<option>Inspector</option>','<option>Moderador</option>','<option>Editor</option>','<option>MC Team</option>','<option>Dev</option>'].join("");
+}
+if (sel) sel.value = v;
+renderPointsTable(filteredPoints());
+};
+
+// Botón "ojo" del admin: mostrar/ocultar rango y cargos en la tabla de puntos
+window.togglePtsDetails = () => {
+ptsShowDetails = !ptsShowDetails;
+document.querySelectorAll(".pts-detail-th").forEach(th => {
+th.style.display = ptsShowDetails ? "" : "none";
+});
+const btn = document.getElementById("pts-eye-btn");
+if (btn) btn.textContent = ptsShowDetails ? "🙈 Ocultar detalles" : "👁️ Detalles";
+renderPointsTable(filteredPoints());
+};
+
 function renderPointsTable(list) {
 const tb = document.getElementById("pts-tbody");
-if (!list.length) { tb.innerHTML='<tr><td colspan="5" class="empty">Sin moderadores.</td></tr>'; return; }
+const cols = ptsShowDetails ? 7 : 5;
+if (!list.length) { tb.innerHTML=`<tr><td colspan="${cols}" class="empty">Sin moderadores.</td></tr>`; return; }
 tb.innerHTML = list.map(u => {
 const isSelf = u.uid === myUid;
 const dis = isSelf ? 'disabled style="opacity:0.5;cursor:not-allowed"' : '';
+const detailCells = ptsShowDetails
+? `<td>${esc(u.rango||"—")}</td><td>${(Array.isArray(u.cargos) ? u.cargos : [String(u.cargos||"")]).filter(Boolean).map(c => `<span class="badge">${esc(c)}</span>`).join(" ") || '<span style="color:var(--muted)">—</span>'}</td>`
+: "";
+let valueCell, adjustCell;
+if (myRole === "admin") {
+const stepVal = decimalsN() === 0 ? "1" : decimalsN() === 1 ? "0.1" : "0.01";
+const placeholderVal = decimalsN() === 0 ? "0" : decimalsN() === 1 ? "0.0" : "0.00";
+valueCell = `<td>${isSelf ? '<span style="color:var(--muted);font-size:11px">—</span>' : `<div class="pts-row"><input type="number" step="${stepVal}" min="0" id="pvin-${u.uid}" class="pts-input" style="width:80px" placeholder="${placeholderVal}" title="Valor fijo a establecer (Enter para guardar)" onkeydown="if(event.key==='Enter')setPtsFixed('${u.uid}')"/><button class="btn btn-primary btn-sm" onclick="setPtsFixed('${u.uid}')" ${dis}>💾 Fijar</button></div>`}</td>`;
+adjustCell = '<td><span style="color:var(--muted);font-size:11px">—</span></td>';
+} else if (myRole === "inspector") {
+valueCell = '<td><span style="color:var(--muted);font-size:11px">—</span></td>';
+adjustCell = `<td><div class="pts-row" style="flex-wrap:wrap">
+  <button class="btn btn-success btn-sm" onclick="adjPts('${u.uid}',1)" ${dis} title="Sumar +1">＋ +1</button>
+  <button class="btn btn-danger btn-sm" onclick="adjPts('${u.uid}',-1)" ${dis} title="Restar -1">− -1</button>
+</div></td>`;
+} else {
+valueCell = '<td><span style="color:var(--muted);font-size:11px">—</span></td>';
+adjustCell = '<td><span style="color:var(--muted);font-size:11px">—</span></td>';
+}
 return `
    <tr>
      <td><b>${esc(u.name||"—")}</b></td>
      <td>${roleBadge(u.role)}</td>
      <td><span class="pts-val" id="pv-${u.uid}">${fmtPts(u.points)}</span></td>
-     <td><input type="number" step="0.01" min="0" id="pvin-${u.uid}" value="1" class="pts-input" ${isSelf ? "disabled" : ""} title="Valor a sumar o restar (decimales permitidos)"/></td>
-     <td>
-       <div class="pts-row" style="flex-wrap:wrap">
-         <button class="btn btn-success btn-sm" onclick="applyPts('${u.uid}',1)" ${dis}>＋ Sumar</button>
-         <button class="btn btn-danger btn-sm" onclick="applyPts('${u.uid}',-1)" ${dis}>− Restar</button>
-         <button class="btn btn-ghost btn-sm" onclick="promptPts('${u.uid}')" ${dis}>± Fijar</button>
-       </div>
-     </td>
+     ${detailCells}
+     ${valueCell}
+     ${adjustCell}
    </tr>`;
 }).join("");
 }
 
 // ── PUNTOS ────────────────────────────────────────────────────
-// Suma o resta el valor decimal escrito en la columna "Valor".
-window.applyPts = async (uid, sign) => {
-if (myRole !== "admin" && myRole !== "inspector") {
-showToast("No tenés permisos para modificar puntos.", "err");
-return;
-}
-const inp = document.getElementById("pvin-" + uid);
-const raw = inp ? inp.value : "";
-const v = parseFloat(String(raw).replace(",", "."));
-if (!Number.isFinite(v) || v <= 0) {
-showToast("Ingresá un valor numérico válido en la columna Valor (ej: 2.5 o 1.25).", "err");
-return;
-}
-await adjPts(uid, sign * v);
-};
-
+// Ajustar +1 / -1: únicamente valores fijos (no cantidades personalizadas).
+// El inspector puede hacer como máximo 2 cambios por usuario al día.
 window.adjPts = async (uid, delta) => {
 if (myRole !== "admin" && myRole !== "inspector") {
 showToast("No tenés permisos para modificar puntos.", "err");
@@ -1765,18 +2067,19 @@ return;
 }
 const u = allUsers.find(x => x.uid===uid);
 if (!u) return;
+delta = delta > 0 ? 1 : -1;
 if (myRole === "inspector") {
 const cd = checkInspectorCooldown(uid);
 if (!cd.ok) {
-showToast(`Cooldown activo. Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, "err");
+showToast(`Cooldown activo (máx. 2 cambios/día). Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, "err");
 return;
 }
 }
 const reasonRaw = prompt("Motivo del cambio de puntos:", "");
-if (reasonRaw === null && myRole !== "admin") return;
+if (reasonRaw === null) return;
 const reason = (reasonRaw || "").trim() || "Sin motivo";
-// Se conservan los decimales: no se redondea el valor almacenado.
-const nv = Math.max(0, (u.points||0) + delta);
+// Se respeta el máximo configurado y la cantidad de decimales elegida.
+const nv = clampPts((u.points||0) + delta);
 try {
 await updateDoc(doc(db,"users",uid), { points: nv });
 u.points = nv;
@@ -1801,26 +2104,11 @@ if (myRole === "inspector") writeCooldown(myUid, uid, Date.now());
 } catch(e) { showToast("Error: "+e.message,"err"); }
 };
 
-window.promptPts = uid => {
-if (uid === myUid) {
-showToast("No podés modificar tus propios puntos!", "err");
-return;
-}
-const u = allUsers.find(x => x.uid===uid);
-if (!u) return;
-const raw = prompt(`Ajustar puntos de ${u.name||"usuario"} (actual: ${fmtPts(u.points)})\n\nEscribí positivo para sumar o negativo para restar.\nEj: 2.5 suma 2.5 puntos | -1.25 resta 1.25 puntos`);
-if (raw===null) return;
-const n = parseFloat(String(raw).replace(",", "."));
-if (isNaN(n)) return showToast("Número inválido.", "err");
-const reasonRaw = prompt("Motivo del cambio de puntos:", "");
-if (reasonRaw === null && myRole !== "admin") return;
-const reason = (reasonRaw || "").trim() || "Sin motivo";
-adjPtsWithReason(uid, n, reason);
-};
-
-async function adjPtsWithReason(uid, delta, reason) {
-if (myRole !== "admin" && myRole !== "inspector") {
-showToast("No tenés permisos para modificar puntos.", "err");
+// Valor fijo: el admin escribe el número de puntos y presiona Enter (o Fijar)
+// para ESTABLECER el valor directamente, sin cantidades personalizadas de ajuste.
+window.setPtsFixed = async (uid, forcedVal) => {
+if (myRole !== "admin") {
+showToast("Solo un admin puede fijar el valor de puntos.", "err");
 return;
 }
 if (uid === myUid) {
@@ -1829,21 +2117,29 @@ return;
 }
 const u = allUsers.find(x => x.uid===uid);
 if (!u) return;
-if (myRole === "inspector") {
-const cd = checkInspectorCooldown(uid);
-if (!cd.ok) {
-showToast(`Cooldown activo. Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, "err");
+let v = forcedVal;
+if (typeof v !== "number") {
+const inp = document.getElementById("pvin-" + uid);
+const raw = inp ? inp.value : "";
+v = parseFloat(String(raw).replace(",", "."));
+}
+if (!Number.isFinite(v) || v < 0) {
+showToast("Ingresá un valor válido (mayor o igual a 0).", "err");
 return;
 }
-}
-const nv = Math.max(0, (u.points||0) + delta);
+const nv = clampPts(v);
+if (nv === (u.points||0)) { showToast("El valor ya es " + fmtPts(nv) + ".", "ok"); return; }
+const reasonRaw = prompt("Motivo del cambio de puntos:", "Valor fijo");
+if (reasonRaw === null) return;
+const reason = (reasonRaw || "").trim() || "Valor fijo";
+const delta = Math.round((nv - (u.points||0)) * 100) / 100;
 try {
 await updateDoc(doc(db,"users",uid), { points: nv });
 u.points = nv;
 const el = document.getElementById("pv-"+uid);
 if (el) el.textContent = fmtPts(nv);
 renderAll();
-showToast((delta>0?"➕":"➖") + " " + fmtPts(Math.abs(delta)) + " pt a " + (u.name||"usuario"), "ok");
+showToast("⚙️ Puntos de " + (u.name||"usuario") + " → " + fmtPts(nv), "ok");
 const nText = buildPointsNovedad(u.name || "Un usuario", delta, nv, reason);
 await logNovedad(nText);
 await writeLog({
@@ -1857,9 +2153,11 @@ delta,
 reason,
 newPoints: nv
 });
-if (myRole === "inspector") writeCooldown(myUid, uid, Date.now());
 } catch(e) { showToast("Error: "+e.message,"err"); }
-}
+};
+
+// (Se eliminaron promptPts / adjPtsWithReason: Ajustar solo permite +1/−1 fijos
+// y el valor directo queda exclusivo del Admin, vía setPtsFixed).
 
 // ── MODAL ─────────────────────────────────────────────────────
 window.openCreate = () => {

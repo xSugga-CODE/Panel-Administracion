@@ -1,0 +1,550 @@
+﻿});
+return;
+}
+
+// 1) Ranking por puntos (Columnas o Circular)
+const rankRows = [...users].sort((a,b) => (Number(b.points||0)-Number(a.points||0))).slice(0, 12);
+chartBarOrDoughnut("ch-rank",
+rankRows.map(u => u.name || "—"),
+rankRows.map(u => Number(u.points || 0)),
+"Puntos",
+rankChartType,
+rankRows.map((_, i) => CHART_COLORS[i % CHART_COLORS.length])
+);
+
+// 2) Evolución de puntos (Línea) — reconstruye desde logs (targetUid + delta)
+const now = Date.now(), step = 24 * 60 * 60 * 1000, count = 14;
+const days = [];
+for (let i = count - 1; i >= 0; i--) {
+const end = now - i * step, start = end - step;
+days.push({ start, end, label: `${new Date(end).getDate()}/${new Date(end).getMonth()+1}` });
+}
+const evoUsers = [...users].sort((a,b) => (Number(b.points||0)-Number(a.points||0))).slice(0, 6);
+const seriesList = evoUsers.map(w => {
+const daily = new Array(count).fill(0);
+for (const l of logs) {
+if (!l || l.type !== "points" || l.targetUid !== w.uid) continue;
+const t = logTimeRaw(l);
+if (!t) continue;
+const bi = days.findIndex(d => t >= d.start && t < d.end);
+if (bi >= 0) daily[bi] += typeof l.delta === "number" ? l.delta : 0;
+}
+let val = Number(w.points) || 0;
+const series = new Array(count).fill(0);
+for (let i = count - 1; i >= 0; i--) {
+series[i] = Math.round(val * 100) / 100;
+val -= daily[i];
+}
+return { name: w.name || "—", series };
+});
+chartLineMulti("ch-evo", days.map(d => d.label), seriesList);
+
+// 3) Actividad por trabajador (Columnas) — excluye admins
+const actUsers = users.filter(u => u.role !== "admin");
+chartBarOrDoughnut("ch-act",
+actUsers.map(u => u.name || "—"),
+actUsers.map(u => countActionsBy(u.uid)),
+"Acciones",
+"bar",
+CHART_COLORS
+);
+
+// 4) Distribución por rango (Circular)
+const rankCount = {};
+for (const u of users) {
+const rk = u.rango && String(u.rango).trim() ? String(u.rango) : "Sin rango";
+rankCount[rk] = (rankCount[rk] || 0) + 1;
+}
+const rankLabels = Object.keys(rankCount);
+chartBarOrDoughnut("ch-dist", rankLabels, rankLabels.map(k => rankCount[k]), "Miembros", "doughnut", CHART_COLORS);
+
+// 5) Actividad por hora del día (Columnas, 24 h)
+const hours = new Array(24).fill(0);
+for (const l of logs) {
+if (!l) continue;
+if (String(l.actorRole || "").toLowerCase() === "admin") continue;
+const t = logTimeRaw(l);
+if (!t) continue;
+hours[new Date(t).getHours()]++;
+}
+const hLabels = Array.from({ length: 24 }, (_, i) => `${i % 12 === 0 ? 12 : i % 12} ${i < 12 ? "AM" : "PM"}`);
+chartBarOrDoughnut("ch-hour", hLabels, hours, "Registros", "bar", CHART_COLORS);
+}
+
+// Hacer renderCharts global para que los selectores HTML puedan accederla
+window.renderCharts = renderCharts;
+
+function dayKey(dt) {
+const y = dt.getFullYear();
+const m = String(dt.getMonth() + 1).padStart(2, "0");
+const d = String(dt.getDate()).padStart(2, "0");
+return `${y}-${m}-${d}`;
+}
+
+function tsToDate(ts) {
+if (!ts) return null;
+if (typeof ts.toDate === "function") return ts.toDate();
+if (typeof ts.seconds === "number") return new Date(ts.seconds * 1000);
+return null;
+}
+
+function fmtDateTime(ts) {
+const d = tsToDate(ts);
+return d ? d.toLocaleString("es-CO") : "—";
+}
+
+function fmtSince(ms) {
+if (ms < 0) ms = 0;
+const s = Math.floor(ms / 1000);
+if (s < 60) return `${s}s`;
+const m = Math.floor(s / 60);
+if (m < 60) return `${m} min`;
+const h = Math.floor(m / 60);
+const mm = m % 60;
+return `${h}h ${mm}m`;
+}
+
+async function writeLog(entry) {
+try {
+await addDoc(collection(db, "logs"), {
+...entry,
+dayKey: dayKey(new Date()),
+clientTs: Date.now(),
+createdAt: serverTimestamp()
+});
+} catch(e) {
+console.error("Error guardando log:", e);
+}
+}
+
+function cooldownKey(actorUid, targetUid) {
+return `${PTS_COOLDOWN_PREFIX}${actorUid}:${targetUid}`;
+}
+
+function readCooldownList(actorUid, targetUid) {
+try {
+const v = localStorage.getItem(cooldownKey(actorUid, targetUid));
+if (!v) return [];
+if (v.trim().startsWith("[")) {
+const arr = JSON.parse(v);
+if (!Array.isArray(arr)) return [];
+return arr.map(x => parseInt(x, 10)).filter(n => Number.isFinite(n) && n > 0);
+}
+const n = parseInt(v, 10);
+return Number.isFinite(n) && n > 0 ? [n] : [];
+} catch {
+return [];
+}
+}
+
+function writeCooldownList(actorUid, targetUid, list) {
+try {
+localStorage.setItem(cooldownKey(actorUid, targetUid), JSON.stringify(list));
+} catch {}
+}
+
+function getPairActionTimes(actorUid, targetUid) {
+const best = new Set(readCooldownList(actorUid, targetUid));
+for (const l of logs) {
+if (l.type !== "points") continue;
+if (l.actorUid !== actorUid) continue;
+if (l.targetUid !== targetUid) continue;
+const t = typeof l.clientTs === "number" ? l.clientTs : 0;
+if (t > 0) best.add(t);
+}
+return Array.from(best).sort((a,b) => a - b);
+}
+
+function writeCooldown(actorUid, targetUid, ts) {
+const now = Date.now();
+const floor = now - PTS_COOLDOWN_MS;
+const list = readCooldownList(actorUid, targetUid).filter(t => t >= floor);
+list.push(ts);
+writeCooldownList(actorUid, targetUid, list);
+}
+
+function checkInspectorCooldown(targetUid) {
+const actorUid = myUid;
+if (!actorUid) return { ok: true, waitMs: 0, remaining: 2 };
+const now = Date.now();
+const floor = now - PTS_COOLDOWN_MS;
+const list = getPairActionTimes(actorUid, targetUid).filter(t => t >= floor);
+const used = list.length;
+const remaining = Math.max(0, 2 - used);
+if (used >= 2) {
+const oldest = list[0] || now;
+const waitMs = (oldest + PTS_COOLDOWN_MS) - now;
+return { ok: false, waitMs: Math.max(0, waitMs), remaining: 0 };
+}
+return { ok: true, waitMs: 0, remaining };
+}
+
+function pick(arr) {
+return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function prettyRole(r) {
+const m = { admin: "Admin", inspector: "Inspector", user: "Usuario" };
+return m[r] || r || "—";
+}
+
+function fmtCargos(cargos) {
+if (!cargos) return "—";
+if (Array.isArray(cargos)) return cargos.length ? cargos.join(", ") : "—";
+return String(cargos);
+}
+
+function buildPointsNovedad(targetName, delta, newVal, reason) {
+const name = targetName || "Un usuario";
+const abs = Math.abs(delta);
+const isUp = delta > 0;
+const main = isUp
+? pick([
+`✅ Buen desempeño: ${name} sumó +${abs} punto(s).`,
+`✅ ${name} fue reconocido: +${abs} punto(s).`,
+`✅ ¡Buen trabajo, ${name}! +${abs} punto(s).`
+])
+: pick([
+`⚠️ Ajuste de puntos: ${name} recibió -${abs} punto(s).`,
+`⚠️ ${name} tuvo un ajuste: -${abs} punto(s).`,
+`⚠️ Se registró un descuento para ${name}: -${abs} punto(s).`
+]);
+
+const estado = newVal <= 2
+? " Quedó en estado: En riesgo."
+: newVal >= 6
+? " Quedó en estado: Óptimo."
+: "";
+
+return `${main} Motivo: ${reason}. Total: ${newVal} pts.${estado}`;
+}
+
+function buildUserCreatedNovedad(name, role, rango, cargos) {
+const who = name || "Nuevo usuario";
+const main = pick([
+`✨ Nuevo ingreso: ${who} se unió al equipo.`,
+`✨ Se registró un nuevo integrante: ${who}.`,
+`✨ Bienvenido/a: ${who}.`
+]);
+return `${main} Rol: ${prettyRole(role)} · Rango: ${rango || "—"} · Cargos: ${fmtCargos(cargos)}.`;
+}
+
+function buildUserUpdatedNovedad(prev, next) {
+const who = next?.name || prev?.name || "Un usuario";
+const parts = [];
+if ((prev?.role || "") !== (next?.role || "")) parts.push(`Rol: ${prettyRole(prev?.role)} → ${prettyRole(next?.role)}`);
+if ((prev?.rango || "") !== (next?.rango || "")) parts.push(`Rango: ${prev?.rango || "—"} → ${next?.rango || "—"}`);
+const pc = fmtCargos(prev?.cargos);
+const nc = fmtCargos(next?.cargos);
+if (pc !== nc) parts.push(`Cargos: ${pc} → ${nc}`);
+if ((prev?.status || "") !== (next?.status || "")) parts.push(`Estado: ${prev?.status || "—"} → ${next?.status || "—"}`);
+if (!parts.length) return null;
+return `🔄 Actualización de perfil: ${who}. ${parts.join(" · ")}.`;
+}
+
+async function logNovedad(texto) {
+try {
+await addDoc(collection(db, "novedades"), {
+texto,
+fecha: serverTimestamp(),
+autor: myName || "Sistema"
+});
+await cleanupNovedadesIfAdmin();
+} catch(e) {
+console.error("Error al registrar novedad:", e);
+}
+}
+
+async function cleanupNovedadesIfAdmin() {
+if (myRole !== "admin" && myRole !== "inspector") return;
+try {
+const snap = await getDocs(query(collection(db, "novedades"), orderBy("fecha", "desc"), limit(60)));
+if (snap.size <= MAX_NOVEDADES) return;
+const extra = snap.docs.slice(MAX_NOVEDADES);
+for (const d of extra) {
+await deleteDoc(doc(db, "novedades", d.id));
+}
+} catch(e) {
+console.error("Error limpiando novedades:", e);
+}
+}
+
+async function logLoginOnce() {
+if (!myUid || !myRole) return;
+const k = `jowiland:loginLogged:${myUid}`;
+try {
+if (sessionStorage.getItem(k)) return;
+sessionStorage.setItem(k, "1");
+} catch {}
+await writeLog({
+type: "login",
+actorUid: myUid,
+actorRole: myRole,
+actorName: myName || ""
+});
+}
+
+async function startLogsLive() {
+if (logsUnsub) { try { logsUnsub(); } catch {} logsUnsub = null; }
+const q = query(collection(db, "logs"), orderBy("createdAt", "desc"), limit(300));
+logsUnsub = onSnapshot(q, snap => {
+logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+renderLogs();
+renderInspectorActivity();
+if (typeof renderCharts === "function") renderCharts();
+}, e => console.error("Logs snapshot error:", e));
+}
+
+function filteredLogs() {
+let list = logs;
+if (logTypeFilter) list = list.filter(l => l.type === logTypeFilter);
+if (logSearch) {
+list = list.filter(l => {
+const a = (l.actorName || "").toLowerCase();
+const t = (l.targetName || "").toLowerCase();
+const r = (l.reason || "").toLowerCase();
+return a.includes(logSearch) || t.includes(logSearch) || r.includes(logSearch);
+});
+}
+return list;
+}
+
+function renderLogs() {
+const tb = document.getElementById("logs-tbody");
+if (!tb) return;
+const isAdmin = myRole === "admin";
+const th = document.getElementById("logs-th-actions");
+if (th) th.style.display = isAdmin ? "" : "none";
+const exp = document.getElementById("logs-export");
+if (exp) exp.style.display = isAdmin ? "" : "none";
+
+const list = filteredLogs();
+if (!list.length) {
+tb.innerHTML = `<tr><td colspan="${isAdmin ? 6 : 5}" class="empty">Sin registros.</td></tr>`;
+return;
+}
+tb.innerHTML = list.map(l => {
+const isPoints = l.type === "points";
+const dt = fmtDateTime(l.createdAt);
+const actor = esc(l.actorName || "—");
+const target = esc(l.targetName || (l.type === "login" ? (l.actorName || "—") : "—"));
+const delta = isPoints ? (typeof l.delta === "number" ? l.delta : 0) : null;
+const deltaTxt = isPoints ? `${delta > 0 ? "+" : ""}${delta}` : "—";
+const motivo = esc(l.reason || (l.type === "login" ? "Inicio de sesión" : "Sin motivo"));
+const delBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="deleteLog('${l.id}')">🗑️</button>` : "";
+return `
+     <tr>
+       <td>${dt}</td>
+       <td>${actor}</td>
+       <td>${target}</td>
+       <td><b style="color:${delta > 0 ? "var(--success)" : delta < 0 ? "var(--danger)" : "var(--muted)"}">${deltaTxt}</b></td>
+       <td>${motivo}</td>
+       ${isAdmin ? `<td>${delBtn}</td>` : ""}
+     </tr>`;
+}).join("");
+}
+
+window.deleteLog = async (id) => {
+if (myRole !== "admin") return;
+const ok = confirm("¿Borrar este registro? No se puede deshacer.");
+if (!ok) return;
+try {
+await deleteDoc(doc(db, "logs", id));
+showToast("Registro borrado.", "ok");
+} catch(e) {
+showToast("Error al borrar: " + e.message, "err");
+}
+};
+
+window.exportLogs = () => {
+if (myRole !== "admin") return;
+const list = filteredLogs().map(l => ({
+...l,
+createdAt: tsToDate(l.createdAt) ? tsToDate(l.createdAt).toISOString() : null
+}));
+const blob = new Blob([JSON.stringify(list, null, 2)], { type: "application/json" });
+const a = document.createElement("a");
+a.href = URL.createObjectURL(blob);
+a.download = `logs-${dayKey(new Date())}.json`;
+document.body.appendChild(a);
+a.click();
+URL.revokeObjectURL(a.href);
+a.remove();
+};
+
+function renderInspectorActivity() {
+const tb = document.getElementById("insp-tbody");
+if (!tb) return;
+const today = dayKey(new Date());
+const todays = logs.filter(l => l.type === "points" && l.dayKey === today && l.actorRole === "inspector");
+if (!todays.length) {
+tb.innerHTML = '<tr><td colspan="6" class="empty">Sin actividad hoy.</td></tr>';
+return;
+}
+
+const mp = new Map();
+for (const l of todays) {
+const uid = l.actorUid || "—";
+const prev = mp.get(uid) || {
+uid,
+name: l.actorName || "—",
+pts: 0,
+actions: 0,
+lastAt: null,
+lastTxt: "—"
+};
+const delta = typeof l.delta === "number" ? l.delta : 0;
+if (delta > 0) prev.pts += delta;
+prev.actions += 1;
+const d = tsToDate(l.createdAt);
+if (d && (!prev.lastAt || d > prev.lastAt)) {
+prev.lastAt = d;
+const tgt = l.targetName ? ` → ${l.targetName}` : "";
+prev.lastTxt = `${delta > 0 ? "+" : ""}${delta}${tgt}`;
+}
+mp.set(uid, prev);
+}
+
+const list = [...mp.values()].sort((a, b) => {
+if (b.actions !== a.actions) return b.actions - a.actions;
+if (b.pts !== a.pts) return b.pts - a.pts;
+const ta = a.lastAt ? a.lastAt.getTime() : 0;
+const tb = b.lastAt ? b.lastAt.getTime() : 0;
+return tb - ta;
+});
+
+tb.innerHTML = list.map(r => {
+const now = Date.now();
+const lastMs = r.lastAt ? (now - r.lastAt.getTime()) : Infinity;
+const state = lastMs <= 15 * 60 * 1000 ? "🟢 Activo" : lastMs <= 60 * 60 * 1000 ? "🟡 Poco activo" : "🔴 Inactivo";
+return `
+     <tr>
+       <td><b>${esc(r.name)}</b></td>
+       <td><b style="color:var(--warn)">${r.pts}</b></td>
+       <td>${r.actions}</td>
+       <td>${esc(r.lastTxt)}</td>
+       <td>${r.lastAt ? fmtSince(lastMs) : "—"}</td>
+       <td>${state}</td>
+     </tr>`;
+}).join("");
+}
+
+// ── TRABAJADORES DESTACADOS (Día / Semana / Mes) ──────────────
+window.toggleDestacados = () => {
+const wrap = document.getElementById("destacados-wrap");
+const btn  = document.getElementById("btn-dest");
+if (!wrap) return;
+const show = wrap.style.display !== "grid";
+wrap.style.display = show ? "grid" : "none";
+if (btn) btn.textContent = show ? "🙈 Ocultar trabajadores destacados" : "👁️ Mostrar trabajadores destacados";
+if (show && typeof renderDestacados === "function") renderDestacados();
+};
+
+function logTimeRaw(l) {
+if (!l) return 0;
+const d = tsToDate(l.createdAt);
+if (d) return d.getTime();
+return typeof l.clientTs === "number" ? l.clientTs : 0;
+}
+
+function periodTopStaff(mode) {
+const now = Date.now();
+const mult = mode === "day" ? 1 : mode === "week" ? 7 : 30;
+const start = now - mult * 24 * 60 * 60 * 1000;
+const counts = new Map();
+for (const l of logs) {
+if (!l) continue;
+if (String(l.actorRole || "").toLowerCase() === "admin") continue;
+const t = logTimeRaw(l);
+if (!t || t < start) continue;
+const uid = l.actorUid || "—";
+counts.set(uid, (counts.get(uid) || 0) + 1);
+}
+let bestUid = null, best = 0;
+for (const [uid, c] of counts) if (c > best) { best = c; bestUid = uid; }
+if (!bestUid) return null;
+const u = allUsers.find(x => x.uid === bestUid);
+return u ? { u, count: best } : null;
+}
+
+function renderDestacados() {
+const defs = [
+{ mode: "day",   id: "dest-dia",    empty: "Sin actividad hoy" },
+{ mode: "week",  id: "dest-semana", empty: "Sin actividad esta semana" },
+{ mode: "month", id: "dest-mes",    empty: "Sin actividad este mes" }
+];
+for (const def of defs) {
+const el = document.getElementById(def.id);
+if (!el) continue;
+const w = periodTopStaff(def.mode);
+if (!w) { el.innerHTML = def.empty; continue; }
+el.innerHTML = `🏆 <b>${esc(w.u.name || "—")}</b><br><span style="color:var(--muted);font-size:12px">🎯 ${w.count} acciones · ⭐ ${fmtPts(w.u.points)} pts · ${def.mode === "day" ? "hoy" : def.mode === "week" ? "7 días" : "30 días"}</span>`;
+}
+}
+
+// ── CARGAR USUARIOS ───────────────────────────────────────────
+async function loadUsers() {
+try {
+const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
+const snap = await getDocs(q);
+allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+renderAll();
+} catch(e) {
+console.error(e);
+showToast("Error al cargar: " + e.message, "err");
+}
+}
+
+function renderAll() {
+renderDash();
+renderUsersTable(filteredUsers());
+renderPointsTable(filteredPoints());
+populateCargoFilter();
+renderCharts();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+function renderDash() {
+// Staff = todos menos admins (inspectores SÍ se incluyen)
+const staff = allUsers.filter(u => u.role !== "admin");
+const insp  = allUsers.filter(u => u.role === "inspector");
+const users = allUsers.filter(u => u.role === "user");
+const total = staff.length;
+const ptsArr = staff.map(u => Number(u.points || 0));
+const avg = total ? ptsArr.reduce((a,b)=>a+b,0) / total : 0;
+const risk = staff.filter(u => Number(u.points||0) <= 2).length;
+const maxP = Math.max(1, ...ptsArr);
+
+document.getElementById("st-total").textContent = total;
+document.getElementById("st-total-sub").textContent = `${insp.length} inspectores · ${users.length} usuarios`;
+document.getElementById("st-total-bar").style.width = Math.min(100, total*10) + "%";
+
+document.getElementById("st-insp").textContent = insp.length;
+document.getElementById("st-insp-sub").textContent = total ? Math.round(insp.length/total*100) + "% del staff" : "—";
+document.getElementById("st-insp-bar").style.width = (total ? insp.length/total*100 : 0) + "%";
+
+document.getElementById("st-users").textContent = users.length;
+document.getElementById("st-users-sub").textContent = total ? Math.round(users.length/total*100) + "% del staff" : "—";
+document.getElementById("st-users-bar").style.width = (total ? users.length/total*100 : 0) + "%";
+
+document.getElementById("st-avg").textContent = (Math.round(avg*100)/100).toString();
+document.getElementById("st-avg-sub").textContent = `Máximo: ${fmtPts(maxP)} pts`;
+document.getElementById("st-avg-bar").style.width = Math.min(100, avg/maxP*100) + "%";
+
+document.getElementById("st-risk").textContent = risk;
+document.getElementById("st-risk-sub").textContent = total ? Math.round(risk/total*100) + "% del staff (≤2 pts)" : "—";
+document.getElementById("st-risk-bar").style.width = (total ? risk/total*100 : 0) + "%";
+
+renderDestacados();
+
+const top = [...allUsers].sort((a,b) => (b.points||0)-(a.points||0)).slice(0, 8);
+const tb = document.getElementById("dash-tbody");
+const canEdit = myRole === "admin" || myRole === "inspector";
+if (!top.length) { tb.innerHTML='<tr><td colspan="6" class="empty">Sin datos aún.</td></tr>'; return; }
+tb.innerHTML = top.map((u,i) => {
+const isSelf = u.uid === myUid;
+const dis = (isSelf || !canEdit) ? 'disabled style="opacity:0.45;cursor:not-allowed"' : '';
+const cells = canEdit ? `
+  <td>${isSelf ? '<span style="color:var(--muted);font-size:11px">—</span>' : `<input type="number" step="0.01" min="0" id="dvin-${u.uid}" value="1" class="pts-input" title="Valor a sumar o restar (decimales)"/>`}</td>
+  <td><div class="pts-row" style="flex-wrap:wrap">
+    <button class="btn btn-success btn-sm" onclick="dashApplyPts('${u.uid}',1)" ${dis}>＋</button>

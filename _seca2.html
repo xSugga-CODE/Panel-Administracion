@@ -1,0 +1,55 @@
+﻿<div class="ph"><div class="ph-left"><h2>Gestión de puntos</h2><p>Sumá o restá puntos a moderadores</p></div></div>
+<div class="tcard">
+<div class="ttoolbar">
+<div class="search"><span>🔍</span><input type="text" placeholder="Buscar moderador…" oninput="filterP(this.value)"/></div>
+</div>
+<table>
+<thead><tr><th>Nombre</th><th>Rol</th><th>Puntos actuales</th><th>Valor</th><th>Ajustar</th></tr></thead>
+<tbody id="pts-tbody"><tr><td colspan="5" class="empty">Cargando…</td></tr></tbody>
+</table>
+</div>
+</div>
+
+<!-- GRÁFICOS -->
+<div class="page" id="page-charts">
+<div class="ph"><div class="ph-left"><h2>Gráficos</h2><p>Análisis visual del staff</p></div></div>
+<div class="chart-filters">
+<span class="flabel">Filtros:</span>
+<select id="cf-cargo" onchange="renderCharts()">
+<option value="">Todos los cargos</option>
+</select>
+<select id="cf-rango" onchange="renderCharts()">
+<option value="">Todos los rangos</option>
+<option value="《🪬》 Overlord">《🪬》 Overlord</option>
+<option value="《🧿》 Owner">《🧿》 Owner</option>
+<option value="《💎》 Admin">《💎》 Admin</option>
+<option value="《🔹》 Centinela">《🔹》 Centinela</option>
+<option value="《🔹》 Vigia">《🔹》 Vigia</option>
+</select>
+</div>
+<div class="chart-grid">
+<div class="chart-card">
+<h4>🏆 Ranking por puntos</h4>
+<div class="csub">Comparación entre miembros del staff</div>
+<div style="display:flex;gap:6px;margin-bottom:10px">
+<button class="btn btn-ghost btn-sm" id="sw-rank-bar" onclick="setRankType('bar')">📊 Columnas</button>
+<button class="btn btn-ghost btn-sm" id="sw-rank-pie" onclick="setRankType('doughnut')">🍩 Circular</button>
+</div>
+<canvas id="ch-rank"></canvas>
+</div>
+<div class="chart-card">
+<h4>📈 Evolución de puntos</h4>
+<div class="csub">Tendencia temporal según registros de cambios</div>
+<canvas id="ch-evo"></canvas>
+</div>
+<div class="chart-card">
+<h4>⚡ Actividad por trabajador</h4>
+<div class="csub">Acciones registradas por cada miembro</div>
+<canvas id="ch-act"></canvas>
+</div>
+<div class="chart-card">
+<h4>🍩 Distribución por rango</h4>
+<div class="csub">Proporción de miembros por rango</div>
+<canvas id="ch-dist"></canvas>
+</div>
+<div class="chart-card">

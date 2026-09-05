@@ -1,0 +1,252 @@
+﻿          <div class="chart-head">
+            <h3>🕐 Actividad de admins por día (24 horas)</h3>
+            <div class="chart-toolbar" id="chart-toolbar">
+              <button class="period-btn active" data-period="day" onclick="setChartPeriod('day',this)">Día</button>
+              <button class="period-btn" data-period="week" onclick="setChartPeriod('week',this)">Semana</button>
+              <button class="period-btn" data-period="month" onclick="setChartPeriod('month',this)">Mes</button>
+            </div>
+            <div class="chart-toolbar">
+              <button class="period-btn active" data-mode="line" onclick="setAdminChartMode('line',this)">Lineal</button>
+              <button class="period-btn" data-mode="cols" onclick="setAdminChartMode('cols',this)">Columnas</button>
+              <button class="period-btn" data-mode="circ" onclick="setAdminChartMode('circ',this)">Circular</button>
+            </div>
+          </div>
+          <div class="chart-container" id="activity-chart"><div class="chart-empty">Cargando actividad…</div></div>
+          <div class="chart-legend" id="chart-legend"></div>
+        </div>
+      </section>
+
+      <!-- ── LOGS ── -->
+      <section id="logs-tab" class="tab-content" style="display:none">
+        <h2>Logs</h2>
+        <div class="card">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+            <p style="color:#9ba8d6;margin:0">Accesos y cambios de puntos. Visible solo para inspectores y admins.</p>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <button class="btn-ghost" onclick="toggleInspectorPanelJow()">📊 Actividad inspectores</button>
+              <button class="btn-ghost" id="logs-export-btn" style="display:none" onclick="exportLogsJow()">📥 Exportar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="insp-panel-jow" style="display:none">
+          <h3>📊 Actividad de inspectores (hoy)</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Inspector</th>
+                <th>Puntos asignados hoy</th>
+                <th>Acciones hoy</th>
+                <th>Última acción</th>
+                <th>Hace</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="insp-jow-body">
+              <tr><td colspan="6" class="t-empty">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+            <select onchange="setLogTypeFilterJow(this.value)" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none">
+              <option value="">Todos</option>
+              <option value="login">Logins</option>
+              <option value="points">Cambios de puntos</option>
+            </select>
+            <input type="text" placeholder="Buscar…" oninput="setLogSearchJow(this.value)" style="flex:1;min-width:180px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none"/>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha y hora</th>
+                <th>Inspector/Admin</th>
+                <th>Usuario afectado</th>
+                <th>Cambio</th>
+                <th>Motivo</th>
+                <th id="logs-actions-th-jow">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="logs-jow-body">
+              <tr><td colspan="6" class="t-empty">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── GUÍA ── -->
+      <section id="guide-tab" class="tab-content" style="display:none">
+        <h2>Guía General</h2>
+        <div class="card">
+          <h3>Guías de MC Team</h3>
+          <div class="guide-block">
+            <h4>Guía 1:</h4>
+            <a class="guide-link" href="https://app.milanote.com/1WXWLa1W9vOHbR?p=VgupnNwI1ro" target="_blank" rel="noopener">https://app.milanote.com/1WXWLa1W9vOHbR?p=VgupnNwI1ro</a>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Panel de puntos</h3>
+          <ul>
+            <li>Sirve para ver tus puntos y los de los demás.</li>
+            <li>Acceso: <a class="guide-link" href="https://jowiland-2.web.app/" target="_blank" rel="noopener">https://jowiland-2.web.app/</a></li>
+            <li>Los puntos bajan <strong>1 cada 24 horas</strong>.</li>
+            <li>Los puntos también bajan por incumplimiento de las reglas.</li>
+            <li>Sin actividad durante <strong>7 días</strong> y con 0 puntos, posiblemente se expulsa al miembro de <strong>MC Team</strong>.</li>
+            <li>Si no puedes realizar un trabajo durante cierto periodo, no se te bajarán puntos.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Nueva estructura de rangos</h3>
+          <table>
+            <thead><tr><th>Rango</th><th>Descripción</th></tr></thead>
+            <tbody>
+              <tr><td>《🪬》 Overlord</td><td>Máxima autoridad (Solo lo tiene Jow).</td></tr>
+              <tr><td>《🧿》 Owner</td><td>Dirige proyectos, coordina equipos y administra el desarrollo general.</td></tr>
+              <tr><td>《💎》 Admin</td><td>Administración del servidor y sanciones avanzadas. Gestiona el equipo y los puntos.</td></tr>
+              <tr><td>《�》 Centinela</td><td>Miembro de confianza con permisos intermedios.</td></tr>
+              <tr><td>《🔹》 Vigia</td><td>Nuevo rango de apoyo y vigilancia. Supervisa el cumplimiento de normas y reporta incidencias.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>¿Qué es el MC Team?</h3>
+          <p>En este sistema, <strong>MC Team es un CARGO</strong>, no un rango. Para saber quién es trabajador del MC Team se comprueba el <strong>cargo asignado al usuario</strong> (campo <code>cargos</code>).</p>
+          <ul>
+            <li>Las estadísticas y rankings del MC Team usan únicamente esa condición.</li>
+            <li>Los administradores e inspectores quedan separados de las estadísticas de trabajadores.</li>
+            <li>Los rangos superiores (Admin, Owner, Overlord) no se cuentan como trabajadores candidatos.</li>
+          </ul>
+        </div>
+        <div class="card ascenso-card">
+          <h3>🏆 Ascenso del mejor trabajador del mes</h3>
+          <p>Cada mes se reconoce al mejor trabajador del MC Team según su rendimiento durante el período. Ese trabajador recibe el reconocimiento correspondiente y puede ascender de <b>《�》 Centinela</b> a <b>《💎》 Admin</b>.</p>
+          <ul>
+            <li><strong>Reconocimiento por rendimiento del mes:</strong> actividad, puntos y compromiso registrados en el período.</li>
+            <li>Solo se consideran trabajadores con el <strong>cargo MC Team</strong>.</li>
+            <li>El ascenso <b>《🔹》 Centinela → 《💎》 Admin</b> es un reconocimiento al destacado del mes y <strong>no significa que todos los miembros del MC Team suban de rango automáticamente</strong>.</li>
+            <li>Quienes ya tienen un rango superior (Admin, Owner, Overlord) no son candidatos al ascenso de la misma manera que un Centinela: ellos administran y evalúan.</li>
+            <li>La decisión final del ascenso corresponde a la administración (Owner/Overlord/Admin).</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Guías de Admins</h3>
+          <p style="color:var(--muted)">Dejar completamente vacío por ahora.</p>
+        </div>
+      </section>
+
+      <!-- ── RANGOS Y CARGOS ── -->
+      <section id="rangos-tab" class="tab-content" style="display:none">
+        <h2>Rangos y Cargos</h2>
+        <div class="card">
+          <h3>Rangos</h3>
+          <table>
+            <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+            <tbody>
+              <tr><td>《🪬》 Overlord</td><td>Máxima autoridad (Solo lo tiene Jow).</td></tr>
+              <tr><td>《🧿》 Owner</td><td>Dirige proyectos, coordina equipos y administra el desarrollo general.</td></tr>
+              <tr><td>《💎》 Admin</td><td>Administración del servidor y sanciones avanzadas. Gestiona el equipo y los puntos.</td></tr>
+              <tr><td>《�》 Centinela</td><td>Miembro de confianza con permisos intermedios.</td></tr>
+              <tr><td>《🔹》 Vigia</td><td>Nuevo rango de apoyo y vigilancia. Supervisa el cumplimiento de normas y reporta incidencias.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Cargos</h3>
+          <table>
+            <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
+            <tbody>
+              <tr><td>💻 Dev</td><td>Desarrolla y mantiene proyectos y sistemas.</td></tr>
+              <tr><td>📋 Inspector</td><td>Evalúa al staff y administra los puntos.</td></tr>
+              <tr><td>🛡️ Mod</td><td>Mantiene el orden y hace cumplir las normas.</td></tr>
+              <tr><td>🎬 Editor</td><td>Edita contenido audiovisual.</td></tr>
+              <tr><td>📢 Marketing</td><td>Promociona la comunidad.</td></tr>
+              <tr><td>🤝 Colaborador</td><td>Apoya en distintas tareas.</td></tr>
+              <tr><td>💎 MC Team</td><td>Diseña, desarrolla y organiza contenido de Minecraft.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── NORMAS ── -->
+      <section id="rules-tab" class="tab-content" style="display:none">
+        <h2>Normas</h2>
+        <div class="card">
+          <h3>Normas de MC Team</h3>
+          <ol class="normas-list">
+            <li>Toda tarea asignada debe cumplirse.</li>
+            <li>Toda ausencia debe ser informada.</li>
+            <li>Todo trabajo realizado debe ser reportado.</li>
+            <li>Todo evento o proyecto debe coordinarse antes de comenzar.</li>
+            <li>Ningún cambio importante se realiza sin autorización.</li>
+            <li>Toda tarea debe realizarse según las instrucciones recibidas.</li>
+            <li>Todo problema que impida avanzar debe ser comunicado.</li>
+            <li>Ningún miembro debe interferir en el trabajo de otro sin coordinación.</li>
+            <li>Discord es el medio oficial de coordinación del MC Team.</li>
+            <li>La actividad y el cumplimiento determinan la permanencia en el equipo.</li>
+            <li>No ignorar llamados de atención.</li>
+            <li>No realizar tareas no asignadas sin permiso.</li>
+            <li>No responder por otros usuarios a menos de que se indique.</li>
+            <li>No ingresar a cuentas de otros usuarios.</li>
+            <li>No compartir tareas o información privada.</li>
+          </ol>
+        </div>
+        <div class="card">
+          <h3>Normas de todos los admins</h3>
+          <p style="color:var(--muted)">No hay normas establecidas actualmente.</p>
+        </div>
+      </section>
+
+      <!-- ── NOVEDADES ── -->
+      <section id="novedades-tab" class="tab-content" style="display:none">
+        <h2>Novedades</h2>
+        <div class="card">
+          <p style="color:#9ba8d6;margin-bottom:20px">Registro de cambios recientes en el staff. Visible para todos los usuarios.</p>
+          <div id="novedades-list">
+            <div class="t-empty">Cargando novedades…</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── VISTA USUARIO ── -->
+      <section id="user-view" class="tab-content" style="display:none">
+        <div class="user-pts-card">
+          <div class="upc-who" id="my-pts-who"></div>
+          <div class="upc-label">Tus puntos actuales</div>
+          <div class="upc-value" id="my-pts-value">—</div>
+          <div class="upc-bar-wrap">
+            <div class="upc-bar" id="my-pts-bar"></div>
+          </div>
+          <div class="upc-state" id="my-pts-state"></div>
+        </div>
+        <div class="card" style="margin-top:20px">
+          <h3>¿Qué significan tus puntos?</h3>
+          <table>
+            <thead><tr><th>Estado</th><th>Puntos</th><th>Qué significa</th></tr></thead>
+            <tbody>
+              <tr><td><span class="circle points-7"></span>Óptimo</td><td>6 – 7</td><td>Todo en orden 👍</td></tr>
+              <tr><td><span class="circle points-6"></span>Estable</td><td>4 – 5.9</td><td>Vas bien, mantené el ritmo</td></tr>
+              <tr><td><span class="circle points-4"></span>Seguimiento</td><td>2.1 – 3.9</td><td>Aumentá la actividad</td></tr>
+              <tr><td><span class="circle points-2"></span>Riesgo alto</td><td>0.1 – 2</td><td>⚠️ Actividad urgente</td></tr>
+              <tr><td><span class="circle points-0"></span>Crítico</td><td>0</td><td>🚨 Apelación abierta</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>¿Cómo subir puntos?</h3>
+          <ul>
+            <li>Participar activamente en el servidor.</li>
+            <li>Cumplir tus funciones asignadas.</li>
+            <li>Un inspector puede sumar puntos por buen desempeño.</li>
+          </ul>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<div class="notification" id="toast" style="display:none"></div>
+<script src="script.js" type="module"></script>
+</body>
+</html>
