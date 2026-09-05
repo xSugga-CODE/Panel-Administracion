@@ -899,6 +899,7 @@ let steps = Math.floor((now - last) / stepMs);
 if (steps <= 0) return;
 if (steps > 200) steps = 200;
 
+// Reducción progresiva: reducir 0.1 por paso, no todo de golpe
 const dec = steps * 0.1;
 let changed = 0;
     const usersSnap = await getDocs(collection(db, "users"));
@@ -907,7 +908,8 @@ for (const u of allUsers) {
 if (!u || u.role === "admin") continue;
 const oldP = Number(u.points || 0);
 if (!Number.isFinite(oldP)) continue;
-const newP = Math.max(0, Math.round((oldP - dec) * 100) / 100);
+// Reducir solo 0.1 por tick progresivo, no acumular todos los pasos
+const newP = Math.max(0, Math.round((oldP - 0.1) * 100) / 100);
 if (newP === oldP) continue;
 try {
 await updateDoc(doc(db, "users", u.uid), { points: newP });
@@ -916,7 +918,7 @@ changed++;
 } catch {}
 }
 
-const newLast = last + (steps * stepMs);
+const newLast = last + stepMs; // Solo avanzar un paso por tick para reducción progresiva
 await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: newLast, lastAppliedBy: myUid }, { merge: true });
 if (changed) renderAll();
 } catch (e) {

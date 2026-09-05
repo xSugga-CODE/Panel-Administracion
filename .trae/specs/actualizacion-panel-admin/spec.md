@@ -33,7 +33,7 @@
   1. 《🪬》 Overlord
   2. 《🧿》 Owner
   3. 《💎》 Admin
-  4. 《🔹》 Centinela
+  4. 《💠》 Centinela
   5. 《🔹》 Vigia
 - **Archivos clave actuales**: `index.html` (Dashboard central, ~1641 líneas JS inline), `jow/index.html` + `jow/script.js` (panel público/staff), `jow/firestore.rules` (ya impide que role=user modifique points, perfecto).
 
@@ -126,7 +126,7 @@
 ### FR-17: Filtros de gráficos por Cargo y Rango (combinados)
 - Toolbar filtros en sección gráficos (tanto index.html como jow/ admin/inspector):
   1. Filtro Cargo: Todos | MC Team | Inspector | Mod | Colaborador | Dev | Editor | Marketing
-  2. Filtro Rango: Todos | 《🪬》 Overlord | 《🧿》 Owner | 《💎》 Admin | 《🔹》 Centinela | 《🔹》 Vigia
+  2. Filtro Rango: Todos | 《🪬》 Overlord | 《🧿》 Owner | 《💎》 Admin | 《💠》 Centinela | 《🔹》 Vigia
   3. Filtro Periodo (gráficos temporales): Día | Semana | Mes
 - Al cambiar cualquiera, los gráficos se RE-RENDERIZAN con datos reales filtrados (AND lógico: Cargo AND Rango cuando ambos son != Todos).
 
@@ -253,7 +253,7 @@
 ### AC-10: Dashboard tiene sección Gráficos con 3 tipos + filtros combinados reales
 - **Type**: `rule`
 - **Given**: Dashboard page-charts cargado.
-- **When**: (1) Veo charts por default. (2) Cambio filtro Cargo = "MC Team". (3) Cambio Rango = "《🔹》 Centinela".
+- **When**: (1) Veo charts por default. (2) Cambio filtro Cargo = "MC Team". (3) Cambio Rango = "《💠》 Centinela".
 - **Then**: (1) Existen al menos 1 line, 2 bar, 1 pie (3 tipos). (2) Update visible del chart rank-pts. (3) Update filtrado AND (solo los MC team Y Centinela).
 - **Pass Condition**: 3 condiciones.
 - **Evidence**: DOM charts + array filtrados antes de update.

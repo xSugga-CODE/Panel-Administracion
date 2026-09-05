@@ -140,7 +140,7 @@
        <option value="《🪬》 Overlord">《🪬》 Overlord</option>
        <option value="《🧿》 Owner">《🧿》 Owner</option>
        <option value="《💎》 Admin">《💎》 Admin</option>
-       <option value="《🔹》 Centinela">《🔹》 Centinela</option>
+       <option value="《💠》 Centinela">《💠》 Centinela</option>
        <option value="《🔹》 Vigia">《🔹》 Vigia</option>
      </select>
      ```
@@ -254,7 +254,7 @@
            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
              <span style="font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase">Filtros</span>
              <select id="f-cargo" onchange="applyChartFilters()"><option value="">Todos los cargos</option><option value="MC team">MC Team</option><option value="Inspector">Inspector</option><option value="Mod">Mod</option><option value="Colaborador">Colaborador</option><option value="Dev">Dev</option><option value="Editor">Editor</option><option value="Marketing">Marketing</option></select>
-             <select id="f-rango" onchange="applyChartFilters()"><option value="">Todos los rangos</option><option>《🪬》 Overlord</option><option>《🧿》 Owner</option><option>《💎》 Admin</option><option>《🔹》 Centinela</option><option>《🔹》 Vigia</option></select>
+             <select id="f-rango" onchange="applyChartFilters()"><option value="">Todos los rangos</option><option>《🪬》 Overlord</option><option>《🧿》 Owner</option><option>《💎》 Admin</option><option>《💠》 Centinela</option><option>《💠》 Vigia</option></select>
              <select id="f-periodo" onchange="applyChartFilters()"><option value="7">Últimos 7 días</option><option value="14" selected>Últimos 14 días</option><option value="30">Últimos 30 días</option></select>
            </div>
          </div>

@@ -658,7 +658,6 @@ function startLogsLive() {
     if (typeof renderRankings === "function") renderRankings();
     if (typeof renderDestacados === "function") renderDestacados();
     if (typeof renderRankingMC === "function") renderRankingMC();
-    if (typeof renderRankingWeek === "function") renderRankingWeek();
     if (typeof renderWorkerActivity === "function") renderWorkerActivity();
     if (typeof renderEvolutionPts === "function") renderEvolutionPts();
     if (typeof renderActivityGeneral === "function") renderActivityGeneral();
@@ -881,11 +880,10 @@ function setupStaffView() {
   const destSec  = document.getElementById("destacados-section");
   const btnDest  = document.getElementById("btn-dest");
 
-  // Estadísticas: únicamente Admin e Inspector
-  if (statsSec) statsSec.style.display = isStaff ? "" : "none";
-  // Trabajadores destacados: se ocultan por defecto (toggle Destacados / Ocultar)
+  // Todos los usuarios pueden ver estadísticas y destacados
+  if (statsSec) statsSec.style.display = "";
   if (destSec) destSec.style.display = "none";
-  if (btnDest) btnDest.style.display = isStaff ? "" : "none";
+  if (btnDest) btnDest.style.display = ""; // Botón visible para todos
 
   document.getElementById("tabs-nav").style.display = "";
 
@@ -900,7 +898,6 @@ function setupStaffView() {
     renderActivityChart();
     renderRankings();
     renderRankingMC();
-    renderRankingWeek();
     renderWorkerActivity();
     renderEvolutionPts();
     renderActivityGeneral();
@@ -932,7 +929,7 @@ const RANK_LABELS = {
   overlord:  "《🪬》 Overlord",
   owner:     "《🧿》 Owner",
   admin:     "《💎》 Admin",
-  centinela: "《🔹》 Centinela",
+  centinela: "《�》 Centinela",
   vigia:     "《🔹》 Vigia"
 };
 const RANK_ORDER = ["vigia", "centinela", "admin", "owner", "overlord"];
@@ -1026,8 +1023,7 @@ function renderStats() {
 }
 
 // ── UTILIDADES DE TIEMPO / LOGS ────────────────────────────────
-let chartPeriod   = "day";
-let moreStatsOpen = false;
+let chartPeriod = "day";
 
 function logTime(l) {
   if (!l) return 0;
@@ -1067,15 +1063,6 @@ window.setChartPeriod = (p, btn) => {
   chartPeriod = p;
   document.querySelectorAll("#chart-toolbar .period-btn").forEach(b => b.classList.toggle("active", b.getAttribute("data-period") === p));
   renderActivityChart();
-};
-
-window.toggleMoreStats = () => {
-  moreStatsOpen = !moreStatsOpen;
-  const moreEl = document.getElementById("more-stats");
-  const btn    = document.getElementById("more-stats-btn");
-  if (moreEl) moreEl.style.display = moreStatsOpen ? "grid" : "none";
-  if (btn) btn.textContent = moreStatsOpen ? "📊 Ocultar estadísticas" : "📊 Ver más estadísticas";
-  if (moreStatsOpen && typeof renderRankings === "function") renderRankings();
 };
 
 // ── GRÁFICO: ACTIVIDAD DE ADMINS POR DÍA (24 horas) ────────────
@@ -1272,7 +1259,7 @@ function renderDestacados() {
 // ══════════════════════════════════════════
 const PALETTE = ["#5865f2", "#3ecf8e", "#ffd166", "#ff9f43", "#ff5c75", "#4cc9f0", "#a78bfa", "#57cc99"];
 
-const modeStates = { mc: "cols", week: "cols", worker: "cols", evo: "line", general: "line", admin: "line", admins: "cols" };
+const modeStates = { mc: "cols", worker: "cols", evo: "line", general: "line", admin: "line", admins: "cols" };
 const filterState = { user: "", rango: "", cargo: "" };
 let evoTimeState = "14";
 
@@ -1283,7 +1270,6 @@ function setModeState(key, m, btn) {
     tb.querySelectorAll(".period-btn").forEach(b => b.classList.toggle("active", b.getAttribute("data-mode") === m));
   }
   if (key === "mc") renderRankingMC();
-  if (key === "week") renderRankingWeek();
   if (key === "worker") renderWorkerActivity();
   if (key === "evo") renderEvolutionPts();
   if (key === "general") renderActivityGeneral();
@@ -1292,7 +1278,6 @@ function setModeState(key, m, btn) {
 }
 
 window.setRankModeMC     = (m, btn) => setModeState("mc", m, btn);
-window.setRankModeWeek   = (m, btn) => setModeState("week", m, btn);
 window.setRankModeWorker = (m, btn) => setModeState("worker", m, btn);
 window.setRankModeEvo    = (m, btn) => setModeState("evo", m, btn);
 window.setRankModeGeneral= (m, btn) => setModeState("general", m, btn);
@@ -1325,6 +1310,16 @@ window.resetFilters = () => {
   
   applyFilters();
 };
+
+function countActionsBy(uid) {
+  let c = 0;
+  for (const l of logs) {
+    if (!l || l.actorUid !== uid) continue;
+    if (String(l.actorRole || "").toLowerCase() === "admin") continue;
+    c++;
+  }
+  return c;
+}
 
 function populateUserFilter() {
   const userSelect = document.getElementById("filter-user");
@@ -1440,25 +1435,6 @@ function renderRankingAdmins() {
     box.innerHTML = svgDonut(items, filterState.cargo || "Todos");
   } else {
     box.innerHTML = rankListHTML(rows, "👥", true) + `<div class="chart-note">Ranking ${filterState.cargo ? 'de ' + filterState.cargo : 'general'} · ordenados por puntos</div>`;
-  }
-}
-
-function renderRankingWeek() {
-  const box = document.getElementById("rank-week-box");
-  if (!box) return;
-  const role = currentUser?.role;
-  if (role !== "admin" && role !== "inspector") return;
-
-  const rows = periodWorkers("week")
-    .map(r => ({ name: r.u.name || "—", value: r.count, rango: r.u.rango }));
-
-  if (!rows.length) { box.innerHTML = '<div class="chart-empty">Sin actividad semanal todavía.</div>'; return; }
-
-  if (modeStates.week === "circ") {
-    const items = rows.map((r, i) => ({ label: r.name, value: r.value, color: PALETTE[i % PALETTE.length] }));
-    box.innerHTML = svgDonut(items, "Semana");
-  } else {
-    box.innerHTML = rankListHTML(rows, "🎯", true) + '<div class="chart-note">Acciones registradas en los últimos 7 días</div>';
   }
 }
 
@@ -1762,7 +1738,6 @@ function renderAll() {
   if (typeof renderRankings === "function") renderRankings();
   if (typeof renderDestacados === "function") renderDestacados();
   if (typeof renderRankingMC === "function") renderRankingMC();
-  if (typeof renderRankingWeek === "function") renderRankingWeek();
   if (typeof renderWorkerActivity === "function") renderWorkerActivity();
   if (typeof renderEvolutionPts === "function") renderEvolutionPts();
   if (typeof renderActivityGeneral === "function") renderActivityGeneral();
@@ -1799,13 +1774,19 @@ function renderPointsTable() {
     const pts  = u.points || 0;
     const isMe = currentUser && u.uid === currentUser.uid;
     const canEdit = isStaff && !isMe;
+    const isAdmin = role === "admin";
+    const isInspector = role === "inspector";
     
     const actionsCell = canEdit ? `
       <td>
         <div class="pts-actions">
-          <input type="number" class="pts-input" id="pts-input-${u.uid}" min="0" max="7" step="0.1" placeholder="0.0" style="width: 60px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(141,153,255,.25); background: rgba(15,20,40,.8); color: #e9eeff; font-size: 12px; outline: none;" value="">
-          <button class="pts-btn pts-add" onclick="adjustPoints('${u.uid}', 1)" title="Sumar valor">➕</button>
-          <button class="pts-btn pts-sub" onclick="adjustPoints('${u.uid}', -1)" title="Restar valor">➖</button>
+          ${isAdmin ? `
+            <input type="number" class="pts-input" id="pts-input-${u.uid}" min="0" max="7" step="0.1" placeholder="0.0" style="width: 60px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(141,153,255,.25); background: rgba(15,20,40,.8); color: #e9eeff; font-size: 12px; outline: none;" value="" onkeydown="if(event.key==='Enter') setPoints('${u.uid}')">
+            <button class="pts-btn pts-set" onclick="setPoints('${u.uid}')" title="Establecer valor (Enter)">⚙️</button>
+          ` : `
+            <button class="pts-btn pts-add" onclick="adjustPoints('${u.uid}', 1)" title="Sumar +1">➕</button>
+            <button class="pts-btn pts-sub" onclick="adjustPoints('${u.uid}', -1)" title="Restar -1">➖</button>
+          `}
         </div>
       </td>` : '<td></td>';
 
@@ -1831,7 +1812,7 @@ function renderPointsTable() {
 }
 
 // ── AJUSTAR PUNTOS ─────────────────────────────────────────────
-// Sumar o restar puntos usando el valor del input
+// Ajustar puntos (+1/-1) para Inspectores y Admins
 window.adjustPoints = async (uid, delta) => {
   const role = currentUser?.role;
   if (role !== 'admin' && role !== 'inspector') return;
@@ -1844,34 +1825,57 @@ window.adjustPoints = async (uid, delta) => {
     if (!cd.ok) { showToast(`Cooldown activo. Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, 'err'); return; }
   }
 
-  // Obtener valor del input
-  const inputEl = document.getElementById(`pts-input-${uid}`);
-  const inputValue = inputEl ? parseFloat(inputEl.value) : 0;
-  
-  if (!Number.isFinite(inputValue) || inputValue <= 0) {
-    showToast('Ingresá un valor válido (mayor a 0).', 'err');
-    return;
-  }
-
   const oldVal = member.points || 0;
-  const actualDelta = delta > 0 ? inputValue : -inputValue;
-  const newVal = Math.max(0, Math.round((oldVal + actualDelta) * 10) / 10);
+  const newVal = Math.max(0, Math.round((oldVal + delta) * 10) / 10);
   
   if (newVal === oldVal) return;
   
-  const reason = delta > 0 ? 'Suma rápida' : 'Resta rápida';
+  const reason = delta > 0 ? 'Ajuste rápido (+1)' : 'Ajuste rápido (-1)';
 
   member.points = newVal; updatePointCells(uid, newVal);
   try {
     await updateDoc(doc(db, 'users', uid), { points: newVal });
-    await writeLog({ type: 'points', actorUid: currentUser.uid, actorRole: role, actorName: currentUser.name||'', targetUid: uid, targetName: member.name||'', delta: actualDelta, reason, newPoints: newVal });
+    await writeLog({ type: 'points', actorUid: currentUser.uid, actorRole: role, actorName: currentUser.name||'', targetUid: uid, targetName: member.name||'', delta: delta, reason, newPoints: newVal });
     if (role === 'inspector') {
       writeCooldown(currentUser.uid, uid, Date.now());
-      showToast(`Puntos ${delta > 0 ? 'sumados' : 'restados'}: ${delta > 0 ? '+' : ''}${inputValue}`, 'ok');
+      showToast(`Puntos ${delta > 0 ? 'sumados' : 'restados'}: ${delta > 0 ? '+' : ''}${delta}`, 'ok');
     } else {
-      await logNovedad(`🔧 Admin ${currentUser.name||''} ${delta > 0 ? 'sumó' : 'restó'} ${inputValue} pts a ${member.name||'usuario'}. Motivo: ${reason}`);
-      showToast(`Puntos ${delta > 0 ? 'sumados' : 'restados'}: ${delta > 0 ? '+' : ''}${inputValue}`, 'ok');
+      await logNovedad(`🔧 Admin ${currentUser.name||''} ${delta > 0 ? 'sumó' : 'restó'} ${Math.abs(delta)} pts a ${member.name||'usuario'}. Motivo: ${reason}`);
+      showToast(`Puntos ${delta > 0 ? 'sumados' : 'restados'}: ${delta > 0 ? '+' : ''}${delta}`, 'ok');
     }
+    renderAll();
+  } catch (e) { member.points = oldVal; updatePointCells(uid, oldVal); showToast('Error al guardar: '+e.message,'err'); }
+};
+
+// ── ESTABLECER VALOR DE PUNTOS ─────────────────────────────────────
+// Establecer valor exacto de puntos (solo para Admins)
+window.setPoints = async (uid) => {
+  const role = currentUser?.role;
+  if (role !== 'admin') return; // Solo Admins pueden usar esta función
+  if (uid === currentUser.uid) { showToast('No podés modificar tus propios puntos!', 'err'); return; }
+  const member = allMembers.find(u => u.uid === uid);
+  if (!member) return;
+
+  const inputEl = document.getElementById(`pts-input-${uid}`);
+  const inputValue = inputEl ? parseFloat(inputEl.value) : 0;
+  
+  if (!Number.isFinite(inputValue) || inputValue < 0) {
+    showToast('Ingresá un valor válido (mayor o igual a 0).', 'err');
+    return;
+  }
+
+  const oldVal = member.points || 0;
+  const newVal = Math.round(inputValue * 10) / 10;
+  
+  if (newVal === oldVal) return;
+  const reason = 'Establecer valor directo';
+
+  member.points = newVal; updatePointCells(uid, newVal);
+  try {
+    await updateDoc(doc(db, 'users', uid), { points: newVal });
+    await writeLog({ type: 'points', actorUid: currentUser.uid, actorRole: role, actorName: currentUser.name||'', targetUid: uid, targetName: member.name||'', delta: newVal - oldVal, reason, newPoints: newVal });
+    await logNovedad(`🔧 Admin ${currentUser.name||''} estableció ${member.name||'usuario'} a ${newVal} pts. Motivo: ${reason}`);
+    showToast(`Puntos establecidos: ${newVal}`, 'ok');
     // Limpiar el input después de aplicar
     if (inputEl) inputEl.value = '';
     renderAll();
@@ -1979,7 +1983,6 @@ window.switchTab = (id, btn) => {
     if (id === "points-tab") { if (typeof renderPointsTable === "function") renderPointsTable(); if (typeof renderStats === "function") renderStats(); if (typeof renderDestacados === "function") renderDestacados(); if (typeof renderCurUserBar === "function") renderCurUserBar(); }
     if (id === "graficos-tab") {
       if (typeof renderRankingMC === "function") renderRankingMC();
-      if (typeof renderRankingWeek === "function") renderRankingWeek();
       if (typeof renderWorkerActivity === "function") renderWorkerActivity();
       if (typeof renderEvolutionPts === "function") renderEvolutionPts();
       if (typeof renderActivityGeneral === "function") renderActivityGeneral();
