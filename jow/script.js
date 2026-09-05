@@ -1217,6 +1217,9 @@ function periodWorkers(mode) {
   if (filterState.rango) {
     workers = workers.filter(u => normRango(u.rango) === filterState.rango);
   }
+  if (filterState.cargo) {
+    workers = workers.filter(u => hasCargo(u, filterState.cargo));
+  }
   
   const rows = workers.map(u => {
     const act = workerActivityInRange(u, start);
