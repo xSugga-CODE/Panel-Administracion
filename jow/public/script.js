@@ -1422,10 +1422,6 @@ function rankListHTML(rows, valLabel, showRango) {
     }).join("")}
   </div>`;
 }
-      <div class="chart-note">Puntos, acciones y variación por trabajador (30 días)</div>
-    `;
-  }
-}
 
 function multiLineChartSVG(labels, series, h) {
   const H = h || 230, W = 760, pl = 44, pr = 16, pt = 18, pb = 32;
