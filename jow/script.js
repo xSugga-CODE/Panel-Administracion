@@ -1422,21 +1422,6 @@ function rankListHTML(rows, valLabel, showRango) {
     }).join("")}
   </div>`;
 }
-
-
-                </div>
-                <div class="stat-row">
-                  <span class="stat-label">Variación:</span>
-                  <span class="stat-value ${r.deltaPts > 0 ? 'positive' : r.deltaPts < 0 ? 'negative' : 'neutral'}">${r.deltaPts > 0 ? '+' : ''}${r.deltaPts.toFixed(decimalsCfgJow())}</span>
-                </div>
-              </div>
-              <div class="worker-bar">
-                <div class="worker-bar-fill" style="width: ${pct}%; background: ${PALETTE[i % PALETTE.length]}"></div>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
       <div class="chart-note">Puntos, acciones y variación por trabajador (30 días)</div>
     `;
   }
@@ -1649,6 +1634,8 @@ function renderPointsTable() {
       <td>
         <div class="pts-actions">
           ${isAdmin ? `
+            <button class="pts-btn pts-add" onclick="adjustPoints('${u.uid}', 1)" title="Sumar +1">➕</button>
+            <button class="pts-btn pts-sub" onclick="adjustPoints('${u.uid}', -1)" title="Restar -1">➖</button>
             <input type="number" class="pts-input" id="pts-input-${u.uid}" min="0" max="${maxVal}" step="${stepVal}" placeholder="${placeholderVal}" style="width: 60px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(141,153,255,.25); background: rgba(15,20,40,.8); color: #e9eeff; font-size: 12px; outline: none;" value="" onkeydown="if(event.key==='Enter') setPoints('${u.uid}')">
             <button class="pts-btn pts-set" onclick="setPoints('${u.uid}')" title="Establecer valor (Enter)">⚙️</button>
           ` : `

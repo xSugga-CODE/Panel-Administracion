@@ -166,6 +166,24 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .cstats b{color:var(--text)}
 .chart-card canvas{max-height:280px}
 
+/* Estilos adicionales para gráficos tipo Panel de Puntos */
+.chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.chart-head h3{color:#fff;font-size:15px;margin:0}
+.chart-toolbar{display:flex;gap:6px;flex-wrap:wrap}
+.period-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;font-size:11px;font-weight:600;padding:5px 10px;transition:background .15s,color .15s,border-color .15s}
+.period-btn:hover{color:var(--text)}
+.period-btn.active{background:rgba(91,141,238,.16);border-color:var(--accent);color:var(--accent)}
+.chart-container{min-height:200px;display:flex;align-items:center;justify-content:center}
+.chart-empty{color:var(--muted);font-size:13px;padding:40px 16px;text-align:center}
+.chart-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;justify-content:center}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+.chart-note-inline{font-size:11px;color:var(--muted);margin-left:auto}
+.chart-grid{display:grid;gap:14px}
+.chart-grid.two-col{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer;font-size:12px;padding:6px 12px;transition:background .15s,color .15s,border-color .15s}
+.btn-ghost:hover{background:var(--surface2);color:var(--text)}
+
 @media(max-width:680px){
 .sidebar{display:none}
 .main{margin-left:0;padding:16px}
@@ -205,7 +223,7 @@ width:100% !important;
 <div class="login-card">
 <div class="field"><label>Email</label><input type="email" id="l-email" placeholder="tu@email.com" autocomplete="email"/></div>
 <div class="field"><label>Contraseña</label><input type="password" id="l-pass" placeholder="••••••••"/></div>
-<button class="btn btn-primary" id="l-btn" onclick="doLogin()">Ingresar al panel</button>
+<button class="btn btn-primary" id="l-btn" onclick="window.doLogin()">Ingresar al panel</button>
 <div id="login-err"></div>
 </div>
 </div>
@@ -1938,7 +1956,12 @@ cells = '<td colspan="2"><span style="color:var(--muted);font-size:11px">—</sp
 } else if (myRole === "admin") {
 const stepVal = decimalsN() === 0 ? "1" : decimalsN() === 1 ? "0.1" : "0.01";
 const placeholderVal = decimalsN() === 0 ? "0" : decimalsN() === 1 ? "0.0" : "0.00";
-cells = `<td>${isSelf ? '<span style="color:var(--muted);font-size:11px">—</span>' : `<div class="pts-row"><input type="number" step="${stepVal}" min="0" id="dvin-${u.uid}" class="pts-input" style="width:80px" placeholder="${placeholderVal}" title="Valor fijo a establecer (Enter para guardar)" onkeydown="if(event.key==='Enter')dashSetPts('${u.uid}')"/><button class="btn btn-primary btn-sm" onclick="dashSetPts('${u.uid}')" ${dis}>💾 Fijar</button></div>`}</td>
+cells = `<td>${isSelf ? '<span style="color:var(--muted);font-size:11px">—</span>' : `<div class="pts-row" style="gap:8px">
+  <button class="btn btn-success btn-sm" onclick="dashApplyPts('${u.uid}',1)" ${dis} title="Sumar +1">＋</button>
+  <button class="btn btn-danger btn-sm" onclick="dashApplyPts('${u.uid}',-1)" ${dis} title="Restar -1">−</button>
+  <input type="number" step="${stepVal}" min="0" id="dvin-${u.uid}" class="pts-input" style="width:80px" placeholder="${placeholderVal}" title="Valor fijo a establecer (Enter para guardar)" onkeydown="if(event.key==='Enter')dashSetPts('${u.uid}')"/>
+  <button class="btn btn-primary btn-sm" onclick="dashSetPts('${u.uid}')" ${dis}>💾</button>
+</div>`}</td>
   <td><span style="color:var(--muted);font-size:11px">—</span></td>`;
 } else {
 cells = `<td><span style="color:var(--muted);font-size:11px">—</span></td>
@@ -2061,7 +2084,12 @@ let valueCell, adjustCell;
 if (myRole === "admin") {
 const stepVal = decimalsN() === 0 ? "1" : decimalsN() === 1 ? "0.1" : "0.01";
 const placeholderVal = decimalsN() === 0 ? "0" : decimalsN() === 1 ? "0.0" : "0.00";
-valueCell = `<td>${isSelf ? '<span style="color:var(--muted);font-size:11px">—</span>' : `<div class="pts-row"><input type="number" step="${stepVal}" min="0" id="pvin-${u.uid}" class="pts-input" style="width:80px" placeholder="${placeholderVal}" title="Valor fijo a establecer (Enter para guardar)" onkeydown="if(event.key==='Enter')setPtsFixed('${u.uid}')"/><button class="btn btn-primary btn-sm" onclick="setPtsFixed('${u.uid}')" ${dis}>💾 Fijar</button></div>`}</td>`;
+valueCell = `<td>${isSelf ? '<span style="color:var(--muted);font-size:11px">—</span>' : `<div class="pts-row" style="gap:8px">
+  <button class="btn btn-success btn-sm" onclick="adjPts('${u.uid}',1)" ${dis} title="Sumar +1">＋</button>
+  <button class="btn btn-danger btn-sm" onclick="adjPts('${u.uid}',-1)" ${dis} title="Restar -1">−</button>
+  <input type="number" step="${stepVal}" min="0" id="pvin-${u.uid}" class="pts-input" style="width:80px" placeholder="${placeholderVal}" title="Valor fijo a establecer (Enter para guardar)" onkeydown="if(event.key==='Enter')setPtsFixed('${u.uid}')"/>
+  <button class="btn btn-primary btn-sm" onclick="setPtsFixed('${u.uid}')" ${dis}>💾</button>
+</div>`}</td>`;
 adjustCell = '<td><span style="color:var(--muted);font-size:11px">—</span></td>';
 } else if (myRole === "inspector") {
 valueCell = '<td><span style="color:var(--muted);font-size:11px">—</span></td>';
