@@ -2148,20 +2148,39 @@ showToast(`Cooldown activo (máx. 2 cambios/día). Podés volver a puntuar a est
 return;
 }
 }
-const reasonRaw = prompt("Motivo del cambio de puntos:", "");
-if (reasonRaw === null) return;
-const reason = (reasonRaw || "").trim() || "Sin motivo";
+
+// ── Motivo ──
+let reason = "";
+if (myRole === "inspector") {
+  while (true) {
+    const r = prompt(`Motivo de la modificación (${delta > 0 ? '+' : ''}${delta} pts a ${u.name}):\n\nCampo OBLIGATORIO para inspectores.`);
+    if (r === null) return;
+    reason = r.trim();
+    if (!reason) { showToast("Tenés que escribir un motivo obligatorio.", "err"); continue; }
+    break;
+  }
+} else {
+  const r = prompt(`Motivo (opcional) de la modificación (${delta > 0 ? '+' : ''}${delta} pts a ${u.name}):`);
+  if (r === null) return;
+  reason = r.trim() || `Modificación manual (${delta > 0 ? '+' : ''}${delta})`;
+}
+
 // Se respeta el máximo configurado y la cantidad de decimales elegida.
-const nv = clampPts((u.points||0) + delta);
+const oldVal = u.points || 0;
+const nv = clampPts(oldVal + delta);
 try {
 await updateDoc(doc(db,"users",uid), { points: nv });
 u.points = nv;
 const el = document.getElementById("pv-"+uid);
 if (el) el.textContent = fmtPts(nv);
+const dv = document.getElementById("dpv-" + uid);
+if (dv) dv.textContent = fmtPts(nv);
 renderAll();
 showToast((delta>0?"➕":"➖") + " " + fmtPts(Math.abs(delta)) + " pt a " + (u.name||"usuario"), "ok");
-const nText = buildPointsNovedad(u.name || "Un usuario", delta, nv, reason);
-await logNovedad(nText);
+
+// Punto 7 Dashboard: solo novedades en umbrales (NO buildPointsNovedad por cada +/-)
+await maybeEmitThresholdNovedadDash(u, oldVal, nv, delta, myRole);
+
 await writeLog({
 type: "points",
 actorUid: myUid,
@@ -2192,7 +2211,7 @@ const u = allUsers.find(x => x.uid===uid);
 if (!u) return;
 let v = forcedVal;
 if (typeof v !== "number") {
-const inp = document.getElementById("pvin-" + uid);
+const inp = document.getElementById("pvin-" + uid) || document.getElementById("dvin-" + uid);
 const raw = inp ? inp.value : "";
 v = parseFloat(String(raw).replace(",", "."));
 }
@@ -2200,21 +2219,28 @@ if (!Number.isFinite(v) || v < 0) {
 showToast("Ingresá un valor válido (mayor o igual a 0).", "err");
 return;
 }
+const oldVal = u.points || 0;
 const nv = clampPts(v);
-if (nv === (u.points||0)) { showToast("El valor ya es " + fmtPts(nv) + ".", "ok"); return; }
-const reasonRaw = prompt("Motivo del cambio de puntos:", "Valor fijo");
-if (reasonRaw === null) return;
-const reason = (reasonRaw || "").trim() || "Valor fijo";
-const delta = Math.round((nv - (u.points||0)) * 100) / 100;
+if (nv === oldVal) { showToast("El valor ya es " + fmtPts(nv) + ".", "ok"); return; }
+const delta = Math.round((nv - oldVal) * 100) / 100;
+
+// Admin: motivo OPCIONAL
+const r = prompt(`Motivo (opcional) - establecer puntos de ${u.name} a ${fmtPts(nv)}:`);
+if (r === null) return;
+const reason = r.trim() || `Valor directo (${delta > 0 ? '+' : ''}${delta})`;
+
 try {
 await updateDoc(doc(db,"users",uid), { points: nv });
 u.points = nv;
 const el = document.getElementById("pv-"+uid);
 if (el) el.textContent = fmtPts(nv);
+const dv = document.getElementById("dpv-" + uid);
+if (dv) dv.textContent = fmtPts(nv);
 renderAll();
 showToast("⚙️ Puntos de " + (u.name||"usuario") + " → " + fmtPts(nv), "ok");
-const nText = buildPointsNovedad(u.name || "Un usuario", delta, nv, reason);
-await logNovedad(nText);
+
+await maybeEmitThresholdNovedadDash(u, oldVal, nv, delta, myRole);
+
 await writeLog({
 type: "points",
 actorUid: myUid,
@@ -2226,8 +2252,45 @@ delta,
 reason,
 newPoints: nv
 });
+
+// Limpiar inputs si existen
+["pvin-", "dvin-"].forEach(p => {
+  const inp = document.getElementById(p + uid);
+  if (inp) inp.value = "";
+});
+
 } catch(e) { showToast("Error: "+e.message,"err"); }
 };
+
+// Punto 7 Dashboard: Novedades SOLO en umbrales / eventos importantes
+async function maybeEmitThresholdNovedadDash(u, oldVal, newVal, delta, role) {
+  const name = u.name || 'un miembro';
+  if (oldVal === 0 && newVal > 0) {
+    await logNovedad(`✅ ${name} volvió a tener actividad (${fmtPts(newVal)} pts) y salió del estado crítico.`);
+    return;
+  }
+  if (oldVal > 0 && newVal === 0) {
+    await logNovedad(`🚨 ${name} llegó a 0 puntos · Estado crítico · Requiere apelación o acción inmediata.`);
+    return;
+  }
+  if (oldVal > 2 && newVal > 0 && newVal <= 2) {
+    await logNovedad(`⚠️ ${name} está en riesgo alto (${fmtPts(newVal)} pts) · Entró en seguimiento por bajo desempeño.`);
+    return;
+  }
+  if (oldVal <= 2 && newVal > 4) {
+    await logNovedad(`💪 ${name} recuperó puntos (${fmtPts(newVal)}) y salió del estado de seguimiento. Buen desempeño!`);
+    return;
+  }
+  if (newVal >= 6 && delta >= 2) {
+    await logNovedad(`🔥 ${name} tuvo un desempeño excelente! Subió ${delta} pts y quedó en ${fmtPts(newVal)}.`);
+    return;
+  }
+  const MAX = maxPts();
+  if ((oldVal === 0 || !Number.isFinite(oldVal)) && newVal === MAX && delta === MAX) {
+    await logNovedad(`✨ ${name} ingresó al staff con ${fmtPts(newVal)} pts iniciales. Bienvenido/a!`);
+    return;
+  }
+}
 
 // (Se eliminaron promptPts / adjPtsWithReason: Ajustar solo permite +1/−1 fijos
 // y el valor directo queda exclusivo del Admin, vía setPtsFixed).

@@ -975,20 +975,27 @@ li { color: #c2cceb; margin-bottom: 8px; }
 .chart-container {
   margin-top: 8px;
   width: 100%;
+  min-height: 320px;
 }
 
 .chart-svg {
   width: 100%;
   height: auto;
   display: block;
-  max-width: 280px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
 .chart-empty {
   color: var(--muted);
   font-size: 13px;
-  padding: 40px 16px;
+  padding: 60px 20px;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   text-align: center;
   background: rgba(31,38,68,.4);
   border: 1px dashed rgba(141,153,255,.25);
@@ -1214,7 +1221,7 @@ li { color: #c2cceb; margin-bottom: 8px; }
 
 /* Gráficos */
 .chart-grid { display: grid; gap: 18px; margin-bottom: 18px; }
-.chart-grid.two-col { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.chart-grid.two-col { grid-template-columns: 1fr; }
 
 .chart-card { margin-bottom: 0; }
 

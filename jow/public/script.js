@@ -497,10 +497,15 @@ async function bootApp() {
   setupStaffView();
   setupLogsTab();
   if (role === "user") {
-    const perfilBtn = document.getElementById("my-perfil-tab-btn");
-    if (perfilBtn) perfilBtn.style.display = "";
     renderUserProfileCard();
   }
+
+  // Render inmediato de la pestaña inicial (Puntos) luego de que los datos están cargados
+  if (typeof renderPointsTable === "function") renderPointsTable();
+  if (typeof renderStats === "function") renderStats();
+  if (typeof renderDestacados === "function") renderDestacados();
+  if (typeof renderNovedades === "function") renderNovedades();
+  if (typeof renderStaffTable === "function") renderStaffTable();
 }
 
 function setupLogsTab() {
@@ -696,11 +701,15 @@ function startLogsLive() {
   logsUnsub = onSnapshot(q, snap => {
     logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderLogsJow();
+    if (typeof renderPointsTable === "function") renderPointsTable();
+    if (typeof renderStats === "function") renderStats();
+    if (typeof renderStaffTable === "function") renderStaffTable();
     if (typeof renderActivityChart === "function") renderActivityChart();
     if (typeof renderRankings === "function") renderRankings();
     if (typeof renderDestacados === "function") renderDestacados();
     if (typeof renderRankingAdmins === "function") renderRankingAdmins();
     if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+    if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
   }, e => console.error("Logs snapshot error:", e));
 }
 
@@ -925,20 +934,25 @@ function setupStaffView() {
   const destSec  = document.getElementById("destacados-section");
   const btnDest  = document.getElementById("btn-dest");
 
-  // Todos los usuarios pueden ver estadísticas y destacados
   if (statsSec) statsSec.style.display = "";
   if (destSec) destSec.style.display = "none";
-  if (btnDest) btnDest.style.display = ""; // Botón visible para todos
+  if (btnDest) btnDest.style.display = "";
 
   document.getElementById("tabs-nav").style.display = "";
 
-  // Visibilidad de pestañas por rol: Gráficos y Logs solo staff; "Mi perfil" solo usuarios
   const grafBtn = document.getElementById("graficos-tab-btn");
   if (grafBtn) grafBtn.style.display = isStaff ? "" : "none";
-  const perfilBtn2 = document.getElementById("my-perfil-tab-btn");
-  if (perfilBtn2) perfilBtn2.style.display = role === "user" ? "" : "none";
 
-  // Activar primera pestaña
+  // Punto 7: "Mi Perfil" NUNCA se muestra (eliminar para USUARIOS ni para NADIE)
+  const perfilBtn2 = document.getElementById("my-perfil-tab-btn");
+  if (perfilBtn2) perfilBtn2.style.display = "none";
+  const userViewEl = document.getElementById("user-view");
+  if (userViewEl) userViewEl.style.display = "none";
+
+  // Punto 6: Garantizar Logs visible para Admin + Inspector
+  const logsBtn = document.getElementById("logs-tab-btn");
+  if (logsBtn) logsBtn.style.display = isStaff ? "" : "none";
+
   document.querySelectorAll(".tab-content").forEach(el => { el.style.display="none"; el.classList.remove("active"); });
   document.getElementById("points-tab").style.display = "block";
   document.getElementById("points-tab").classList.add("active");
@@ -946,16 +960,21 @@ function setupStaffView() {
 
   if (isStaff) {
     populateUserFilter();
+    renderPointsTable();
+    renderStats();
     renderActivityChart();
     renderRankings();
     renderRankingAdmins();
     renderEvolutionPts();
+    renderInspectorActivityJow();
     
-    // Mostrar botón de reinicio solo para admins
     const resetBtn = document.getElementById("reset-data-btn");
     if (resetBtn) {
       resetBtn.style.display = role === "admin" ? "" : "none";
     }
+  } else {
+    renderPointsTable();
+    renderStats();
   }
   renderStats();
   renderPointsTable();
@@ -1149,7 +1168,7 @@ function renderActivityChart() {
     maxVal = Math.max(maxVal, b.admins, b.inspectors);
   }
 
-  const W = 760, H = 250, pl = 40, pr = 16, pt = 18, pb = 32;
+  const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
   const iw = W - pl - pr, ih = H - pt - pb;
   const yMax = maxVal;
   const n = buckets.length;
@@ -1424,7 +1443,7 @@ function rankListHTML(rows, valLabel, showRango) {
 }
 
 function multiLineChartSVG(labels, series, h) {
-  const H = h || 230, W = 760, pl = 44, pr = 16, pt = 18, pb = 32;
+  const H = h || 340, W = 760, pl = 44, pr = 16, pt = 22, pb = 40;
   const iw = W - pl - pr, ih = H - pt - pb;
   let maxV = 1;
   for (const s of series) for (const v of s.values) maxV = Math.max(maxV, Number(v) || 0);
@@ -1459,7 +1478,7 @@ function multiLineChartSVG(labels, series, h) {
 }
 
 function barChartSVG(labels, series, h) {
-  const H = h || 230, W = 760, pl = 44, pr = 16, pt = 18, pb = 32;
+  const H = h || 340, W = 760, pl = 44, pr = 16, pt = 22, pb = 40;
   const iw = W - pl - pr, ih = H - pt - pb;
   let maxV = 1;
   for (const s of series) for (const v of s.values) maxV = Math.max(maxV, Number(v) || 0);
@@ -1499,6 +1518,60 @@ function barChartSVG(labels, series, h) {
 
 // Evolución de puntos: reconstruye el valor diario de cada trabajador
 // del equipo a partir de los registros (delta) y los puntos actuales.
+// ── RANKING DE ADMINS ──────────────────────────────────────────
+// Versión Panel de Puntos (colocada acá porque se usa en la pestaña Gráficos)
+function renderRankingAdmins() {
+  const box = document.getElementById("rank-admins-box");
+  if (!box) return;
+  const role = currentUser?.role;
+  if (role !== "admin" && role !== "inspector") return;
+
+  let admins = allMembers.filter(u => u.role === "admin" || u.role === "inspector");
+  if (filterState.user) admins = admins.filter(u => u.uid === filterState.user);
+  if (filterState.rango) admins = admins.filter(u => normRango(u.rango) === filterState.rango);
+  if (filterState.cargo) admins = admins.filter(u => hasCargo(u, filterState.cargo));
+  admins = admins.sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 8);
+
+  if (!admins.length) {
+    box.innerHTML = '<div class="chart-empty">Sin datos de actividad</div>';
+    return;
+  }
+
+  if (modeStates.admins === "circ") {
+    const PALETTE = ["#5865f2", "#3ecf8e", "#ffd166", "#ff9f43", "#ff5c75", "#4cc9f0", "#a78bfa", "#57cc99"];
+    const items = admins.map((a, i) => ({
+      label: a.name, value: Number(a.points || 0),
+      color: PALETTE[i % PALETTE.length]
+    }));
+    box.innerHTML = `<div style="display:flex;justify-content:center;align-items:flex-start;gap:20px;padding:22px 12px;flex-wrap:wrap">
+      ${items.map(it => `<div style="text-align:center;min-width:78px"><div style="width:86px;height:86px;border-radius:50%;background:${it.color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1rem;margin:0 auto">${it.value.toFixed(decimalsCfgJow())}</div><div style="margin-top:10px;font-size:12px;color:#9ba8d6">${esc(it.label)}</div></div>`).join("")}
+    </div>`;
+    return;
+  }
+
+  const PALETTE_BAR = ["#5865f2", "#3ecf8e", "#ffd166", "#ff9f43", "#ff5c75", "#4cc9f0", "#a78bfa", "#57cc99"];
+  const maxP = Math.max(1, ...admins.map(a => Number(a.points || 0)));
+  box.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;padding:4px 2px">
+    ${admins.map((a, i) => {
+      const pts = Number(a.points || 0);
+      const pct = Math.round((pts / maxP) * 100);
+      const color = PALETTE_BAR[i % PALETTE_BAR.length];
+      const r = fmtRango(a.rango);
+      return `<div style="padding:10px 12px;background:rgba(15,20,40,.55);border:1px solid rgba(141,153,255,.14);border-radius:10px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <span style="color:#7c86ad;font-size:12px;font-weight:700;min-width:24px">#${i+1}</span>
+          <span style="font-weight:600;color:#e9eeff;flex:1">${esc(a.name || "—")}</span>
+          ${r ? `<span style="font-size:10px;color:#9ba8d6;padding:2px 8px;background:rgba(141,153,255,.12);border-radius:999px">${esc(r)}</span>` : ""}
+          <span style="color:${ptColor(pts)};font-weight:800;font-size:1rem">${pts.toFixed(decimalsCfgJow())} pts</span>
+        </div>
+        <div style="height:8px;background:rgba(20,25,50,.85);border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,${color},${color}cc);border-radius:4px"></div>
+        </div>
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
 function renderEvolutionPts() {
   const el = document.getElementById("evo-pts-chart");
   const legendEl = document.getElementById("evo-pts-legend");
@@ -1662,7 +1735,8 @@ function renderPointsTable() {
 }
 
 // ── AJUSTAR PUNTOS ─────────────────────────────────────────────
-// Ajustar puntos para Inspectores (hasta 2 pts) y Admins
+// Inspectores: solo +/- 1 exacto, motivo OBLIGATORIO
+// Admins: +/- 1 o más, motivo OPCIONAL
 window.adjustPoints = async (uid, delta) => {
   const role = currentUser?.role;
   if (role !== 'admin' && role !== 'inspector') return;
@@ -1673,16 +1747,30 @@ window.adjustPoints = async (uid, delta) => {
   if (role === 'inspector') {
     const cd = checkInspectorCooldown(uid);
     if (!cd.ok) { showToast(`Cooldown activo. Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, 'err'); return; }
-    
-    // Para inspectores, pedir cantidad (máximo 2)
-    const amountRaw = prompt("Cantidad de puntos a asignar (máximo 2):", "1");
-    if (amountRaw === null) return;
-    const amount = parseFloat(amountRaw);
-    if (!Number.isFinite(amount) || amount <= 0 || amount > 2) {
-      showToast("Ingresá un valor entre 1 y 2", "err");
-      return;
+    // Punto 4: Inspector solo 1 punto por acción, NUNCA se pide cantidad personalizada
+    delta = delta > 0 ? 1 : -1;
+  }
+
+  // Punto 5: Pedir motivo
+  let reason = "";
+  if (role === 'inspector') {
+    // Inspector: motivo OBLIGATORIO
+    while (true) {
+      const r = prompt(`Motivo de la modificación (${delta > 0 ? '+' : ''}${delta} pts a ${member.name}):\n\nCampo OBLIGATORIO para inspectores.`);
+      if (r === null) return; // Cancelar
+      reason = r.trim();
+      if (reason.length === 0) {
+        showToast('Tenés que escribir un motivo obligatorio.', 'err');
+        continue;
+      }
+      break;
     }
-    delta = delta > 0 ? amount : -amount;
+  } else {
+    // Admin: motivo OPCIONAL
+    const r = prompt(`Motivo (opcional) de la modificación (${delta > 0 ? '+' : ''}${delta} pts a ${member.name}):`);
+    if (r === null) return;
+    reason = r.trim();
+    if (!reason) reason = `Modificación manual (${delta > 0 ? '+' : ''}${delta})`;
   }
 
   const oldVal = member.points || 0;
@@ -1691,8 +1779,6 @@ window.adjustPoints = async (uid, delta) => {
   const newVal = Math.max(0, Math.min(maxPtsCfg(), Math.round(rawNewVal * factor) / factor));
   
   if (newVal === oldVal) return;
-  
-  const reason = delta > 0 ? `Ajuste rápido (+${Math.abs(delta)})` : `Ajuste rápido (-${Math.abs(delta)})`;
 
   member.points = newVal; updatePointCells(uid, newVal);
   try {
@@ -1700,26 +1786,27 @@ window.adjustPoints = async (uid, delta) => {
     await writeLog({ type: 'points', actorUid: currentUser.uid, actorRole: role, actorName: currentUser.name||'', targetUid: uid, targetName: member.name||'', delta: delta, reason, newPoints: newVal });
     if (role === 'inspector') {
       writeCooldown(currentUser.uid, uid, Date.now());
-      showToast(`Puntos ${delta > 0 ? 'sumados' : 'restados'}: ${delta > 0 ? '+' : ''}${Math.abs(delta)}`, 'ok');
-    } else {
-      await logNovedad(`🔧 Admin ${currentUser.name||''} ${delta > 0 ? 'sumó' : 'restó'} ${Math.abs(delta)} pts a ${member.name||'usuario'}. Motivo: ${reason}`);
-      showToast(`Puntos ${delta > 0 ? 'sumados' : 'restados'}: ${delta > 0 ? '+' : ''}${Math.abs(delta)}`, 'ok');
     }
+    showToast(`Puntos ${delta > 0 ? 'sumados' : 'restados'}: ${delta > 0 ? '+' : ''}${Math.abs(delta)}`, 'ok');
+
+    // Punto 7 Novedades selectivas: SOLO registrar novedad cuando se cruzan umbrales (no cada +/-)
+    await maybeEmitThresholdNovedad(member, oldVal, newVal, delta, role);
+
     renderAll();
   } catch (e) { member.points = oldVal; updatePointCells(uid, oldVal); showToast('Error al guardar: '+e.message,'err'); }
 };
 
 // ── ESTABLECER VALOR DE PUNTOS ─────────────────────────────────────
-// Establecer valor exacto de puntos (solo para Admins)
+// Valor exacto (solo para Admins) con motivo opcional
 window.setPoints = async (uid) => {
   const role = currentUser?.role;
-  if (role !== 'admin') return; // Solo Admins pueden usar esta función
+  if (role !== 'admin') return;
   if (uid === currentUser.uid) { showToast('No podés modificar tus propios puntos!', 'err'); return; }
   const member = allMembers.find(u => u.uid === uid);
   if (!member) return;
 
   const inputEl = document.getElementById(`pts-input-${uid}`);
-  const inputValue = inputEl ? parseFloat(inputEl.value) : 0;
+  const inputValue = inputEl ? parseFloat(inputEl.value) : NaN;
   
   if (!Number.isFinite(inputValue) || inputValue < 0) {
     showToast('Ingresá un valor válido (mayor o igual a 0).', 'err');
@@ -1731,19 +1818,61 @@ window.setPoints = async (uid) => {
   const newVal = Math.max(0, Math.min(maxPtsCfg(), Math.round(inputValue * factor) / factor));
   
   if (newVal === oldVal) return;
-  const reason = 'Establecer valor directo';
+  const delta = newVal - oldVal;
+
+  const r = prompt(`Motivo (opcional) - establecer puntos de ${member.name} a ${newVal}:`);
+  if (r === null) return;
+  const reason = r.trim() || `Valor directo (${delta > 0 ? '+' : ''}${delta})`;
 
   member.points = newVal; updatePointCells(uid, newVal);
   try {
     await updateDoc(doc(db, 'users', uid), { points: newVal });
-    await writeLog({ type: 'points', actorUid: currentUser.uid, actorRole: role, actorName: currentUser.name||'', targetUid: uid, targetName: member.name||'', delta: newVal - oldVal, reason, newPoints: newVal });
-    await logNovedad(`🔧 Admin ${currentUser.name||''} estableció ${member.name||'usuario'} a ${newVal} pts. Motivo: ${reason}`);
+    await writeLog({ type: 'points', actorUid: currentUser.uid, actorRole: role, actorName: currentUser.name||'', targetUid: uid, targetName: member.name||'', delta, reason, newPoints: newVal });
     showToast(`Puntos establecidos: ${newVal}`, 'ok');
-    // Limpiar el input después de aplicar
     if (inputEl) inputEl.value = '';
+
+    await maybeEmitThresholdNovedad(member, oldVal, newVal, delta, role);
+
     renderAll();
   } catch (e) { member.points = oldVal; updatePointCells(uid, oldVal); showToast('Error al guardar: '+e.message,'err'); }
 };
+
+// Punto 7: Emitir novedades SOLO para eventos importantes / umbrales
+async function maybeEmitThresholdNovedad(member, oldVal, newVal, delta, role) {
+  const MAX = maxPtsCfg();
+  const name = member.name || 'un miembro';
+
+  // Umbral 1: cruzó de 0 a >0 (recuperó puntos / volvió de expulsión)
+  if (oldVal === 0 && newVal > 0) {
+    await logNovedad(`✅ ${name} volvió a tener actividad (${newVal.toFixed(decimalsCfgJow())} pts) y salió del estado crítico.`);
+    return;
+  }
+  // Umbral 2: bajó a 0 (cerca de expulsión)
+  if (oldVal > 0 && newVal === 0) {
+    await logNovedad(`🚨 ${name} llegó a 0 puntos · Estado crítico · Requiere apelación o acción inmediata.`);
+    return;
+  }
+  // Umbral 3: entró en "Riesgo alto" (<=2) viniendo de arriba
+  if (oldVal > 2 && newVal > 0 && newVal <= 2) {
+    await logNovedad(`⚠️ ${name} está en riesgo alto (${newVal.toFixed(decimalsCfgJow())} pts) · Entró en seguimiento por bajo desempeño.`);
+    return;
+  }
+  // Umbral 4: salió de riesgo / entró en "Estable"
+  if (oldVal <= 2 && newVal > 4) {
+    await logNovedad(`💪 ${name} recuperó puntos (${newVal.toFixed(decimalsCfgJow())}) y salió del estado de seguimiento. Buen desempeño!`);
+    return;
+  }
+  // Umbral 5: alto desempeño (>=6 y delta >=2 de una)
+  if (newVal >= 6 && delta >= 2) {
+    await logNovedad(`🔥 ${name} tuvo un desempeño excelente! Subió ${delta} pts y quedó en ${newVal.toFixed(decimalsCfgJow())}.`);
+    return;
+  }
+  // Umbral 6: nuevo ingreso / primer punto registrado (member.status o oldVal === undefined-ish)
+  if ((oldVal === 0 || !Number.isFinite(oldVal)) && newVal === MAX && delta === MAX) {
+    await logNovedad(`✨ ${name} ingresó al staff con ${newVal.toFixed(decimalsCfgJow())} pts iniciales. Bienvenido/a!`);
+    return;
+  }
+}
 
 function updatePointCells(uid, pts) {
   const pn = document.getElementById("pn-" + uid);
@@ -1815,13 +1944,14 @@ function renderNovedades() {
 
 function getNovedadIcon(texto) {
   const t = texto.toLowerCase();
-  if (t.includes("sumó") || t.includes("+"))      return "➕";
-  if (t.includes("restó") || t.includes("−"))     return "➖";
-  if (t.includes("eliminado") || t.includes("baj")) return "🗑️";
-  if (t.includes("creado") || t.includes("nuevo")) return "✨";
-  if (t.includes("inactivo") || t.includes("suspendido")) return "⏸️";
-  if (t.includes("apelación"))                      return "📨";
-  return "📌";
+  if (t.includes("crítico") || t.includes("0 punto"))       return "🚨";
+  if (t.includes("riesgo") || t.includes("seguimiento"))   return "⚠️";
+  if (t.includes("recuperó") || t.includes("salió") || t.includes("excelente") || t.includes("desempeño")) return "💪";
+  if (t.includes("ingresó") || t.includes("bienvenido") || t.includes("nuevo")) return "✨";
+  if (t.includes("volvió") || t.includes("salvó"))         return "✅";
+  if (t.includes("expuls") || t.includes("apelación"))     return "📮";
+  if (t.includes("admin") || t.includes("ascenso"))        return "💎";
+  return "🔔";
 }
 
 function fmtFecha(date) {
@@ -1834,6 +1964,10 @@ function fmtFecha(date) {
 // ── TABS ────────────────────────────────────────────────────────
 window.switchTab = (id, btn) => {
   try {
+    // Bloquear navegación a la pestaña Mi Perfil (eliminada)
+    if (id === "user-view") {
+      id = "points-tab";
+    }
     document.querySelectorAll(".tab-content").forEach(s => { s.classList.remove("active"); s.style.display="none"; });
     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
     const el = document.getElementById(id);
