@@ -1122,7 +1122,16 @@ document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active")
 document.getElementById("page-" + id).classList.add("active");
 const ni = document.querySelector(`.nav-item[onclick="goPage('${id}')"]`);
 if (ni) ni.classList.add("active");
-if (id === "charts" && typeof renderCharts === "function") renderCharts();
+
+// Inicializar gráficos si entramos a la pestaña charts
+if (id === "charts") {
+  if (myRole === "admin") {
+    document.getElementById("reset-data-btn").style.display = "";
+  }
+  if (typeof renderRankingAdmins === "function") renderRankingAdmins();
+  if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+  if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
+}
 };
 
 window.setLogTypeFilter = v => { logTypeFilter = v; renderLogs(); };
@@ -2659,30 +2668,6 @@ window.renderInspectorActivityJow = () => {
       <td><span style="color:#3ecf8e">Activo</span></td>
     </tr>`;
   }).join("");
-};
-
-// Inicializar gráficos al entrar a la pestaña
-const originalGoPage = window.goPage;
-window.goPage = (id) => {
-  if (id === "config" && myRole !== "admin") {
-    showToast("Solo un admin puede entrar a Configurar Puntos.", "err");
-    id = "dashboard";
-  }
-  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-  const pg = document.getElementById("page-" + id);
-  if (pg) pg.classList.add("active");
-  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-  const nav = document.querySelector(`.nav-item[onclick*="${id}"]`);
-  if (nav) nav.classList.add("active");
-  
-  if (id === "charts") {
-    if (myRole === "admin") {
-      document.getElementById("reset-data-btn").style.display = "";
-    }
-    if (typeof renderRankingAdmins === "function") renderRankingAdmins();
-    if (typeof renderEvolutionPts === "function") renderEvolutionPts();
-    if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
-  }
 };
 </script>
 <script>
