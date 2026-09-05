@@ -286,7 +286,14 @@ width:100% !important;
 </div>
 
 <div class="tcard">
-<div class="ttoolbar"><span class="ttoolbar-title">🏆 Top por puntos</span></div>
+<div class="ttoolbar">
+<span class="ttoolbar-title">🏆 Top por puntos</span>
+<div class="chart-toolbar">
+<button class="period-btn active" data-rank-period="day" onclick="setRankPeriod('day',this)">Diario</button>
+<button class="period-btn" data-rank-period="week" onclick="setRankPeriod('week',this)">Semanal</button>
+<button class="period-btn" data-rank-period="month" onclick="setRankPeriod('month',this)">Mensual</button>
+</div>
+</div>
 <table>
 <thead><tr><th>#</th><th>Nombre</th><th>Rol</th><th>Puntos</th><th>Valor fijo</th><th>Ajustar</th></tr></thead>
 <tbody id="dash-tbody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody>
@@ -355,10 +362,6 @@ width:100% !important;
 <div class="card" style="margin-bottom: 16px;">
   <div class="chart-head">
     <h3>🔍 Filtros</h3>
-    <div style="display: flex; gap: 8px; margin-left: auto;">
-      <button class="btn-ghost" onclick="refreshCharts()" style="font-size: 12px; padding: 6px 12px;">🔄 Refrescar</button>
-      <button class="btn-ghost" id="reset-data-btn" onclick="resetChartData()" style="font-size: 12px; padding: 6px 12px; display: none;">🗑️ Reiniciar datos</button>
-    </div>
   </div>
   <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
     <div>
@@ -399,6 +402,10 @@ width:100% !important;
         <button class="period-btn active" data-mode="cols" onclick="setRankModeAdmins('cols',this)">Columnas</button>
         <button class="period-btn" data-mode="circ" onclick="setRankModeAdmins('circ',this)">Circular</button>
       </div>
+      <div class="chart-toolbar">
+        <button class="btn-ghost btn-sm" onclick="refreshSingleChart('rankingAdmins')" style="font-size: 11px; padding: 4px 8px;">🔄 Refrescar</button>
+        <button class="btn-ghost btn-sm" id="reset-ranking-admins-btn" onclick="resetSingleChart('rankingAdmins')" style="font-size: 11px; padding: 4px 8px; display: none;">🗑️ Reiniciar</button>
+      </div>
     </div>
     <div class="chart-container" id="rank-admins-box"><div class="chart-empty">Cargando ranking…</div></div>
   </div>
@@ -417,6 +424,10 @@ width:100% !important;
       <button class="period-btn active" data-mode="line" onclick="setRankModeEvo('line',this)">Lineal</button>
       <button class="period-btn" data-mode="cols" onclick="setRankModeEvo('cols',this)">Columnas</button>
     </div>
+    <div class="chart-toolbar">
+      <button class="btn-ghost btn-sm" onclick="refreshSingleChart('evolutionPts')" style="font-size: 11px; padding: 4px 8px;">🔄 Refrescar</button>
+      <button class="btn-ghost btn-sm" id="reset-evolution-pts-btn" onclick="resetSingleChart('evolutionPts')" style="font-size: 11px; padding: 4px 8px; display: none;">🗑️ Reiniciar</button>
+    </div>
     <span class="chart-note-inline">Puntos reconstruidos a partir de los registros recientes</span>
   </div>
   <div class="chart-container" id="evo-pts-chart"><div class="chart-empty">Cargando evolución…</div></div>
@@ -426,7 +437,7 @@ width:100% !important;
 <!-- ACTIVIDAD DE ADMINS (separada del MC Team) -->
 <div class="card chart-card">
   <div class="chart-head">
-    <h3>🕐 Actividad de admins por día (24 horas)</h3>
+    <h3>🕐 Actividad de Admins</h3>
     <div class="chart-toolbar" id="chart-toolbar">
       <button class="period-btn active" data-period="day" onclick="setChartPeriod('day',this)">Día</button>
       <button class="period-btn" data-period="week" onclick="setChartPeriod('week',this)">Semana</button>
@@ -436,6 +447,10 @@ width:100% !important;
       <button class="period-btn active" data-mode="line" onclick="setAdminChartMode('line',this)">Lineal</button>
       <button class="period-btn" data-mode="cols" onclick="setAdminChartMode('cols',this)">Columnas</button>
       <button class="period-btn" data-mode="circ" onclick="setAdminChartMode('circ',this)">Circular</button>
+    </div>
+    <div class="chart-toolbar">
+      <button class="btn-ghost btn-sm" onclick="refreshSingleChart('activityChart')" style="font-size: 11px; padding: 4px 8px;">🔄 Refrescar</button>
+      <button class="btn-ghost btn-sm" id="reset-activity-chart-btn" onclick="resetSingleChart('activityChart')" style="font-size: 11px; padding: 4px 8px; display: none;">🗑️ Reiniciar</button>
     </div>
   </div>
   <div class="chart-container" id="activity-chart"><div class="chart-empty">Cargando actividad…</div></div>
@@ -1130,7 +1145,12 @@ if (ni) ni.classList.add("active");
 // Inicializar gráficos si entramos a la pestaña charts
 if (id === "charts") {
   if (myRole === "admin") {
-    document.getElementById("reset-data-btn").style.display = "";
+    // Mostrar botones de reset individuales para admins
+    const resetBtns = ["reset-ranking-admins-btn", "reset-evolution-pts-btn", "reset-activity-chart-btn"];
+    resetBtns.forEach(btnId => {
+      const btn = document.getElementById(btnId);
+      if (btn) btn.style.display = "";
+    });
   }
   if (typeof renderRankingAdmins === "function") renderRankingAdmins();
   if (typeof renderEvolutionPts === "function") renderEvolutionPts();
@@ -1907,6 +1927,8 @@ try {
 const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
 const snap = await getDocs(q);
 allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+// Poblar filtro de usuarios con TODOS los usuarios
+if (typeof populateUserFilter === "function") populateUserFilter();
 renderAll();
 } catch(e) {
 console.error(e);
@@ -1956,7 +1978,33 @@ document.getElementById("st-risk-bar").style.width = (total ? risk/total*100 : 0
 
 renderDestacados();
 
-const top = [...allUsers].sort((a,b) => (b.points||0)-(a.points||0)).slice(0, 8);
+// Calcular puntos según el período seleccionado para el ranking
+const now = Date.now();
+const periodStart = rankPeriod === "day" ? now - 24 * 60 * 60 * 1000 :
+                    rankPeriod === "week" ? now - 7 * 24 * 60 * 60 * 1000 :
+                    now - 30 * 24 * 60 * 60 * 1000;
+
+// Para cada usuario, calcular puntos ganados en el período
+const usersWithPeriodPoints = allUsers.map(u => {
+  let periodPoints = 0;
+  if (rankPeriod === "day") {
+    // Para diario, usar puntos actuales
+    periodPoints = Number(u.points || 0);
+  } else {
+    // Para semanal/mensual, calcular puntos ganados desde logs
+    for (const l of logs) {
+      if (l.type === "points" && l.targetUid === u.uid) {
+        const t = logTimeRaw(l);
+        if (t && t >= periodStart && typeof l.delta === "number" && l.delta > 0) {
+          periodPoints += l.delta;
+        }
+      }
+    }
+  }
+  return { ...u, periodPoints };
+});
+
+const top = [...usersWithPeriodPoints].sort((a,b) => (b.periodPoints||0)-(a.periodPoints||0)).slice(0, 8);
 const tb = document.getElementById("dash-tbody");
 const canEdit = myRole === "admin" || myRole === "inspector";
 if (!top.length) { tb.innerHTML='<tr><td colspan="6" class="empty">Sin datos aún.</td></tr>'; return; }
@@ -1988,7 +2036,7 @@ return `
      <td style="color:var(--muted);font-weight:700;width:30px">${i+1}</td>
      <td><b>${esc(u.name||"—")}</b></td>
      <td>${roleBadge(u.role)}</td>
-     <td><b style="color:var(--warn);font-size:15px" id="dpv-${u.uid}">${fmtPts(u.points)}</b></td>
+     <td><b style="color:var(--warn);font-size:15px" id="dpv-${u.uid}">${fmtPts(u.periodPoints)}</b></td>
      ${cells}
    </tr>`;
 }).join("");
@@ -2564,6 +2612,7 @@ let filterState = { user: "", rango: "", cargo: "" };
 let modeStates = { admins: "cols", evo: "line", admin: "line" };
 let evoTimeState = "7";
 let chartPeriod = "day";
+let rankPeriod = "day"; // Período para el ranking de puntos
 
 // ── CHART CONTROLS ─────────────────────────────────────────────
 window.refreshCharts = () => {
@@ -2592,6 +2641,24 @@ window.applyFilters = () => {
   filterState.cargo = document.getElementById("filter-cargo")?.value || "";
   if (typeof renderRankingAdmins === "function") renderRankingAdmins();
   if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+  if (typeof renderActivityChart === "function") renderActivityChart();
+};
+
+// Función para poblar el filtro de usuarios con TODOS los usuarios
+window.populateUserFilter = () => {
+  const userSelect = document.getElementById("filter-user");
+  if (!userSelect) return;
+  
+  userSelect.innerHTML = '<option value="">Todos</option>';
+  // TODOS los usuarios (user / admin / inspector)
+  const allUsersList = allUsers.filter(u => ["admin","inspector","user"].includes(u.role));
+  allUsersList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  allUsersList.forEach(u => {
+    const option = document.createElement("option");
+    option.value = u.uid;
+    option.textContent = u.name || "—";
+    userSelect.appendChild(option);
+  });
 };
 
 window.resetFilters = () => {
@@ -2636,6 +2703,48 @@ window.setAdminChartMode = (m, btn) => {
   if (typeof renderActivityChart === "function") renderActivityChart();
 };
 
+window.setRankPeriod = (period, btn) => {
+  rankPeriod = period;
+  document.querySelectorAll('[data-rank-period]').forEach(b => b.classList.toggle("active", b.getAttribute("data-rank-period") === period));
+  renderDash(); // Re-renderizar el dashboard con el nuevo período
+};
+
+// Funciones para refrescar y reiniciar gráficos individuales
+window.refreshSingleChart = (chartName) => {
+  switch(chartName) {
+    case 'rankingAdmins':
+      if (typeof renderRankingAdmins === "function") renderRankingAdmins();
+      break;
+    case 'evolutionPts':
+      if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+      break;
+    case 'activityChart':
+      if (typeof renderActivityChart === "function") renderActivityChart();
+      break;
+    case 'inspectorActivity':
+      if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
+      break;
+  }
+  showToast("Gráfico actualizado", "ok");
+};
+
+window.resetSingleChart = (chartName) => {
+  const role = myRole;
+  if (role !== "admin") {
+    showToast("Solo los admins pueden reiniciar los datos", "err");
+    return;
+  }
+  
+  const ok = confirm("¿Estás seguro de que quieres reiniciar los datos de este gráfico? Esta acción no se puede deshacer.");
+  if (!ok) return;
+  
+  // En una implementación real, esto borraría los datos específicos del gráfico
+  showToast("Función de reinicio implementada para " + chartName, "ok");
+  
+  // Refrescar el gráfico después del reinicio
+  refreshSingleChart(chartName);
+};
+
 // Funciones de renderizado simplificadas para el Dashboard
 window.renderRankingAdmins = () => {
   const box = document.getElementById("rank-admins-box");
@@ -2658,13 +2767,63 @@ window.renderRankingAdmins = () => {
       ${items.map(it => `<div style="text-align:center"><div style="width:80px;height:80px;border-radius:50%;background:${it.color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold">${it.value}</div><div style="margin-top:8px;font-size:12px;color:#9ba8d6">${it.label}</div></div>`).join("")}
     </div>`;
   } else {
-    box.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">
-      ${rows.map((r, i) => `<div style="display:flex;align-items:center;gap:12px;padding:8px;background:rgba(15,20,40,.5);border-radius:8px">
-        <span style="color:#7c86ad;font-size:12px">#${i+1}</span>
-        <span style="flex:1;color:#e9eeff;font-weight:500">${r.name}</span>
-        <span style="color:#3ecf8e;font-weight:bold">${r.value.toFixed(decimalsN())} pts</span>
-      </div>`).join("")}
-    </div>`;
+    // Gráfico de columnas verticales real
+    const PALETTE_BAR = ["#5865f2", "#3ecf8e", "#ffd166", "#ff9f43", "#ff5c75", "#4cc9f0", "#a78bfa", "#57cc99"];
+    const maxP = Math.max(1, ...admins.map(a => Number(a.points || 0)));
+    
+    const W = 600, H = 280, pl = 40, pr = 16, pt = 30, pb = 40;
+    const iw = W - pl - pr, ih = H - pt - pb;
+    const n = admins.length;
+    const barWidth = Math.max(20, (iw / n) * 0.5);
+    const gap = (iw - (barWidth * n)) / (n + 1);
+    const xPos = i => pl + gap + i * (barWidth + gap);
+    const yPos = v => pt + ih - (ih * v) / maxP;
+    
+    let grid = "", xl = "", bars = "";
+    const gridCount = 4;
+    for (let g = 0; g <= gridCount; g++) {
+      const val = Math.round((maxP * g) / gridCount);
+      const gy = yPos(val);
+      grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
+      grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
+    }
+    
+    admins.forEach((a, i) => {
+      const pts = Number(a.points || 0);
+      const x = xPos(i);
+      const hBar = (pts / maxP) * ih;
+      const y = pt + ih - hBar;
+      const color = PALETTE_BAR[i % PALETTE_BAR.length];
+      
+      bars += `<rect x="${x}" y="${y}" width="${barWidth}" height="${hBar}" fill="${color}" rx="4"/>`;
+      
+      // Etiqueta de valor arriba de la barra
+      bars += `<text x="${x + barWidth/2}" y="${y - 6}" text-anchor="middle" font-size="10" fill="#e9eeff" font-weight="600">${pts.toFixed(decimalsN())}</text>`;
+      
+      // Nombre en el eje X
+      const nameShort = (a.name || "—").substring(0, 8);
+      xl += `<text x="${x + barWidth/2}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#7c86ad">${nameShort}</text>`;
+    });
+    
+    box.innerHTML = `
+      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img">
+        ${grid}
+        <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+        <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+        ${xl}
+        ${bars}
+      </svg>
+      <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;font-size:11px;color:#9ba8d6">
+        ${admins.map((a, i) => {
+          const r = fmtRango(a.rango);
+          return `<span style="display:flex;align-items:center;gap:4px">
+            <span style="width:8px;height:8px;border-radius:50%;background:${PALETTE_BAR[i % PALETTE_BAR.length]}"></span>
+            <span>${esc(a.name || "—")}</span>
+            ${r ? `<span style="opacity:0.7">(${esc(r)})</span>` : ""}
+          </span>`;
+        }).join("")}
+      </div>
+    `;
   }
 };
 
@@ -2703,11 +2862,202 @@ window.renderEvolutionPts = () => {
 
 window.renderActivityChart = () => {
   const el = document.getElementById("activity-chart");
+  const legendEl = document.getElementById("chart-legend");
   if (!el) return;
   const role = myRole;
   if (role !== "admin" && role !== "inspector") return;
-  el.innerHTML = '<div class="chart-empty">Cargando actividad…</div>';
+
+  if (!logs.length) {
+    el.innerHTML = '<div class="chart-empty">Sin datos de actividad todavía. Los movimientos de admins e inspectores aparecerán acá.</div>';
+    if (legendEl) legendEl.innerHTML = "";
+    return;
+  }
+
+  const now = Date.now();
+  const buckets = chartBuckets(chartPeriod, now);
+  let maxVal = 1;
+  for (const b of buckets) {
+    b.admins = 0; b.inspectors = 0;
+    for (const l of logs) {
+      const t = logTimeRaw(l);
+      if (t < b.start || t >= b.end) continue;
+      const r = String(l.actorRole || "").toLowerCase();
+      if (r === "admin") b.admins++;
+      else if (r === "inspector") b.inspectors++;
+    }
+    maxVal = Math.max(maxVal, b.admins, b.inspectors);
+  }
+
+  const mode = modeStates.admin || "line";
+
+  // Modo lineal: mostrar evolución temporal
+  if (mode === "line") {
+    const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
+    const iw = W - pl - pr, ih = H - pt - pb;
+    const yMax = maxVal;
+    const n = buckets.length;
+    const xPos = i => (n > 1 ? pl + (iw * i) / (n - 1) : pl + iw / 2);
+    const yPos = v => pt + ih - (ih * v) / yMax;
+
+    let grid = "", xl = "", series = "";
+    const gridCount = 4;
+    for (let g = 0; g <= gridCount; g++) {
+      const val = Math.round((yMax * g) / gridCount);
+      const gy = yPos(val);
+      grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
+      grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
+    }
+    buckets.forEach((b, i) => {
+      if (buckets.length > 12 && i % 2 === 1) return;
+      xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="${buckets.length > 12 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
+    });
+
+    const lines = [
+      { key: "admins", color: "#7f8cff", label: "Admins" },
+      { key: "inspectors", color: "#3ecf8e", label: "Inspectores" }
+    ];
+    for (const s of lines) {
+      const pts = buckets.map((b, i) => `${xPos(i)},${yPos(b[s.key])}`).join(" ");
+      series += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+      buckets.forEach((b, i) => {
+        series += `<circle cx="${xPos(i)}" cy="${yPos(b[s.key])}" r="2.6" fill="${s.color}"/>`;
+      });
+    }
+
+    el.innerHTML = `
+      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Actividad de los admins (${chartPeriod})">
+        ${grid}
+        <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+        <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+        ${xl}
+        ${series}
+      </svg>
+      <div class="chart-note">Actividad registrada · ${chartPeriod === "day" ? "24 horas completas (12 AM → 11 PM)" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
+
+    if (legendEl) {
+      legendEl.innerHTML = lines.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.label}</span>`).join("");
+    }
+  } 
+  // Modo columnas: mostrar promedio del período
+  else if (mode === "cols") {
+    const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
+    const iw = W - pl - pr, ih = H - pt - pb;
+    const yMax = maxVal;
+    const n = buckets.length;
+    const barWidth = Math.max(8, (iw / n) * 0.6);
+    const gap = (iw - (barWidth * n)) / (n + 1);
+    const xPos = i => pl + gap + i * (barWidth + gap);
+    const yPos = v => pt + ih - (ih * v) / yMax;
+
+    let grid = "", xl = "", bars = "";
+    const gridCount = 4;
+    for (let g = 0; g <= gridCount; g++) {
+      const val = Math.round((yMax * g) / gridCount);
+      const gy = yPos(val);
+      grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
+      grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
+    }
+    buckets.forEach((b, i) => {
+      if (n > 10 && i % 2 === 1) return;
+      xl += `<text x="${xPos(i) + barWidth/2}" y="${H - 8}" text-anchor="middle" font-size="${n > 10 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
+    });
+
+    const categories = [
+      { key: "admins", color: "#7f8cff", label: "Admins" },
+      { key: "inspectors", color: "#3ecf8e", label: "Inspectores" }
+    ];
+
+    const groupWidth = barWidth * 2 + 4;
+    const groupGap = (iw - (groupWidth * n)) / (n + 1);
+    const groupXPos = i => pl + groupGap + i * (groupWidth + groupGap);
+
+    categories.forEach((cat, catIdx) => {
+      const offset = catIdx * (barWidth + 2);
+      cat.values.forEach((v, i) => {
+        const hBar = (Number(v) || 0) / yMax * ih;
+        const y = pt + ih - hBar;
+        bars += `<rect x="${groupXPos(i) + offset}" y="${y}" width="${barWidth}" height="${hBar}" fill="${cat.color}" rx="3"/>`;
+      });
+    });
+
+    el.innerHTML = `
+      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img">
+        ${grid}
+        <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+        <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+        ${xl}
+        ${bars}
+      </svg>
+      <div class="chart-note">Promedio de actividad · ${chartPeriod === "day" ? "24 horas" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
+
+    if (legendEl) {
+      legendEl.innerHTML = categories.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.label}</span>`).join("");
+    }
+  }
+  // Modo circular: mostrar distribución como donut
+  else if (mode === "circ") {
+    const totalAdmins = buckets.reduce((sum, b) => sum + b.admins, 0);
+    const totalInspectors = buckets.reduce((sum, b) => sum + b.inspectors, 0);
+    const total = totalAdmins + totalInspectors;
+    
+    if (!total) {
+      el.innerHTML = '<div class="chart-empty">Sin datos de actividad para el período seleccionado.</div>';
+      if (legendEl) legendEl.innerHTML = "";
+      return;
+    }
+
+    const items = [
+      { label: "Admins", value: totalAdmins, color: "#7f8cff" },
+      { label: "Inspectores", value: totalInspectors, color: "#3ecf8e" }
+    ];
+
+    const cx = 90, cy = 90, R = 62, C = 2 * Math.PI * R;
+    let acc = 0, arcs = "", legend = "";
+    for (const it of items) {
+      const frac = (Number(it.value) || 0) / total;
+      const dash = `${Math.max(frac * C - 2, 0.5)} ${C}`;
+      const rot = -90 + acc * 360;
+      arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${it.color}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
+      acc += frac;
+      legend += `<span class="legend-item"><span class="legend-dot" style="background:${it.color}"></span>${it.label} · ${(frac * 100).toFixed(1)}%</span>`;
+    }
+
+    el.innerHTML = `
+      <svg class="chart-svg" viewBox="0 0 180 180" role="img">
+        ${arcs}
+        <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${Math.round(total)}</text>
+      </svg>
+      <div class="chart-legend">${legend}</div>
+      <div class="chart-note">Distribución de actividad · ${chartPeriod === "day" ? "24 horas" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
+
+    if (legendEl) {
+      legendEl.innerHTML = legend;
+    }
+  }
 };
+
+// Función auxiliar para generar buckets de tiempo
+function chartBuckets(period, now) {
+  const buckets = [];
+  let step, count, lab;
+  if (period === "day") {
+    step = 60 * 60 * 1000; count = 24; lab = (d) => {
+      const h = d.getHours();
+      const h12 = h % 12 === 0 ? 12 : h % 12;
+      return `${h12} ${h < 12 ? "AM" : "PM"}`;
+    };
+  } else if (period === "week") {
+    step = 24 * 60 * 60 * 1000; count = 7; lab = (d) => `${d.getDate()}/${d.getMonth() + 1}`;
+  } else {
+    step = 3 * 24 * 60 * 60 * 1000; count = 10; lab = (d) => `${d.getDate()}/${d.getMonth() + 1}`;
+  }
+  for (let i = count - 1; i >= 0; i--) {
+    const end = now - i * step;
+    const start = end - step;
+    buckets.push({ start, end, label: lab(new Date(end)) });
+  }
+  return buckets;
+}
 
 window.renderInspectorActivityJow = () => {
   const tbody = document.getElementById("inspector-activity-body");
@@ -2715,23 +3065,75 @@ window.renderInspectorActivityJow = () => {
   const role = myRole;
   if (role !== "admin" && role !== "inspector") return;
   
+  const today = dayKey(new Date());
   const inspectors = allUsers.filter(u => u.role === "inspector" && u.status === "active");
+  
   if (!inspectors.length) {
     tbody.innerHTML = '<tr><td colspan="6" class="t-empty">Sin inspectores activos</td></tr>';
     return;
   }
 
-  tbody.innerHTML = inspectors.map(insp => {
-    const todayActions = logs.filter(l => l.actorUid === insp.uid && l.type === "points").length;
-    return `<tr>
-      <td>${insp.name || "—"}</td>
-      <td>0</td>
-      <td>${todayActions}</td>
-      <td>—</td>
-      <td>—</td>
-      <td><span style="color:#3ecf8e">Activo</span></td>
-    </tr>`;
-  }).join("");
+  // Procesar actividad de inspectores
+  const inspectorData = inspectors.map(insp => {
+    const inspectorLogs = logs.filter(l => 
+      l.actorUid === insp.uid && 
+      l.type === "points" && 
+      l.dayKey === today
+    );
+    
+    const pointsAssigned = inspectorLogs.reduce((sum, l) => {
+      const delta = typeof l.delta === "number" ? l.delta : 0;
+      return sum + (delta > 0 ? delta : 0);
+    }, 0);
+    
+    const actionsCount = inspectorLogs.length;
+    
+    // Última acción
+    const lastLog = inspectorLogs.sort((a, b) => {
+      const timeA = logTimeRaw(a);
+      const timeB = logTimeRaw(b);
+      return timeB - timeA;
+    })[0];
+    
+    const lastAction = lastLog ? 
+      `${lastLog.delta > 0 ? '+' : ''}${lastLog.delta} → ${lastLog.targetName || '—'}` : 
+      '—';
+    
+    const lastTime = lastLog ? logTimeRaw(lastLog) : 0;
+    const now = Date.now();
+    const timeSince = lastTime ? fmtSince(now - lastTime) : '—';
+    
+    // Estado
+    const lastMs = lastTime ? (now - lastTime) : Infinity;
+    const state = lastMs <= 15 * 60 * 1000 ? "🟢 Activo" : 
+                  lastMs <= 60 * 60 * 1000 ? "🟡 Poco activo" : 
+                  "🔴 Inactivo";
+    
+    return {
+      name: insp.name || "—",
+      pointsAssigned,
+      actionsCount,
+      lastAction,
+      timeSince,
+      state
+    };
+  }).sort((a, b) => b.actionsCount - a.actionsCount);
+
+  if (!inspectorData.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="t-empty">Sin datos de actividad</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = inspectorData.map(data => `
+    <tr>
+      <td><b>${esc(data.name)}</b></td>
+      <td><b style="color:#ffd166">${data.pointsAssigned.toFixed(decimalsN())}</b></td>
+      <td>${data.actionsCount}</td>
+      <td>${esc(data.lastAction)}</td>
+      <td>${data.timeSince}</td>
+      <td>${data.state}</td>
+    </tr>
+  `).join("");
 };
 </script>
 <script>

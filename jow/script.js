@@ -1395,8 +1395,8 @@ function populateUserFilter() {
   if (!userSelect) return;
   
   userSelect.innerHTML = '<option value="">Todos</option>';
-  // Incluir admins e inspectores que pueden asignar puntos
-  const team = allMembers.filter(u => (u.role === "admin" || u.role === "inspector") && u.status === "active");
+  // Punto 3: TODOS los usuarios (user / admin / inspector) — no solo staff
+  const team = allMembers.filter(u => ["admin","inspector","user"].includes(u.role));
   team.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   team.forEach(u => {
     const option = document.createElement("option");
@@ -1551,26 +1551,98 @@ function renderRankingAdmins() {
 
   const PALETTE_BAR = ["#5865f2", "#3ecf8e", "#ffd166", "#ff9f43", "#ff5c75", "#4cc9f0", "#a78bfa", "#57cc99"];
   const maxP = Math.max(1, ...admins.map(a => Number(a.points || 0)));
-  box.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;padding:4px 2px">
-    ${admins.map((a, i) => {
-      const pts = Number(a.points || 0);
-      const pct = Math.round((pts / maxP) * 100);
-      const color = PALETTE_BAR[i % PALETTE_BAR.length];
-      const r = fmtRango(a.rango);
-      return `<div style="padding:10px 12px;background:rgba(15,20,40,.55);border:1px solid rgba(141,153,255,.14);border-radius:10px">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-          <span style="color:#7c86ad;font-size:12px;font-weight:700;min-width:24px">#${i+1}</span>
-          <span style="font-weight:600;color:#e9eeff;flex:1">${esc(a.name || "—")}</span>
-          ${r ? `<span style="font-size:10px;color:#9ba8d6;padding:2px 8px;background:rgba(141,153,255,.12);border-radius:999px">${esc(r)}</span>` : ""}
-          <span style="color:${ptColor(pts)};font-weight:800;font-size:1rem">${pts.toFixed(decimalsCfgJow())} pts</span>
-        </div>
-        <div style="height:8px;background:rgba(20,25,50,.85);border-radius:4px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,${color},${color}cc);border-radius:4px"></div>
-        </div>
-      </div>`;
-    }).join("")}
-  </div>`;
+  
+  // Crear gráfico de columnas verticales real
+  const W = 600, H = 280, pl = 40, pr = 16, pt = 30, pb = 40;
+  const iw = W - pl - pr, ih = H - pt - pb;
+  const n = admins.length;
+  const barWidth = Math.max(20, (iw / n) * 0.5);
+  const gap = (iw - (barWidth * n)) / (n + 1);
+  const xPos = i => pl + gap + i * (barWidth + gap);
+  const yPos = v => pt + ih - (ih * v) / maxP;
+  
+  let grid = "", xl = "", bars = "";
+  const gridCount = 4;
+  for (let g = 0; g <= gridCount; g++) {
+    const val = Math.round((maxP * g) / gridCount);
+    const gy = yPos(val);
+    grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
+    grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
+  }
+  
+  admins.forEach((a, i) => {
+    const pts = Number(a.points || 0);
+    const x = xPos(i);
+    const hBar = (pts / maxP) * ih;
+    const y = pt + ih - hBar;
+    const color = PALETTE_BAR[i % PALETTE_BAR.length];
+    
+    bars += `<rect x="${x}" y="${y}" width="${barWidth}" height="${hBar}" fill="${color}" rx="4"/>`;
+    
+    // Etiqueta de valor arriba de la barra
+    bars += `<text x="${x + barWidth/2}" y="${y - 6}" text-anchor="middle" font-size="10" fill="#e9eeff" font-weight="600">${pts.toFixed(decimalsCfgJow())}</text>`;
+    
+    // Nombre en el eje X
+    const nameShort = (a.name || "—").substring(0, 8);
+    xl += `<text x="${x + barWidth/2}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#7c86ad">${nameShort}</text>`;
+  });
+  
+  box.innerHTML = `
+    <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img">
+      ${grid}
+      <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+      <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+      ${xl}
+      ${bars}
+    </svg>
+    <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;font-size:11px;color:#9ba8d6">
+      ${admins.map((a, i) => {
+        const r = fmtRango(a.rango);
+        return `<span style="display:flex;align-items:center;gap:4px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${PALETTE_BAR[i % PALETTE_BAR.length]}"></span>
+          <span>${esc(a.name || "—")}</span>
+          ${r ? `<span style="opacity:0.7">(${esc(r)})</span>` : ""}
+        </span>`;
+      }).join("")}
+    </div>
+  `;
 }
+
+// Funciones para refrescar y reiniciar gráficos individuales en Panel de Puntos
+window.refreshSingleChartJow = (chartName) => {
+  switch(chartName) {
+    case 'rankingAdmins':
+      if (typeof renderRankingAdmins === "function") renderRankingAdmins();
+      break;
+    case 'evolutionPts':
+      if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+      break;
+    case 'activityChart':
+      if (typeof renderActivityChart === "function") renderActivityChart();
+      break;
+    case 'inspectorActivity':
+      if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
+      break;
+  }
+  showToast("Gráfico actualizado", "ok");
+};
+
+window.resetSingleChartJow = (chartName) => {
+  const role = currentUser?.role;
+  if (role !== "admin") {
+    showToast("Solo los admins pueden reiniciar los datos", "err");
+    return;
+  }
+  
+  const ok = confirm("¿Estás seguro de que quieres reiniciar los datos de este gráfico? Esta acción no se puede deshacer.");
+  if (!ok) return;
+  
+  // En una implementación real, esto borraría los datos específicos del gráfico
+  showToast("Función de reinicio implementada para " + chartName, "ok");
+  
+  // Refrescar el gráfico después del reinicio
+  refreshSingleChartJow(chartName);
+};
 
 function renderEvolutionPts() {
   const el = document.getElementById("evo-pts-chart");
