@@ -1791,8 +1791,8 @@ function renderRankingAdmins() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  // Todos los roles pueden aparecer en el ranking.
-  let members = allMembers.filter(u => ["admin", "inspector", "user"].includes(String(u.role || "").toLowerCase()));
+  // Excluir admin del ranking de puntos.
+  let members = allMembers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
   if (filterState.user) members = members.filter(u => u.uid === filterState.user);
   if (filterState.rol) members = members.filter(u => String(u.role || "").toLowerCase() === filterState.rol);
   if (filterState.rango) members = members.filter(u => normRango(u.rango) === filterState.rango);
@@ -1822,8 +1822,7 @@ function renderRankingAdmins() {
       const rot = -90 + acc * 360;
       arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${PALETTE[i % PALETTE.length]}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
       acc += frac;
-      const rangoTxt = fmtRango(r.u.rango);
-      legend += `<span class="legend-item"><span class="legend-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>${esc(r.u.name || "—")}${rangoTxt ? ` <span style="opacity:.6">(${rangoTxt})</span>` : ""} · ${(frac * 100).toFixed(1)}%</span>`;
+      legend += `<span class="legend-item"><span class="legend-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>${esc(r.u.name || "—")} · ${(frac * 100).toFixed(1)}%</span>`;
     });
     box.innerHTML = `
       <svg class="chart-svg" viewBox="0 0 180 180" role="img">
@@ -1864,8 +1863,7 @@ function renderRankingAdmins() {
     bars += `<text x="${x + barWidth/2}" y="${y - 6}" text-anchor="middle" font-size="10" fill="#e9eeff" font-weight="600">${pts.toFixed(decimalsCfgJow())}</text>`;
     const nameShort = (r.u.name || "—").substring(0, 9);
     xl += `<text x="${x + barWidth/2}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#7c86ad">${nameShort}</text>`;
-    const rangoTxt = fmtRango(r.u.rango);
-    leg += `<span class="legend-item"><span class="legend-dot" style="background:${color}"></span>${esc(r.u.name || "—")}${rangoTxt ? ` <span style="opacity:.6">(${rangoTxt})</span>` : ""}</span>`;
+    leg += `<span class="legend-item"><span class="legend-dot" style="background:${color}"></span>${esc(r.u.name || "—")}</span>`;
   });
 
   box.innerHTML = `
@@ -1945,8 +1943,8 @@ function renderEvolutionPts() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  // Usar todos los roles (Usuario, Admin, Inspector) respetando filtros.
-  let team = allMembers.filter(u => ["admin", "inspector", "user"].includes(String(u.role || "").toLowerCase()));
+  // Excluir admin de la evolución general del equipo.
+  let team = allMembers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
   
   // Apply filters
   if (filterState.user) {
