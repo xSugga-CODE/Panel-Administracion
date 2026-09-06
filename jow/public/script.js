@@ -135,9 +135,6 @@ async function applyPointDecrementTick() {
 
     const totalMs = cfgToMs(cfg);
     if (!totalMs) return;
-    // Para reducción progresiva: dividir el intervalo en muchos pasos pequeños
-    const stepMs = Math.max(1000, Math.floor(totalMs / 100)); // Al menos 1 segundo por paso
-    if (!stepMs) return;
 
     const now = Date.now();
     const last = typeof cfg.lastAppliedClientTs === "number" ? cfg.lastAppliedClientTs : 0;
@@ -146,15 +143,17 @@ async function applyPointDecrementTick() {
       return;
     }
 
-    // Calcular cuánto tiempo ha pasado y cuántos pasos necesitamos aplicar
+    // Calcular cuántos intervalos completos han pasado
     const elapsedMs = now - last;
-    let steps = Math.floor(elapsedMs / stepMs);
-    if (steps <= 0) return;
-    if (steps > 500) steps = 500; // Limitar para no procesar demasiados pasos de una vez
+    const fullIntervals = Math.floor(elapsedMs / totalMs);
+    if (fullIntervals <= 0) return;
 
-    // Cada tick debería reducir exactamente 1 punto total durante el intervalo completo
-    // Entonces la reducción por paso es 1 / (totalMs / stepMs)
-    const decrementPerStep = 1 / (totalMs / stepMs);
+    // Calcular la reducción gradual: 1 punto por intervalo completo, pero aplicado gradualmente
+    // Ejemplo: si configuraron 24h, cada 24h se reduce 1 punto total
+    // Se aplica gradualmente durante el intervalo actual
+    const partialMs = elapsedMs % totalMs;
+    const partialRatio = partialMs / totalMs; // 0 a 1, representa progreso del intervalo actual
+    const decrement = fullIntervals + partialRatio; // Intervalos completos + progreso parcial
 
     let changed = 0;
     const usersSnap = await getDocs(collection(db, "users"));
@@ -164,8 +163,7 @@ async function applyPointDecrementTick() {
       if (!u || u.role === "admin") continue;
       const oldP = Number(u.points || 0);
       if (!Number.isFinite(oldP)) continue;
-      // Aplicar reducción proporcional
-      const decrement = decrementPerStep * steps;
+      // Aplicar reducción calculada
       const newP = clampPts(oldP - decrement);
       if (newP === oldP) continue;
       try {
@@ -188,8 +186,8 @@ async function applyPointDecrementTick() {
       } catch {}
     }
 
-    // Avanzar el timestamp según los pasos procesados
-    const newLast = last + (steps * stepMs);
+    // Avanzar el timestamp al inicio del siguiente intervalo completo
+    const newLast = last + (fullIntervals * totalMs);
     await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: newLast, lastAppliedBy: "system" }, { merge: true });
     if (changed) renderAll();
   } catch (e) {
@@ -1945,8 +1943,10 @@ window.resetSingleChart = async (chartName) => {
     targets = logs.filter(l => String(l.actorRole || "").toLowerCase() === "admin");
   } else if (chartName === "inspectorActivity") {
     targets = logs.filter(l => l.type === "points" && String(l.actorRole || "").toLowerCase() === "inspector");
-  } else if (chartName === "evolutionPts" || chartName === "rankingAdmins") {
-    targets = logs.filter(l => l.type === "points");
+  } else if (chartName === "evolutionPts") {
+    targets = logs.filter(l => l.type === "points" && String(l.actorRole || "").toLowerCase() !== "admin");
+  } else if (chartName === "rankingAdmins") {
+    targets = logs.filter(l => l.type === "points" && String(l.actorRole || "").toLowerCase() !== "admin");
   } else {
     targets = logs.slice();
   }
