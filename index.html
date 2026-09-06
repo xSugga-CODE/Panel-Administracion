@@ -506,26 +506,21 @@ width:100% !important;
   <div class="chart-head">
     <h3>📊 Actividad de Inspectores</h3>
     <div class="chart-toolbar">
-      <button class="period-btn active" data-insp-period="day" onclick="setInspPeriod('day',this)">Día</button>
-      <button class="period-btn" data-insp-period="week" onclick="setInspPeriod('week',this)">Semana</button>
-      <button class="period-btn" data-insp-period="month" onclick="setInspPeriod('month',this)">Mes</button>
-    </div>
-    <div class="chart-toolbar">
       <button class="btn-ghost btn-sm" onclick="refreshSingleChart('inspectorActivity')" style="font-size: 11px; padding: 4px 8px;">🔄 Refrescar</button>
       <button class="btn-ghost btn-sm" id="reset-inspector-activity-btn" onclick="resetSingleChart('inspectorActivity')" style="font-size: 11px; padding: 4px 8px; display: none;">🗑️ Reiniciar</button>
     </div>
   </div>
-  <div class="chart-note-inline" style="margin-bottom:8px;display:block">Puntos asignados y acciones realizadas por inspectores</div>
+  <div class="chart-note-inline" style="margin-bottom:8px;display:block">Últimos 20 movimientos de inspectores</div>
   <div id="inspector-activity-chart">
     <table>
       <thead>
         <tr>
+          <th>Fecha</th>
           <th>Inspector</th>
-          <th>Puntos asignados</th>
-          <th>Acciones</th>
-          <th>Última acción</th>
+          <th>Acción</th>
+          <th>Objetivo</th>
+          <th>Motivo</th>
           <th>Hace</th>
-          <th>Estado</th>
         </tr>
       </thead>
       <tbody id="inspector-activity-body">
@@ -1119,7 +1114,7 @@ return;
 
 // Calcular cuánto tiempo ha pasado y cuántos pasos necesitamos aplicar
 const elapsedMs = now - last;
-const steps = Math.floor(elapsedMs / stepMs);
+let steps = Math.floor(elapsedMs / stepMs);
 if (steps <= 0) return;
 if (steps > 500) steps = 500; // Limitar para no procesar demasiados pasos de una vez
 
@@ -2388,6 +2383,9 @@ if (editUid) {
 const prev = allUsers.find(u => u.uid === editUid) || null;
 const prevSnap = prev ? { ...prev, cargos: Array.isArray(prev.cargos) ? [...prev.cargos] : prev.cargos } : null;
 const upd = { name, role, rango, cargos, status };
+if (prev && String(prev.status || "").toLowerCase() !== String(status || "").toLowerCase()) {
+if (isInactiveStatus(status)) upd.inactiveAt = serverTimestamp();
+}
 
 // Manejar campos según rol
 if (role==="user") {
@@ -2410,7 +2408,7 @@ if (nText) await logNovedad(nText);
 } else {
 // CREAR
 let uid;
-const data = { name, role, rango, cargos, status, points: 0, createdAt: serverTimestamp(), createdBy: myUid };
+const data = { name, role, rango, cargos, status, inactiveAt: isInactiveStatus(status) ? serverTimestamp() : null, points: 0, createdAt: serverTimestamp(), createdBy: myUid };
 
 if (role==="admin" || role==="inspector") {
 // Necesita Firebase Auth — segunda instancia para no cerrar sesión del admin actual
@@ -2479,6 +2477,63 @@ return s==="inactive"
 }
 function esc(s) {
 return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+const RANK_LABELS_DASH = {
+  overlord:  "《🪬》 Overlord",
+  owner:     "《🧿》 Owner",
+  admin:     "《💎》 Admin",
+  centinela: "《🔹》 Centinela",
+  vigia:     "《🔹》 Vigia"
+};
+function normRango(r) {
+  let s = String(r || "").trim().toLowerCase();
+  s = s.replace(/《.*?》/g, "").replace(/[^a-záéíóúñ ]/g, "").replace(/\s+/g, " ").trim();
+  if (s.includes("overlord")) return "overlord";
+  if (s.includes("owner"))    return "owner";
+  if (s.includes("admin"))    return "admin";
+  if (s.includes("centinela")) return "centinela";
+  if (s.includes("vigia"))    return "vigia";
+  if (s.includes("vip") || s.includes("usuario") || s.includes("bot")) return "vigia";
+  return null;
+}
+function fmtRango(r) {
+  const k = normRango(r);
+  return k ? RANK_LABELS_DASH[k] : (r ? esc(String(r)) : "—");
+}
+function getCargos(u) {
+  if (!u) return [];
+  if (Array.isArray(u.cargos)) return u.cargos.map(c => String(c)).filter(Boolean);
+  if (typeof u.cargos === "string" && u.cargos.trim()) return u.cargos.split(",").map(s => s.trim()).filter(Boolean);
+  return [];
+}
+function hasCargo(u, name) {
+  const target = String(name || "").trim().toLowerCase();
+  return getCargos(u).some(c => String(c).trim().toLowerCase().includes(target));
+}
+// Limpia un nombre: remueve etiquetas/emojis de rango que puedan venir pegadas.
+function cleanName(s) {
+  let n = String(s || "").trim();
+  if (!n) return "—";
+  n = n.replace(/《.*?》/g, " ");
+  n = n.replace(/[（(][^）)]*(Vigia|Centinela|Admin|Owner|Overlord)[^）)]*[）)]/gi, " ");
+  n = n.replace(/《[^》]*》\s*(Vigia|Centinela|Admin|Owner|Overlord)/gi, " ");
+  n = n.replace(/(\s|^)(Vigia|Centinela|Admin|Owner|Overlord)(\s|$)/gi, " ");
+  n = n.replace(/\s+/g, " ").trim();
+  return n || "—";
+}
+
+function isInactiveStatus(s) {
+  const v = String(s || "").trim().toLowerCase();
+  return v === "inactive" || v === "inactivo";
+}
+
+function inactiveCutoffMs(u) {
+  if (!u || !isInactiveStatus(u.status)) return Infinity;
+  const d = tsToDate(u.inactiveAt);
+  if (d) return d.getTime();
+  if (typeof u.inactiveAt === "number") return u.inactiveAt;
+  return Date.now();
 }
 function friendlyErr(code) {
 const m = {
@@ -2630,11 +2685,12 @@ function periodStartMsDash(p) {
 function periodPointsForUserDash(u, period) {
   if (period === "day") return Number(u.points || 0); // Día → puntos actuales
   const start = periodStartMsDash(period);
+  const cutoff = inactiveCutoffMs(u);
   let pts = 0;
   for (const l of logs) {
     if (!l || l.type !== "points" || l.targetUid !== u.uid) continue;
     const t = logTimeRaw(l);
-    if (!t || t < start) continue;
+    if (!t || t < start || t >= cutoff) continue;
     const d = typeof l.delta === "number" ? l.delta : 0;
     if (d > 0) pts += d;
   }
@@ -2705,12 +2761,14 @@ window.renderRankingAdmins = () => {
   const role = myRole;
   if (role !== "admin" && role !== "inspector") return;
 
-  // Ranking de Puntos: incluye TODOS los roles (Usuario, Admin, Inspector).
-  let members = allUsers.filter(u => ["admin", "inspector", "user"].includes(String(u.role || "").toLowerCase()));
+  // Ranking de Puntos: EXCLUIR admins SIEMPRE (incluso si el filtro lo pide).
+  let members = allUsers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
   if (filterState.user) members = members.filter(u => u.uid === filterState.user);
   if (filterState.rol) members = members.filter(u => String(u.role || "").toLowerCase() === filterState.rol);
-  if (filterState.rango) members = members.filter(u => String(u.rango || "").toLowerCase().includes(filterState.rango));
+  if (filterState.rango) members = members.filter(u => normRango(u.rango) === filterState.rango || String(u.rango || "").toLowerCase().includes(filterState.rango));
   if (filterState.cargo) members = members.filter(u => hasCargo(u, filterState.cargo));
+  members = members.filter(u => String(u.role || "").toLowerCase() !== "admin");
+  members = members.filter(u => !isInactiveStatus(u.status));
 
   members = members
     .map(u => ({ u, pts: periodPointsForUserDash(u, rankPeriod) }))
@@ -2737,7 +2795,7 @@ window.renderRankingAdmins = () => {
       const rot = -90 + acc * 360;
       arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${PALETTE[i % PALETTE.length]}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
       acc += frac;
-      legend += `<span class="legend-item"><span class="legend-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>${esc(r.u.name || "—")} · ${(frac * 100).toFixed(1)}%</span>`;
+      legend += `<span class="legend-item"><span class="legend-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>${esc(cleanName(r.u.name))} · ${(frac * 100).toFixed(1)}%</span>`;
     });
     box.innerHTML = `
       <svg class="chart-svg" viewBox="0 0 180 180" role="img">
@@ -2775,9 +2833,9 @@ window.renderRankingAdmins = () => {
     const color = PALETTE[i % PALETTE.length];
     bars += `<rect x="${x}" y="${y}" width="${barWidth}" height="${hBar}" fill="${color}" rx="4"/>`;
     bars += `<text x="${x + barWidth/2}" y="${y - 6}" text-anchor="middle" font-size="10" fill="#e9eeff" font-weight="600">${r.pts.toFixed(decimalsN())}</text>`;
-    const nameShort = (r.u.name || "—").substring(0, 9);
+    const nameShort = cleanName(r.u.name).substring(0, 9);
     xl += `<text x="${x + barWidth/2}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#7c86ad">${nameShort}</text>`;
-    leg += `<span class="legend-item"><span class="legend-dot" style="background:${color}"></span>${esc(r.u.name || "—")}</span>`;
+    leg += `<span class="legend-item"><span class="legend-dot" style="background:${color}"></span>${esc(cleanName(r.u.name))}</span>`;
   });
 
   box.innerHTML = `
@@ -2798,10 +2856,11 @@ window.renderEvolutionPts = () => {
   const role = myRole;
   if (role !== "admin" && role !== "inspector") return;
 
-  // Incluir TODOS los roles (Usuario, Admin, Inspector)
-  let team = allUsers.filter(u => ["admin", "inspector", "user"].includes(String(u.role || "").toLowerCase()));
+  // Evolución General del Equipo: EXCLUIR admins SIEMPRE (incluso si el filtro lo pide).
+  let team = allUsers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
   if (filterState.user) team = team.filter(u => u.uid === filterState.user);
   if (filterState.rol) team = team.filter(u => String(u.role || "").toLowerCase() === filterState.rol);
+  team = team.filter(u => String(u.role || "").toLowerCase() !== "admin");
 
   team = team.sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 6);
 
@@ -2820,6 +2879,7 @@ window.renderEvolutionPts = () => {
     const values = [];
     const periodStart = Date.now() - (isDayView ? 24 : evoTimeState === "14" ? 7 : 30) * 24 * 60 * 60 * 1000;
     const step = (Date.now() - periodStart) / count;
+    const cutoff = inactiveCutoffMs(m);
 
     for (let j = 0; j < count; j++) {
       const bucketStart = periodStart + j * step;
@@ -2829,7 +2889,7 @@ window.renderEvolutionPts = () => {
       for (const l of logs) {
         if (l.type !== "points" || l.targetUid !== m.uid) continue;
         const t = logTimeRaw(l);
-        if (t && t >= bucketStart && t < bucketEnd) {
+        if (t && t >= bucketStart && t < bucketEnd && t < cutoff) {
           const delta = typeof l.delta === "number" ? l.delta : 0;
           if (delta > 0) bucketPts += delta;
         }
@@ -2838,7 +2898,7 @@ window.renderEvolutionPts = () => {
     }
 
     return {
-      name: m.name || "—",
+      name: cleanName(m.name),
       color: PALETTE[i % PALETTE.length],
       values
     };
@@ -2925,7 +2985,11 @@ window.renderActivityChart = () => {
       const t = logTimeRaw(l);
       if (t < b.start || t >= b.end) continue;
       const r = String(l.actorRole || "").toLowerCase();
-      if (r === "admin") b.admins++;
+      if (r === "admin") {
+        const actor = allUsers.find(u => u.uid === l.actorUid) || null;
+        if (actor && isInactiveStatus(actor.status) && t >= inactiveCutoffMs(actor)) continue;
+        b.admins++;
+      }
     }
     maxVal = Math.max(maxVal, b.admins);
   }
@@ -3076,86 +3140,47 @@ window.renderInspectorActivityJow = () => {
   const role = myRole;
   if (role !== "admin" && role !== "inspector") return;
 
-  // Respetar el período seleccionado (Día / Semana / Mes)
-  const periodStart = periodStartMsDash(inspPeriodState);
-  const inspectors = allUsers.filter(u => u.role === "inspector" && u.status === "active");
+  const now = Date.now();
+  const rows = logs
+    .filter(l => l && l.type === "points" && String(l.actorRole || "").toLowerCase() === "inspector")
+    .map(l => ({ l, t: logTimeRaw(l) }))
+    .filter(x => x.t)
+    .filter(({ l, t }) => {
+      const actor = allUsers.find(u => u.uid === l.actorUid) || null;
+      if (actor && isInactiveStatus(actor.status) && t >= inactiveCutoffMs(actor)) return false;
+      const target = allUsers.find(u => u.uid === l.targetUid) || null;
+      if (target && isInactiveStatus(target.status) && t >= inactiveCutoffMs(target)) return false;
+      return true;
+    })
+    .sort((a, b) => b.t - a.t)
+    .slice(0, 20);
 
-  // Aplicar filtros de Usuario y Rol
-  if (filterState.user) inspectors = inspectors.filter(u => u.uid === filterState.user);
-  if (filterState.rol) inspectors = inspectors.filter(u => String(u.role || "").toLowerCase() === filterState.rol);
-
-  if (!inspectors.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="t-empty">Sin inspectores activos</td></tr>';
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="t-empty">Sin movimientos recientes de inspectores.</td></tr>';
     return;
   }
 
-  // Procesar actividad de inspectores según el período
-  const inspectorData = inspectors.map(insp => {
-    const inspectorLogs = logs.filter(l =>
-      l.actorUid === insp.uid &&
-      l.type === "points"
-    );
-
-    // Filtrar por período
-    const periodLogs = inspectorLogs.filter(l => {
-      const t = logTimeRaw(l);
-      return t && t >= periodStart;
-    });
-
-    const pointsAssigned = periodLogs.reduce((sum, l) => {
-      const delta = typeof l.delta === "number" ? l.delta : 0;
-      return sum + (delta > 0 ? delta : 0);
-    }, 0);
-
-    const actionsCount = periodLogs.length;
-
-    // Última acción (del período)
-    const lastLog = periodLogs.sort((a, b) => {
-      const timeA = logTimeRaw(a);
-      const timeB = logTimeRaw(b);
-      return timeB - timeA;
-    })[0];
-
-    const lastAction = lastLog ?
-      `${lastLog.delta > 0 ? '+' : ''}${lastLog.delta} → ${lastLog.targetName || '—'}` :
-      '—';
-
-    const lastTime = lastLog ? logTimeRaw(lastLog) : 0;
-    const now = Date.now();
-    const timeSince = lastTime ? fmtSince(now - lastTime) : '—';
-
-    // Estado
-    const lastMs = lastTime ? (now - lastTime) : Infinity;
-    const state = lastMs <= 15 * 60 * 1000 ? "🟢 Activo" :
-                  lastMs <= 60 * 60 * 1000 ? "🟡 Poco activo" :
-                  "🔴 Inactivo";
-
-    return {
-      name: insp.name || "—",
-      pointsAssigned,
-      actionsCount,
-      lastAction,
-      timeSince,
-      state
-    };
-  }).sort((a, b) => b.actionsCount - a.actionsCount);
-
-  if (!inspectorData.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="t-empty">Sin datos de actividad para el período seleccionado</td></tr>';
-    return;
-  }
-
-  const periodTxt = inspPeriodState === "day" ? "hoy" : inspPeriodState === "week" ? "esta semana" : "este mes";
-  tbody.innerHTML = inspectorData.map(data => `
-    <tr>
-      <td><b>${esc(data.name)}</b></td>
-      <td><b style="color:#ffd166">${data.pointsAssigned.toFixed(decimalsN())}</b></td>
-      <td>${data.actionsCount}</td>
-      <td>${esc(data.lastAction)}</td>
-      <td>${data.timeSince}</td>
-      <td>${data.state}</td>
-    </tr>
-  `).join("");
+  tbody.innerHTML = rows.map(({ l, t }) => {
+    const actor = allUsers.find(u => u.uid === l.actorUid) || null;
+    const target = allUsers.find(u => u.uid === l.targetUid) || null;
+    const dt = fmtDateTime(l.createdAt);
+    const actorName = actor?.name || l.actorName || "—";
+    const targetName = target?.name || l.targetName || "—";
+    const delta = typeof l.delta === "number" ? l.delta : 0;
+    const deltaTxt = `${delta > 0 ? "+" : ""}${delta}`;
+    const motivo = esc(l.reason || "Sin motivo");
+    const since = fmtSince(now - t);
+    const color = delta > 0 ? "#7dffa6" : delta < 0 ? "#ff9dad" : "var(--muted)";
+    return `
+      <tr>
+        <td>${esc(dt)}</td>
+        <td><b>${esc(cleanName(actorName))}</b></td>
+        <td><b style="color:${color}">${esc(deltaTxt)}</b></td>
+        <td>${esc(cleanName(targetName))}</td>
+        <td>${motivo}</td>
+        <td>${since}</td>
+      </tr>`;
+  }).join("");
 };
 </script>
 <script>

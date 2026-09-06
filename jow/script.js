@@ -148,7 +148,7 @@ async function applyPointDecrementTick() {
 
     // Calcular cuánto tiempo ha pasado y cuántos pasos necesitamos aplicar
     const elapsedMs = now - last;
-    const steps = Math.floor(elapsedMs / stepMs);
+    let steps = Math.floor(elapsedMs / stepMs);
     if (steps <= 0) return;
     if (steps > 500) steps = 500; // Limitar para no procesar demasiados pasos de una vez
 
@@ -1157,6 +1157,31 @@ function fmtRango(r) {
   return k ? RANK_LABELS[k] : (r ? esc(String(r)) : "—");
 }
 
+// Limpia un nombre: remueve etiquetas/emojis de rango que puedan venir pegadas al name.
+function cleanName(s) {
+  let n = String(s || "").trim();
+  if (!n) return "—";
+  n = n.replace(/《.*?》/g, " ");
+  n = n.replace(/[（(][^）)]*(Vigia|Centinela|Admin|Owner|Overlord)[^）)]*[）)]/gi, " ");
+  n = n.replace(/《[^》]*》\s*(Vigia|Centinela|Admin|Owner|Overlord)/gi, " ");
+  n = n.replace(/(\s|^)(Vigia|Centinela|Admin|Owner|Overlord)(\s|$)/gi, " ");
+  n = n.replace(/\s+/g, " ").trim();
+  return n || "—";
+}
+
+function isInactiveStatus(s) {
+  const v = String(s || "").trim().toLowerCase();
+  return v === "inactive" || v === "inactivo";
+}
+
+function inactiveCutoffMs(u) {
+  if (!u || !isInactiveStatus(u.status)) return Infinity;
+  const d = tsToDate(u.inactiveAt);
+  if (d) return d.getTime();
+  if (typeof u.inactiveAt === "number") return u.inactiveAt;
+  return Date.now();
+}
+
 function rangoIndex(k) {
   const i = RANK_ORDER.indexOf(k);
   return i >= 0 ? i : -1;
@@ -1294,7 +1319,11 @@ function renderActivityChart() {
     for (const l of logs) {
       const t = logTime(l);
       if (t < b.start || t >= b.end) continue;
-      if (String(l.actorRole || "").toLowerCase() === "admin") b.admins++;
+      if (String(l.actorRole || "").toLowerCase() === "admin") {
+        const actor = allMembers.find(u => u.uid === l.actorUid) || null;
+        if (actor && isInactiveStatus(actor.status) && t >= inactiveCutoffMs(actor)) continue;
+        b.admins++;
+      }
     }
     maxVal = Math.max(maxVal, b.admins);
   }
@@ -1574,11 +1603,12 @@ function periodStartMs(p) {
 function periodPointsForUser(u, period) {
   if (period === "day") return Number(u.points || 0); // Día → puntos actuales
   const start = periodStartMs(period);
+  const cutoff = inactiveCutoffMs(u);
   let pts = 0;
   for (const l of logs) {
     if (!l || l.type !== "points" || l.targetUid !== u.uid) continue;
     const t = logTime(l);
-    if (!t || t < start) continue;
+    if (!t || t < start || t >= cutoff) continue;
     const d = typeof l.delta === "number" ? l.delta : 0;
     if (d > 0) pts += d;
   }
@@ -1690,14 +1720,14 @@ function svgDonut(items, centerLabel) {
     <div class="chart-legend">${legend}</div>`;
 }
 
-function rankListHTML(rows, valLabel, showRango) {
+function rankListHTML(rows, valLabel, _showRango) {
   const max = Math.max(1, ...rows.map(r => Number(r.value) || 0));
   return `<div class="rank-list">
     ${rows.map((r, i) => {
       const pct = Math.min((Number(r.value) || 0) / max * 100, 100);
       return `<div class="rank-row">
         <span class="rank-pos">#${i + 1}</span>
-        <span class="rank-name"><b>${esc(r.name || "—")}</b>${showRango ? ` <span class="rango-tag">${fmtRango(r.rango)}</span>` : ""}</span>
+        <span class="rank-name"><b>${esc(cleanName(r.name))}</b></span>
         <span class="rank-bars"><span class="rank-bar" style="width:${pct}%"></span></span>
         <span class="rank-val">${valLabel} ${Number(r.value || 0).toFixed(decimalsCfgJow())}</span>
       </div>`;
@@ -1791,12 +1821,14 @@ function renderRankingAdmins() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  // Excluir admin del ranking de puntos.
+  // Excluir admin del ranking de puntos SIEMPRE (incluso si el filtro de rol lo pide).
   let members = allMembers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
   if (filterState.user) members = members.filter(u => u.uid === filterState.user);
   if (filterState.rol) members = members.filter(u => String(u.role || "").toLowerCase() === filterState.rol);
   if (filterState.rango) members = members.filter(u => normRango(u.rango) === filterState.rango);
   if (filterState.cargo) members = members.filter(u => hasCargo(u, filterState.cargo));
+  members = members.filter(u => String(u.role || "").toLowerCase() !== "admin");
+  members = members.filter(u => !isInactiveStatus(u.status));
 
   members = members
     .map(u => ({ u, pts: periodPointsForUser(u, rankTimeState) }))
@@ -1822,7 +1854,7 @@ function renderRankingAdmins() {
       const rot = -90 + acc * 360;
       arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${PALETTE[i % PALETTE.length]}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
       acc += frac;
-      legend += `<span class="legend-item"><span class="legend-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>${esc(r.u.name || "—")} · ${(frac * 100).toFixed(1)}%</span>`;
+      legend += `<span class="legend-item"><span class="legend-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>${esc(cleanName(r.u.name))} · ${(frac * 100).toFixed(1)}%</span>`;
     });
     box.innerHTML = `
       <svg class="chart-svg" viewBox="0 0 180 180" role="img">
@@ -1861,9 +1893,9 @@ function renderRankingAdmins() {
     const color = PALETTE[i % PALETTE.length];
     bars += `<rect x="${x}" y="${y}" width="${barWidth}" height="${hBar}" fill="${color}" rx="4"/>`;
     bars += `<text x="${x + barWidth/2}" y="${y - 6}" text-anchor="middle" font-size="10" fill="#e9eeff" font-weight="600">${pts.toFixed(decimalsCfgJow())}</text>`;
-    const nameShort = (r.u.name || "—").substring(0, 9);
+    const nameShort = cleanName(r.u.name).substring(0, 9);
     xl += `<text x="${x + barWidth/2}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#7c86ad">${nameShort}</text>`;
-    leg += `<span class="legend-item"><span class="legend-dot" style="background:${color}"></span>${esc(r.u.name || "—")}</span>`;
+    leg += `<span class="legend-item"><span class="legend-dot" style="background:${color}"></span>${esc(cleanName(r.u.name))}</span>`;
   });
 
   box.innerHTML = `
@@ -1943,7 +1975,7 @@ function renderEvolutionPts() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  // Excluir admin de la evolución general del equipo.
+  // Excluir admin de la evolución general del equipo SIEMPRE (incluso si el filtro lo pide).
   let team = allMembers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
   
   // Apply filters
@@ -1959,6 +1991,7 @@ function renderEvolutionPts() {
   if (filterState.cargo) {
     team = team.filter(u => hasCargo(u, filterState.cargo));
   }
+  team = team.filter(u => String(u.role || "").toLowerCase() !== "admin");
   
   team = team.sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 6);
   
@@ -1998,7 +2031,7 @@ function renderEvolutionPts() {
   }
 
   const series = team.map((m, i) => ({
-    name: m.name || "—",
+    name: cleanName(m.name),
     color: PALETTE[i % PALETTE.length],
     values: periods.map(d => d.vals[m.uid])
   }));

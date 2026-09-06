@@ -325,26 +325,21 @@
           <div class="chart-head">
             <h3>📊 Actividad de Inspectores</h3>
             <div class="chart-toolbar">
-              <button class="period-btn active" data-insp-period="day" onclick="setInspPeriod('day',this)">Día</button>
-              <button class="period-btn" data-insp-period="week" onclick="setInspPeriod('week',this)">Semana</button>
-              <button class="period-btn" data-insp-period="month" onclick="setInspPeriod('month',this)">Mes</button>
-            </div>
-            <div class="chart-toolbar">
               <button class="btn-ghost btn-chart-ctrl" onclick="refreshSingleChart('inspectorActivity')">🔄 Refrescar</button>
               <button class="btn-ghost btn-chart-ctrl res-ctrl" id="reset-inspectorActivity" onclick="resetSingleChart('inspectorActivity')" style="display:none">🗑️ Reiniciar</button>
             </div>
           </div>
-          <div class="chart-note-inline" style="margin-bottom:8px;display:block">Puntos asignados y acciones realizadas por inspectores</div>
+          <div class="chart-note-inline" style="margin-bottom:8px;display:block">Últimos 20 movimientos de inspectores</div>
           <div id="inspector-activity-chart">
             <table>
               <thead>
                 <tr>
+                  <th>Fecha</th>
                   <th>Inspector</th>
-                  <th>Puntos asignados</th>
-                  <th>Acciones</th>
-                  <th>Última acción</th>
+                  <th>Acción</th>
+                  <th>Objetivo</th>
+                  <th>Motivo</th>
                   <th>Hace</th>
-                  <th>Estado</th>
                 </tr>
               </thead>
               <tbody id="inspector-activity-body">
