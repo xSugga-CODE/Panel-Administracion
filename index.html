@@ -1089,14 +1089,14 @@ pointDecrementTimer = null;
 }
 
 function startPointDecrementScheduler() {
-if (myRole !== "admin") return;
+// Eliminar la verificación de rol - debe funcionar sin depender de admin conectado
 stopPointDecrementScheduler();
 pointDecrementTimer = setInterval(applyPointDecrementTick, 60 * 1000);
 applyPointDecrementTick();
 }
 
 async function applyPointDecrementTick() {
-if (myRole !== "admin") return;
+// Eliminar la verificación de rol - debe funcionar sin admin conectado
 if (pointDecrementBusy) return;
 pointDecrementBusy = true;
 try {
@@ -1113,7 +1113,7 @@ if (!stepMs) return;
 const now = Date.now();
 const last = typeof cfg.lastAppliedClientTs === "number" ? cfg.lastAppliedClientTs : 0;
 if (!last) {
-await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: now, lastAppliedBy: myUid }, { merge: true });
+await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: now, lastAppliedBy: "system" }, { merge: true });
 return;
 }
 
@@ -1143,12 +1143,25 @@ try {
 await updateDoc(doc(db, "users", u.uid), { points: newP });
 u.points = newP;
 changed++;
+
+// REGISTRAR LA REDUCCIÓN AUTOMÁTICA EN LOS LOGS
+await writeLog({
+type: "points",
+actorUid: "system",
+actorRole: "system",
+actorName: "Sistema Automático",
+targetUid: u.uid,
+targetName: u.name || "",
+delta: -decrement,
+reason: `Reducción automática (${cfgToMs(cfg) / (1000 * 60 * 60)}h)`,
+newPoints: newP
+});
 } catch {}
 }
 
 // Avanzar el timestamp según los pasos procesados
 const newLast = last + (steps * stepMs);
-await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: newLast, lastAppliedBy: myUid }, { merge: true });
+await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: newLast, lastAppliedBy: "system" }, { merge: true });
 if (changed) renderAll();
 } catch (e) {
 console.error("Error aplicando decremento:", e);

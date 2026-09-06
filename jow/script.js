@@ -48,6 +48,8 @@ let logSearch     = "";
 const MAX_PTS   = 7;
 let maxPointsCfg = MAX_PTS;
 let decimalsCfg  = 1;
+let currentConfig = { hours: 24, minutes: 0, maxPoints: 7, decimals: 1 }; // Valor por defecto
+
 function maxPtsCfg()     { return maxPointsCfg; }
 function decimalsCfgJow() { return decimalsCfg; }
 async function loadPointsConfig() {
@@ -57,6 +59,13 @@ async function loadPointsConfig() {
       const d = snap.data() || {};
       if (Number(d.maxPoints) >= 1) maxPointsCfg = Number(d.maxPoints);
       if ([0,1,2].includes(Number(d.decimals))) decimalsCfg = Number(d.decimals);
+      // Actualizar currentConfig
+      currentConfig = {
+        hours: parseInt(d.hours, 10) || 24,
+        minutes: parseInt(d.minutes, 10) || 0,
+        maxPoints: Number(d.maxPoints) || 7,
+        decimals: Number(d.decimals) || 1
+      };
     }
   } catch (e) {
     console.error("Error cargando config de puntos:", e);
@@ -64,6 +73,131 @@ async function loadPointsConfig() {
 }
 const PTS_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const PTS_COOLDOWN_PREFIX = "jowiland:ptcd:";
+
+// Sistema de reducción automática de puntos
+let pointDecrementTimer = null;
+let pointDecrementBusy = false;
+
+function cfgToMs(cfg) {
+  const h = parseInt(cfg?.hours, 10) || 0;
+  const m = parseInt(cfg?.minutes, 10) || 0;
+  return (h * 60 + m) * 60 * 1000;
+}
+
+function decimalsN() {
+  const d = parseInt(currentConfig?.decimals, 10);
+  return [0,1,2].includes(d) ? d : 1;
+}
+
+function maxPts() {
+  const m = Number(currentConfig?.maxPoints);
+  return Number.isFinite(m) && m >= 1 ? m : 7;
+}
+
+function roundPts(n) {
+  const d = decimalsN();
+  return Math.round(n * Math.pow(10, d)) / Math.pow(10, d);
+}
+
+function clampPts(n) {
+  const r = roundPts(n);
+  return Math.max(0, Math.min(maxPts(), r));
+}
+
+function fmtPts(p) {
+  const n = Number(p || 0);
+  if (!Number.isFinite(n)) return "0";
+  return n.toFixed(decimalsN());
+}
+
+function stopPointDecrementScheduler() {
+  if (pointDecrementTimer) {
+    clearInterval(pointDecrementTimer);
+    pointDecrementTimer = null;
+  }
+}
+
+function startPointDecrementScheduler() {
+  // Eliminar la verificación de rol - debe funcionar sin depender de admin conectado
+  stopPointDecrementScheduler();
+  pointDecrementTimer = setInterval(applyPointDecrementTick, 60 * 1000);
+  applyPointDecrementTick();
+}
+
+async function applyPointDecrementTick() {
+  // Eliminar la verificación de rol - debe funcionar sin admin conectado
+  if (pointDecrementBusy) return;
+  pointDecrementBusy = true;
+  try {
+    const snap = await getDoc(doc(db, "settings", "pointDecrement"));
+    if (!snap.exists()) return;
+    const cfg = snap.data() || {};
+
+    const totalMs = cfgToMs(cfg);
+    if (!totalMs) return;
+    // Para reducción progresiva: dividir el intervalo en muchos pasos pequeños
+    const stepMs = Math.max(1000, Math.floor(totalMs / 100)); // Al menos 1 segundo por paso
+    if (!stepMs) return;
+
+    const now = Date.now();
+    const last = typeof cfg.lastAppliedClientTs === "number" ? cfg.lastAppliedClientTs : 0;
+    if (!last) {
+      await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: now, lastAppliedBy: "system" }, { merge: true });
+      return;
+    }
+
+    // Calcular cuánto tiempo ha pasado y cuántos pasos necesitamos aplicar
+    const elapsedMs = now - last;
+    const steps = Math.floor(elapsedMs / stepMs);
+    if (steps <= 0) return;
+    if (steps > 500) steps = 500; // Limitar para no procesar demasiados pasos de una vez
+
+    // Cada tick debería reducir exactamente 1 punto total durante el intervalo completo
+    // Entonces la reducción por paso es 1 / (totalMs / stepMs)
+    const decrementPerStep = 1 / (totalMs / stepMs);
+
+    let changed = 0;
+    const usersSnap = await getDocs(collection(db, "users"));
+    allMembers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+
+    for (const u of allMembers) {
+      if (!u || u.role === "admin") continue;
+      const oldP = Number(u.points || 0);
+      if (!Number.isFinite(oldP)) continue;
+      // Aplicar reducción proporcional
+      const decrement = decrementPerStep * steps;
+      const newP = clampPts(oldP - decrement);
+      if (newP === oldP) continue;
+      try {
+        await updateDoc(doc(db, "users", u.uid), { points: newP });
+        u.points = newP;
+        changed++;
+
+        // REGISTRAR LA REDUCCIÓN AUTOMÁTICA EN LOS LOGS
+        await writeLog({
+          type: "points",
+          actorUid: "system",
+          actorRole: "system",
+          actorName: "Sistema Automático",
+          targetUid: u.uid,
+          targetName: u.name || "",
+          delta: -decrement,
+          reason: `Reducción automática (${cfgToMs(cfg) / (1000 * 60 * 60)}h)`,
+          newPoints: newP
+        });
+      } catch {}
+    }
+
+    // Avanzar el timestamp según los pasos procesados
+    const newLast = last + (steps * stepMs);
+    await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: newLast, lastAppliedBy: "system" }, { merge: true });
+    if (changed) renderAll();
+  } catch (e) {
+    console.error("Error aplicando decremento:", e);
+  } finally {
+    pointDecrementBusy = false;
+  }
+}
 
 const RL_OPTS = { windowMs: 5 * 60 * 1000, maxAttempts: 6, lockMs: 10 * 60 * 1000 };
 const RL_PREFIX = "jowiland:rl:";
@@ -499,6 +633,9 @@ async function bootApp() {
   if (role === "user") {
     renderUserProfileCard();
   }
+
+  // Iniciar el scheduler de reducción automática de puntos (independientemente del rol)
+  startPointDecrementScheduler();
 
   // Render inmediato de la pestaña inicial (Puntos) luego de que los datos están cargados
   if (typeof renderPointsTable === "function") renderPointsTable();
