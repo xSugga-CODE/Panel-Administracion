@@ -206,16 +206,25 @@
         <div class="card" style="margin-bottom: 16px;">
           <div class="chart-head">
             <h3>🔍 Filtros</h3>
+            <span class="chart-note-inline">Filtran los gráficos y el ranking. La actividad de Admins nunca se filtra.</span>
             <div style="display: flex; gap: 8px; margin-left: auto;">
-              <button class="btn-ghost" onclick="refreshCharts()" style="font-size: 12px; padding: 6px 12px;">🔄 Refrescar</button>
-              <button class="btn-ghost" id="reset-data-btn" onclick="resetChartData()" style="font-size: 12px; padding: 6px 12px; display: none;">🗑️ Reiniciar datos</button>
+              <button class="btn-ghost" onclick="resetFilters()">🔄 Resetear filtros</button>
             </div>
           </div>
-          <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+          <div class="filters-row" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
             <div>
               <label style="font-size: 12px; color: var(--muted);">Usuario:</label>
               <select id="filter-user" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
                 <option value="">Todos</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--muted);">Rol:</label>
+              <select id="filter-rol" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
+                <option value="">Todos</option>
+                <option value="user">Usuario</option>
+                <option value="admin">Admin</option>
+                <option value="inspector">Inspector</option>
               </select>
             </div>
             <div>
@@ -237,18 +246,26 @@
                 <option value="Dev">Dev</option>
               </select>
             </div>
-            <button class="btn-ghost" onclick="resetFilters()" style="margin-left: auto;">🔄 Resetear filtros</button>
           </div>
         </div>
 
-        <!-- NIVEL 2: RANKINGS PRINCIPALES -->
+        <!-- NIVEL 2: RANKING DE PUNTOS -->
         <div class="chart-grid two-col">
           <div class="card chart-card">
             <div class="chart-head">
-              <h3>🏆 Ranking de Admins</h3>
+              <h3>🏆 Ranking de Puntos</h3>
+              <div class="chart-toolbar">
+                <button class="period-btn active" data-rank-time="day" onclick="setRankTime('day',this)">Día</button>
+                <button class="period-btn" data-rank-time="week" onclick="setRankTime('week',this)">Semana</button>
+                <button class="period-btn" data-rank-time="month" onclick="setRankTime('month',this)">Mes</button>
+              </div>
               <div class="chart-toolbar">
                 <button class="period-btn active" data-mode="cols" onclick="setRankModeAdmins('cols',this)">Columnas</button>
                 <button class="period-btn" data-mode="circ" onclick="setRankModeAdmins('circ',this)">Circular</button>
+              </div>
+              <div class="chart-toolbar">
+                <button class="btn-ghost btn-chart-ctrl" onclick="refreshSingleChart('rankingAdmins')">🔄 Refrescar</button>
+                <button class="btn-ghost btn-chart-ctrl res-ctrl" id="reset-rankingAdmins" onclick="resetSingleChart('rankingAdmins')" style="display:none">🗑️ Reiniciar</button>
               </div>
             </div>
             <div class="chart-container" id="rank-admins-box"><div class="chart-empty">Cargando ranking…</div></div>
@@ -268,6 +285,10 @@
               <button class="period-btn active" data-mode="line" onclick="setRankModeEvo('line',this)">Lineal</button>
               <button class="period-btn" data-mode="cols" onclick="setRankModeEvo('cols',this)">Columnas</button>
             </div>
+            <div class="chart-toolbar">
+              <button class="btn-ghost btn-chart-ctrl" onclick="refreshSingleChart('evolutionPts')">🔄 Refrescar</button>
+              <button class="btn-ghost btn-chart-ctrl res-ctrl" id="reset-evolutionPts" onclick="resetSingleChart('evolutionPts')" style="display:none">🗑️ Reiniciar</button>
+            </div>
             <span class="chart-note-inline">Puntos reconstruidos a partir de los registros recientes</span>
           </div>
           <div class="chart-container" id="evo-pts-chart"><div class="chart-empty">Cargando evolución…</div></div>
@@ -276,10 +297,10 @@
 
 
 
-        <!-- ACTIVIDAD DE ADMINS (separada del MC Team) -->
+        <!-- ACTIVIDAD DE ADMINS (separada del MC Team, NO se filtra) -->
         <div class="card chart-card">
           <div class="chart-head">
-            <h3>🕐 Actividad de admins por día (24 horas)</h3>
+            <h3>🕐 Actividad de Admins</h3>
             <div class="chart-toolbar" id="chart-toolbar">
               <button class="period-btn active" data-period="day" onclick="setChartPeriod('day',this)">Día</button>
               <button class="period-btn" data-period="week" onclick="setChartPeriod('week',this)">Semana</button>
@@ -290,6 +311,10 @@
               <button class="period-btn" data-mode="cols" onclick="setAdminChartMode('cols',this)">Columnas</button>
               <button class="period-btn" data-mode="circ" onclick="setAdminChartMode('circ',this)">Circular</button>
             </div>
+            <div class="chart-toolbar">
+              <button class="btn-ghost btn-chart-ctrl" onclick="refreshSingleChart('activityChart')">🔄 Refrescar</button>
+              <button class="btn-ghost btn-chart-ctrl res-ctrl" id="reset-activityChart" onclick="resetSingleChart('activityChart')" style="display:none">🗑️ Reiniciar</button>
+            </div>
           </div>
           <div class="chart-container" id="activity-chart"><div class="chart-empty">Cargando actividad…</div></div>
           <div class="chart-legend" id="chart-legend"></div>
@@ -299,15 +324,24 @@
         <div class="card chart-card">
           <div class="chart-head">
             <h3>📊 Actividad de Inspectores</h3>
-            <div class="chart-note-inline">Puntos asignados y acciones realizadas por inspectores</div>
+            <div class="chart-toolbar">
+              <button class="period-btn active" data-insp-period="day" onclick="setInspPeriod('day',this)">Día</button>
+              <button class="period-btn" data-insp-period="week" onclick="setInspPeriod('week',this)">Semana</button>
+              <button class="period-btn" data-insp-period="month" onclick="setInspPeriod('month',this)">Mes</button>
+            </div>
+            <div class="chart-toolbar">
+              <button class="btn-ghost btn-chart-ctrl" onclick="refreshSingleChart('inspectorActivity')">🔄 Refrescar</button>
+              <button class="btn-ghost btn-chart-ctrl res-ctrl" id="reset-inspectorActivity" onclick="resetSingleChart('inspectorActivity')" style="display:none">🗑️ Reiniciar</button>
+            </div>
           </div>
+          <div class="chart-note-inline" style="margin-bottom:8px;display:block">Puntos asignados y acciones realizadas por inspectores</div>
           <div id="inspector-activity-chart">
             <table>
               <thead>
                 <tr>
                   <th>Inspector</th>
-                  <th>Puntos asignados hoy</th>
-                  <th>Acciones hoy</th>
+                  <th>Puntos asignados</th>
+                  <th>Acciones</th>
                   <th>Última acción</th>
                   <th>Hace</th>
                   <th>Estado</th>

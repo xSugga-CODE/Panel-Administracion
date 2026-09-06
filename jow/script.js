@@ -544,34 +544,7 @@ window.setLogTypeFilterJow = (v) => { logTypeFilter = v; renderLogsJow(); };
 window.setLogSearchJow = (v) => { logSearch = (v || "").toLowerCase(); renderLogsJow(); };
 
 // ── CHART CONTROLS ─────────────────────────────────────────────
-window.refreshCharts = () => {
-  // Refrescar gráficos sin borrar datos
-  if (typeof renderRankingAdmins === "function") renderRankingAdmins();
-  if (typeof renderEvolutionPts === "function") renderEvolutionPts();
-  if (typeof renderActivityChart === "function") renderActivityChart();
-  if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
-  if (typeof renderRankings === "function") renderRankings();
-  showToast("Gráficos actualizados", "ok");
-};
-
-window.resetChartData = () => {
-  const role = currentUser?.role;
-  if (role !== "admin") {
-    showToast("Solo los admins pueden reiniciar los datos", "err");
-    return;
-  }
-  
-  const ok = confirm("¿Estás seguro de que quieres borrar todos los datos históricos de los gráficos? Esta acción no se puede deshacer.");
-  if (!ok) return;
-  
-  // En una implementación real, esto borraría los logs históricos
-  // Por ahora, solo mostramos un mensaje de confirmación
-  showToast("Función de reinicio de datos implementada (borrar logs históricos)", "ok");
-  
-  // Después de implementar, llamar a refreshCharts() para recargar
-  if (typeof refreshCharts === "function") refreshCharts();
-};
-
+// refreshCharts y resetChartData ya no se usan. Ahora usamos refreshSingleChart y resetSingleChart.
 function dayKey(dt) {
   const y = dt.getFullYear();
   const m = String(dt.getMonth() + 1).padStart(2, "0");
@@ -789,39 +762,56 @@ window.exportLogsJow = () => {
 };
 
 function renderInspectorActivityJow() {
-  const tb = document.getElementById("insp-jow-body");
+  const tb = document.getElementById("inspector-activity-body");
   if (!tb) return;
-  const today = dayKey(new Date());
-  const todays = logs.filter(l => l.type === "points" && l.dayKey === today && l.actorRole === "inspector");
-  if (!todays.length) {
-    tb.innerHTML = '<tr><td colspan="6" class="t-empty">Sin actividad hoy.</td></tr>';
+  const role = currentUser?.role;
+  if (role !== "admin" && role !== "inspector") return;
+
+  // Solo inspectores activos como punto de partida, aplicando los filtros.
+  let inspectors = allMembers.filter(u =>
+    String(u.role || "").toLowerCase() === "inspector" &&
+    String(u.status || "active").toLowerCase() !== "inactive" &&
+    String(u.status || "active").toLowerCase() !== "inactivo"
+  );
+
+  if (filterState.user) inspectors = inspectors.filter(u => u.uid === filterState.user);
+  if (filterState.rol) {
+    if (filterState.rol !== "inspector") {
+      tb.innerHTML = '<tr><td colspan="6" class="t-empty">No hay inspectores que coincidan con el filtro de Rol seleccionado.</td></tr>';
+      return;
+    }
+    inspectors = inspectors.filter(u => String(u.role || "").toLowerCase() === filterState.rol);
+  }
+  if (filterState.rango) inspectors = inspectors.filter(u => normRango(u.rango) === filterState.rango);
+  if (filterState.cargo) inspectors = inspectors.filter(u => hasCargo(u, filterState.cargo));
+
+  if (!inspectors.length) {
+    tb.innerHTML = '<tr><td colspan="6" class="t-empty">Sin inspectores activos que coincidan con los filtros.</td></tr>';
     return;
   }
 
-  const mp = new Map();
-  for (const l of todays) {
-    const uid = l.actorUid || "—";
-    const prev = mp.get(uid) || {
-      uid,
-      name: l.actorName || "—",
-      pts: 0,
-      actions: 0,
-      lastAt: null,
-      lastTxt: "—"
-    };
-    const delta = typeof l.delta === "number" ? l.delta : 0;
-    if (delta > 0) prev.pts += delta;
-    prev.actions += 1;
-    const d = tsToDate(l.createdAt);
-    if (d && (!prev.lastAt || d > prev.lastAt)) {
-      prev.lastAt = d;
-      const tgt = l.targetName ? ` → ${l.targetName}` : "";
-      prev.lastTxt = `${delta > 0 ? "+" : ""}${delta}${tgt}`;
-    }
-    mp.set(uid, prev);
-  }
+  const start = periodStartMs(inspPeriodState);
+  const periodTxt = inspPeriodState === "day" ? "hoy" : inspPeriodState === "week" ? "7 días" : "30 días";
 
-  const list = [...mp.values()].sort((a, b) => {
+  const rows = inspectors.map(insp => {
+    let pts = 0, actions = 0, lastAt = null, lastTxt = "—";
+    for (const l of logs) {
+      if (!l || l.type !== "points" || l.actorUid !== insp.uid) continue;
+      if (String(l.actorRole || "").toLowerCase() !== "inspector") continue;
+      const t = logTime(l);
+      if (!t || t < start) continue;
+      const delta = typeof l.delta === "number" ? l.delta : 0;
+      if (delta > 0) pts += delta;
+      actions += 1;
+      const d = tsToDate(l.createdAt);
+      if (d && (!lastAt || d > lastAt)) {
+        lastAt = d;
+        const tgt = l.targetName ? ` → ${l.targetName}` : "";
+        lastTxt = `${delta > 0 ? "+" : ""}${delta}${tgt}`;
+      }
+    }
+    return { uid: insp.uid, name: insp.name || "—", pts, actions, lastAt, lastTxt };
+  }).filter(r => r.actions > 0 || Number(inspectors.find(x => x.uid === r.uid)?.points || 0) > 0).sort((a, b) => {
     if (b.actions !== a.actions) return b.actions - a.actions;
     if (b.pts !== a.pts) return b.pts - a.pts;
     const ta = a.lastAt ? a.lastAt.getTime() : 0;
@@ -829,14 +819,19 @@ function renderInspectorActivityJow() {
     return tb - ta;
   });
 
-  tb.innerHTML = list.map(r => {
+  if (!rows.length) {
+    tb.innerHTML = `<tr><td colspan="6" class="t-empty">Sin actividad de inspectores en el período (${periodTxt}).</td></tr>`;
+    return;
+  }
+
+  tb.innerHTML = rows.map(r => {
     const now = Date.now();
     const lastMs = r.lastAt ? (now - r.lastAt.getTime()) : Infinity;
     const state = lastMs <= 15 * 60 * 1000 ? "🟢 Activo" : lastMs <= 60 * 60 * 1000 ? "🟡 Poco activo" : "🔴 Inactivo";
     return `
       <tr>
         <td><b>${esc(r.name)}</b></td>
-        <td><b style="color:#ffd166">${r.pts}</b></td>
+        <td><b style="color:#ffd166">${r.pts.toFixed(decimalsCfgJow())}</b></td>
         <td>${r.actions}</td>
         <td>${esc(r.lastTxt)}</td>
         <td>${r.lastAt ? fmtSince(lastMs) : "—"}</td>
@@ -967,11 +962,11 @@ function setupStaffView() {
     renderRankingAdmins();
     renderEvolutionPts();
     renderInspectorActivityJow();
-    
-    const resetBtn = document.getElementById("reset-data-btn");
-    if (resetBtn) {
-      resetBtn.style.display = role === "admin" ? "" : "none";
-    }
+
+    // Botones de "Reiniciar" por gráfico: visibles solo para admins.
+    document.querySelectorAll(".res-ctrl").forEach(b => {
+      b.style.display = role === "admin" ? "" : "none";
+    });
   } else {
     renderPointsTable();
     renderStats();
@@ -1138,8 +1133,9 @@ window.setChartPeriod = (p, btn) => {
   renderActivityChart();
 };
 
-// ── GRÁFICO: ACTIVIDAD DE ADMINS POR DÍA (24 horas) ────────────
-// Estadística de Admins; separada de las del MC Team.
+// ── GRÁFICO: ACTIVIDAD DE ADMINS ─────────────────────────────
+// Estadística EXCLUSIVA de Admins; separada de las del resto del equipo.
+// NO respeta los filtros de Usuario/Rol/Rango/Cargo por diseño.
 function renderActivityChart() {
   const el = document.getElementById("activity-chart");
   const legendEl = document.getElementById("chart-legend");
@@ -1148,7 +1144,7 @@ function renderActivityChart() {
   if (role !== "admin" && role !== "inspector") return;
 
   if (!logs.length) {
-    el.innerHTML = '<div class="chart-empty">Sin datos de actividad todavía. Los movimientos de admins e inspectores aparecerán acá.</div>';
+    el.innerHTML = '<div class="chart-empty">Sin datos de actividad todavía. Los movimientos de los admins aparecerán acá.</div>';
     if (legendEl) legendEl.innerHTML = "";
     return;
   }
@@ -1157,63 +1153,154 @@ function renderActivityChart() {
   const buckets = chartBuckets(chartPeriod, now);
   let maxVal = 1;
   for (const b of buckets) {
-    b.admins = 0; b.inspectors = 0;
+    b.admins = 0;
     for (const l of logs) {
       const t = logTime(l);
       if (t < b.start || t >= b.end) continue;
-      const r = String(l.actorRole || "").toLowerCase();
-      if (r === "admin") b.admins++;
-      else b.inspectors++;
+      if (String(l.actorRole || "").toLowerCase() === "admin") b.admins++;
     }
-    maxVal = Math.max(maxVal, b.admins, b.inspectors);
+    maxVal = Math.max(maxVal, b.admins);
   }
 
-  const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
-  const iw = W - pl - pr, ih = H - pt - pb;
-  const yMax = maxVal;
-  const n = buckets.length;
-  const xPos = i => (n > 1 ? pl + (iw * i) / (n - 1) : pl + iw / 2);
-  const yPos = v => pt + ih - (ih * v) / yMax;
+  const mode = modeStates.admin || "line";
+  const periodTxt = chartPeriod === "day" ? "últimas 24 horas" : chartPeriod === "week" ? "últimos 7 días" : "últimos 30 días";
 
-  let grid = "", xl = "", series = "";
-  const gridCount = 4;
-  for (let g = 0; g <= gridCount; g++) {
-    const val = Math.round((yMax * g) / gridCount);
-    const gy = yPos(val);
-    grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
-    grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
-  }
-  buckets.forEach((b, i) => {
-    // Con 24 horas, mostramos cada franja horaria; se reduce el tamaño de fuente.
-    if (buckets.length > 12 && i % 2 === 1) return;
-    xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="${buckets.length > 12 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
-  });
+  // ── Modo lineal: evolución de la actividad de admins en el período.
+  if (mode === "line") {
+    const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
+    const iw = W - pl - pr, ih = H - pt - pb;
+    const yMax = maxVal;
+    const n = buckets.length;
+    const xPos = i => (n > 1 ? pl + (iw * i) / (n - 1) : pl + iw / 2);
+    const yPos = v => pt + ih - (ih * v) / yMax;
 
-  const lines = [
-    { key: "admins", color: "#7f8cff", label: "Admins" },
-    { key: "inspectors", color: "#3ecf8e", label: "Inspectores" }
-  ];
-  for (const s of lines) {
-    const pts = buckets.map((b, i) => `${xPos(i)},${yPos(b[s.key])}`).join(" ");
-    series += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+    let grid = "", xl = "", series = "";
+    const gridCount = 4;
+    for (let g = 0; g <= gridCount; g++) {
+      const val = Math.round((yMax * g) / gridCount);
+      const gy = yPos(val);
+      grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
+      grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
+    }
     buckets.forEach((b, i) => {
-      series += `<circle cx="${xPos(i)}" cy="${yPos(b[s.key])}" r="2.6" fill="${s.color}"/>`;
+      if (buckets.length > 12 && i % 2 === 1) return;
+      xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="${buckets.length > 12 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
     });
+
+    const pts = buckets.map((b, i) => `${xPos(i)},${yPos(b.admins)}`).join(" ");
+    series += `<polyline points="${pts}" fill="none" stroke="#7f8cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+    buckets.forEach((b, i) => {
+      series += `<circle cx="${xPos(i)}" cy="${yPos(b.admins)}" r="2.6" fill="#7f8cff"/>`;
+    });
+
+    el.innerHTML = `
+      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Actividad de los admins (${chartPeriod})">
+        ${grid}
+        <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+        <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+        ${xl}
+        ${series}
+      </svg>
+      <div class="chart-note">Evolución de la actividad de admins · ${periodTxt} · ${logs.length} registros cargados</div>`;
+
+    if (legendEl) {
+      legendEl.innerHTML = '<span class="legend-item"><span class="legend-dot" style="background:#7f8cff"></span>Actividad de Admins</span>';
+    }
+    return;
+  }
+
+  // ── Modo columnas: promedio del período (columnas verticales reales).
+  if (mode === "cols") {
+    const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
+    const iw = W - pl - pr, ih = H - pt - pb;
+    const yMax = maxVal;
+    const n = buckets.length;
+    const barWidth = Math.max(8, (iw / n) * 0.6);
+    const gap = (iw - (barWidth * n)) / (n + 1);
+    const xPos = i => pl + gap + i * (barWidth + gap);
+    const yPos = v => pt + ih - (ih * v) / yMax;
+
+    let grid = "", xl = "", bars = "";
+    const gridCount = 4;
+    for (let g = 0; g <= gridCount; g++) {
+      const val = Math.round((yMax * g) / gridCount);
+      const gy = yPos(val);
+      grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
+      grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
+    }
+    buckets.forEach((b, i) => {
+      if (n > 10 && i % 2 === 1) return;
+      xl += `<text x="${xPos(i) + barWidth/2}" y="${H - 8}" text-anchor="middle" font-size="${n > 10 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
+    });
+    const totalActCols = buckets.reduce((s, b) => s + b.admins, 0);
+    const promCols = (buckets.length ? totalActCols / buckets.length : 0).toFixed(1);
+    buckets.forEach((b, i) => {
+      const hBar = (b.admins / yMax) * ih;
+      const y = pt + ih - hBar;
+      bars += `<rect x="${xPos(i)}" y="${y}" width="${barWidth}" height="${hBar}" fill="#7f8cff" rx="3"/>`;
+      bars += `<text x="${xPos(i) + barWidth/2}" y="${y - 4}" text-anchor="middle" font-size="9" fill="#e9eeff" font-weight="600">${b.admins}</text>`;
+    });
+
+    el.innerHTML = `
+      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img">
+        ${grid}
+        <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+        <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+        ${xl}
+        ${bars}
+      </svg>
+      <div class="chart-note">Actividad de admins por franja · ${periodTxt} · Promedio por franja: ${promCols}</div>`;
+
+    if (legendEl) {
+      legendEl.innerHTML = '<span class="legend-item"><span class="legend-dot" style="background:#7f8cff"></span>Actividad de Admins</span>';
+    }
+    return;
+  }
+
+  // ── Modo circular: UN SOLO CÍRCULO dividido en sectores proporcionados.
+  // Distribución de la actividad de los admins dentro del período, por admin.
+  const start = buckets[0].start;
+  const adminCounts = new Map();
+  for (const l of logs) {
+    const t = logTime(l);
+    if (!t || t < start) continue;
+    if (String(l.actorRole || "").toLowerCase() !== "admin") continue;
+    const uid = l.actorUid || "—";
+    const prev = adminCounts.get(uid) || { uid, name: l.actorName || "—", count: 0 };
+    prev.count++;
+    adminCounts.set(uid, prev);
+  }
+  const rolesItems = [...adminCounts.values()]
+    .sort((a, b) => b.count - a.count)
+    .map((r, i) => ({ label: r.name || "—", value: r.count, color: PALETTE[i % PALETTE.length] }));
+
+  if (!rolesItems.length) {
+    el.innerHTML = '<div class="chart-empty">Sin actividad de admins en el período.</div>';
+    if (legendEl) legendEl.innerHTML = "";
+    return;
+  }
+
+  const totalAct = rolesItems.reduce((s, it) => s + it.value, 0);
+  const cx = 90, cy = 90, R = 62, C = 2 * Math.PI * R;
+  let acc = 0, arcs = "", legend = "";
+  for (const it of rolesItems) {
+    const frac = it.value / totalAct;
+    const dash = `${Math.max(frac * C - 2, 0.5)} ${C}`;
+    const rot = -90 + acc * 360;
+    arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${it.color}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
+    acc += frac;
+    legend += `<span class="legend-item"><span class="legend-dot" style="background:${it.color}"></span>${esc(it.label)} · ${(frac * 100).toFixed(1)}%</span>`;
   }
 
   el.innerHTML = `
-    <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Actividad de los admins (${chartPeriod})">
-      ${grid}
-      <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
-      <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
-      ${xl}
-      ${series}
+    <svg class="chart-svg" viewBox="0 0 180 180" role="img">
+      ${arcs}
+      <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${totalAct}</text>
     </svg>
-    <div class="chart-note">Actividad registrada · ${chartPeriod === "day" ? "24 horas completas (12 AM → 11 PM)" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
+    <div class="chart-legend">${legend}</div>
+    <div class="chart-note">Distribución de la actividad de admins · ${periodTxt} · ${logs.length} registros cargados</div>`;
 
-  if (legendEl) {
-    legendEl.innerHTML = lines.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.label}</span>`).join("");
-  }
+  if (legendEl) legendEl.innerHTML = "";
 }
 
 function countByActor(list, filterFn) {
@@ -1336,8 +1423,30 @@ function renderDestacados() {
 const PALETTE = ["#5865f2", "#3ecf8e", "#ffd166", "#ff9f43", "#ff5c75", "#4cc9f0", "#a78bfa", "#57cc99"];
 
 const modeStates = { evo: "line", admin: "line", admins: "cols" };
-const filterState = { user: "", rango: "", cargo: "" };
-let evoTimeState = "14";
+const filterState = { user: "", rol: "", rango: "", cargo: "" };
+let evoTimeState = "7";
+let rankTimeState = "day";
+let inspPeriodState = "day";
+
+function periodStartMs(p) {
+  const m = p === "day" ? 1 : p === "week" ? 7 : 30;
+  return Date.now() - m * 24 * 60 * 60 * 1000;
+}
+
+// Puntos ganados por el usuario en un período (a partir de los registros).
+function periodPointsForUser(u, period) {
+  if (period === "day") return Number(u.points || 0); // Día → puntos actuales
+  const start = periodStartMs(period);
+  let pts = 0;
+  for (const l of logs) {
+    if (!l || l.type !== "points" || l.targetUid !== u.uid) continue;
+    const t = logTime(l);
+    if (!t || t < start) continue;
+    const d = typeof l.delta === "number" ? l.delta : 0;
+    if (d > 0) pts += d;
+  }
+  return pts;
+}
 
 function setModeState(key, m, btn) {
   modeStates[key] = m;
@@ -1353,28 +1462,45 @@ function setModeState(key, m, btn) {
 window.setRankModeEvo    = (m, btn) => setModeState("evo", m, btn);
 window.setAdminChartMode = (m, btn) => setModeState("admin", m, btn);
 window.setRankModeAdmins = (m, btn) => setModeState("admins", m, btn);
-window.setEvoTime       = (days, btn) => { evoTimeState = days; renderEvolutionPts(); };
-
-// ── FILTROS ─────────────────────────────────────────────────────
-window.applyFilters = () => {
-  filterState.user = document.getElementById("filter-user")?.value || "";
-  filterState.rango = document.getElementById("filter-rango")?.value || "";
-  filterState.cargo = document.getElementById("filter-cargo")?.value || "";
-  
-  // Re-render all charts with new filters
-  renderRankingAdmins();
+window.setEvoTime        = (days, btn) => {
+  evoTimeState = days;
+  const tb = btn ? btn.parentElement : null;
+  if (tb) tb.querySelectorAll(".period-btn").forEach(b => b.classList.toggle("active", b.getAttribute("data-time") === days));
   renderEvolutionPts();
 };
 
+window.setRankTime = (p, btn) => {
+  rankTimeState = p;
+  const tb = btn ? btn.parentElement : null;
+  if (tb) tb.querySelectorAll(".period-btn").forEach(b => b.classList.toggle("active", b.getAttribute("data-rank-time") === p));
+  renderRankingAdmins();
+};
+
+window.setInspPeriod = (p, btn) => {
+  inspPeriodState = p;
+  const tb = btn ? btn.parentElement : null;
+  if (tb) tb.querySelectorAll(".period-btn").forEach(b => b.classList.toggle("active", b.getAttribute("data-insp-period") === p));
+  renderInspectorActivityJow();
+};
+
+// ── FILTROS ─────────────────────────────────────────────────────
+window.applyFilters = () => {
+  filterState.user  = document.getElementById("filter-user")?.value || "";
+  filterState.rol   = document.getElementById("filter-rol")?.value || "";
+  filterState.rango = document.getElementById("filter-rango")?.value || "";
+  filterState.cargo = document.getElementById("filter-cargo")?.value || "";
+
+  // Re-render todos los gráficos filtrables con los nuevos filtros.
+  // La "Actividad de Admins" NO se filtra por diseño (funciona de forma independiente).
+  renderRankingAdmins();
+  renderEvolutionPts();
+  renderInspectorActivityJow();
+};
+
 window.resetFilters = () => {
-  const userSelect = document.getElementById("filter-user");
-  const rangoSelect = document.getElementById("filter-rango");
-  const cargoSelect = document.getElementById("filter-cargo");
-  
-  if (userSelect) userSelect.value = "";
-  if (rangoSelect) rangoSelect.value = "";
-  if (cargoSelect) cargoSelect.value = "";
-  
+  const ids = ["filter-user", "filter-rol", "filter-rango", "filter-cargo"];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+  filterState = { user: "", rol: "", rango: "", cargo: "" };
   applyFilters();
 };
 
@@ -1518,50 +1644,71 @@ function barChartSVG(labels, series, h) {
 
 // Evolución de puntos: reconstruye el valor diario de cada trabajador
 // del equipo a partir de los registros (delta) y los puntos actuales.
-// ── RANKING DE ADMINS ──────────────────────────────────────────
-// Versión Panel de Puntos (colocada acá porque se usa en la pestaña Gráficos)
+// ── RANKING DE PUNTOS ─────────────────────────────────────────
+// Ranking general que incluye TODOS los roles (Usuario, Admin, Inspector),
+// respeta los filtros de Usuario + Rol + Rango + Cargo y funciona por
+// Día / Semana / Mes.
 function renderRankingAdmins() {
   const box = document.getElementById("rank-admins-box");
   if (!box) return;
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  let admins = allMembers.filter(u => u.role === "admin" || u.role === "inspector");
-  if (filterState.user) admins = admins.filter(u => u.uid === filterState.user);
-  if (filterState.rango) admins = admins.filter(u => normRango(u.rango) === filterState.rango);
-  if (filterState.cargo) admins = admins.filter(u => hasCargo(u, filterState.cargo));
-  admins = admins.sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 8);
+  // Todos los roles pueden aparecer en el ranking.
+  let members = allMembers.filter(u => ["admin", "inspector", "user"].includes(String(u.role || "").toLowerCase()));
+  if (filterState.user) members = members.filter(u => u.uid === filterState.user);
+  if (filterState.rol) members = members.filter(u => String(u.role || "").toLowerCase() === filterState.rol);
+  if (filterState.rango) members = members.filter(u => normRango(u.rango) === filterState.rango);
+  if (filterState.cargo) members = members.filter(u => hasCargo(u, filterState.cargo));
 
-  if (!admins.length) {
-    box.innerHTML = '<div class="chart-empty">Sin datos de actividad</div>';
+  members = members
+    .map(u => ({ u, pts: periodPointsForUser(u, rankTimeState) }))
+    .filter(r => r.pts > 0)
+    .sort((a, b) => (b.pts - a.pts) || ((b.u.points || 0) - (a.u.points || 0)))
+    .slice(0, 8);
+
+  if (!members.length) {
+    box.innerHTML = '<div class="chart-empty">Sin datos para el ranking en el período seleccionado.</div>';
     return;
   }
+
+  const periodTxt = rankTimeState === "day" ? "hoy" : rankTimeState === "week" ? "esta semana" : "este mes";
 
   if (modeStates.admins === "circ") {
-    const PALETTE = ["#5865f2", "#3ecf8e", "#ffd166", "#ff9f43", "#ff5c75", "#4cc9f0", "#a78bfa", "#57cc99"];
-    const items = admins.map((a, i) => ({
-      label: a.name, value: Number(a.points || 0),
-      color: PALETTE[i % PALETTE.length]
-    }));
-    box.innerHTML = `<div style="display:flex;justify-content:center;align-items:flex-start;gap:20px;padding:22px 12px;flex-wrap:wrap">
-      ${items.map(it => `<div style="text-align:center;min-width:78px"><div style="width:86px;height:86px;border-radius:50%;background:${it.color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1rem;margin:0 auto">${it.value.toFixed(decimalsCfgJow())}</div><div style="margin-top:10px;font-size:12px;color:#9ba8d6">${esc(it.label)}</div></div>`).join("")}
-    </div>`;
+    // UN SOLO CÍRCULO dividido en sectores proporcionales.
+    const total = members.reduce((s, r) => s + r.pts, 0);
+    const cx = 90, cy = 90, R = 62, C = 2 * Math.PI * R;
+    let acc = 0, arcs = "", legend = "";
+    members.forEach((r, i) => {
+      const frac = r.pts / total;
+      const dash = `${Math.max(frac * C - 2, 0.5)} ${C}`;
+      const rot = -90 + acc * 360;
+      arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${PALETTE[i % PALETTE.length]}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
+      acc += frac;
+      const rangoTxt = fmtRango(r.u.rango);
+      legend += `<span class="legend-item"><span class="legend-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>${esc(r.u.name || "—")}${rangoTxt ? ` <span style="opacity:.6">(${rangoTxt})</span>` : ""} · ${(frac * 100).toFixed(1)}%</span>`;
+    });
+    box.innerHTML = `
+      <svg class="chart-svg" viewBox="0 0 180 180" role="img">
+        ${arcs}
+        <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${total.toFixed(decimalsCfgJow())}</text>
+      </svg>
+      <div class="chart-legend">${legend}</div>
+      <div class="chart-note">Ranking de puntos · ${periodTxt}</div>`;
     return;
   }
 
-  const PALETTE_BAR = ["#5865f2", "#3ecf8e", "#ffd166", "#ff9f43", "#ff5c75", "#4cc9f0", "#a78bfa", "#57cc99"];
-  const maxP = Math.max(1, ...admins.map(a => Number(a.points || 0)));
-  
-  // Crear gráfico de columnas verticales real
-  const W = 600, H = 280, pl = 40, pr = 16, pt = 30, pb = 40;
+  // Modo columnas: gráfico real de columnas verticales.
+  const maxP = Math.max(1, ...members.map(r => r.pts));
+  const W = 600, H = 300, pl = 40, pr = 16, pt = 32, pb = 46;
   const iw = W - pl - pr, ih = H - pt - pb;
-  const n = admins.length;
+  const n = members.length;
   const barWidth = Math.max(20, (iw / n) * 0.5);
   const gap = (iw - (barWidth * n)) / (n + 1);
   const xPos = i => pl + gap + i * (barWidth + gap);
   const yPos = v => pt + ih - (ih * v) / maxP;
-  
-  let grid = "", xl = "", bars = "";
+
+  let grid = "", xl = "", bars = "", leg = "";
   const gridCount = 4;
   for (let g = 0; g <= gridCount; g++) {
     const val = Math.round((maxP * g) / gridCount);
@@ -1569,24 +1716,21 @@ function renderRankingAdmins() {
     grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
     grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
   }
-  
-  admins.forEach((a, i) => {
-    const pts = Number(a.points || 0);
+
+  members.forEach((r, i) => {
+    const pts = r.pts;
     const x = xPos(i);
     const hBar = (pts / maxP) * ih;
     const y = pt + ih - hBar;
-    const color = PALETTE_BAR[i % PALETTE_BAR.length];
-    
+    const color = PALETTE[i % PALETTE.length];
     bars += `<rect x="${x}" y="${y}" width="${barWidth}" height="${hBar}" fill="${color}" rx="4"/>`;
-    
-    // Etiqueta de valor arriba de la barra
     bars += `<text x="${x + barWidth/2}" y="${y - 6}" text-anchor="middle" font-size="10" fill="#e9eeff" font-weight="600">${pts.toFixed(decimalsCfgJow())}</text>`;
-    
-    // Nombre en el eje X
-    const nameShort = (a.name || "—").substring(0, 8);
+    const nameShort = (r.u.name || "—").substring(0, 9);
     xl += `<text x="${x + barWidth/2}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#7c86ad">${nameShort}</text>`;
+    const rangoTxt = fmtRango(r.u.rango);
+    leg += `<span class="legend-item"><span class="legend-dot" style="background:${color}"></span>${esc(r.u.name || "—")}${rangoTxt ? ` <span style="opacity:.6">(${rangoTxt})</span>` : ""}</span>`;
   });
-  
+
   box.innerHTML = `
     <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img">
       ${grid}
@@ -1595,21 +1739,12 @@ function renderRankingAdmins() {
       ${xl}
       ${bars}
     </svg>
-    <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;font-size:11px;color:#9ba8d6">
-      ${admins.map((a, i) => {
-        const r = fmtRango(a.rango);
-        return `<span style="display:flex;align-items:center;gap:4px">
-          <span style="width:8px;height:8px;border-radius:50%;background:${PALETTE_BAR[i % PALETTE_BAR.length]}"></span>
-          <span>${esc(a.name || "—")}</span>
-          ${r ? `<span style="opacity:0.7">(${esc(r)})</span>` : ""}
-        </span>`;
-      }).join("")}
-    </div>
-  `;
+    <div class="chart-legend">${leg}</div>
+    <div class="chart-note">Ranking de puntos · ${periodTxt}</div>`;
 }
 
-// Funciones para refrescar y reiniciar gráficos individuales en Panel de Puntos
-window.refreshSingleChartJow = (chartName) => {
+// Funciones para refrescar y reiniciar gráficos individuales (mismos nombres que Dashboard)
+window.refreshSingleChart = (chartName) => {
   switch(chartName) {
     case 'rankingAdmins':
       if (typeof renderRankingAdmins === "function") renderRankingAdmins();
@@ -1627,21 +1762,43 @@ window.refreshSingleChartJow = (chartName) => {
   showToast("Gráfico actualizado", "ok");
 };
 
-window.resetSingleChartJow = (chartName) => {
+window.resetSingleChart = async (chartName) => {
   const role = currentUser?.role;
   if (role !== "admin") {
     showToast("Solo los admins pueden reiniciar los datos", "err");
     return;
   }
-  
-  const ok = confirm("¿Estás seguro de que quieres reiniciar los datos de este gráfico? Esta acción no se puede deshacer.");
+
+  const ok = confirm("¿Estás seguro de que querés reiniciar los datos de este gráfico? Se borrarán los registros históricos correspondientes y no se puede deshacer.");
   if (!ok) return;
-  
-  // En una implementación real, esto borraría los datos específicos del gráfico
-  showToast("Función de reinicio implementada para " + chartName, "ok");
-  
-  // Refrescar el gráfico después del reinicio
-  refreshSingleChartJow(chartName);
+
+  // Determinar qué registros corresponden a este gráfico.
+  let targets = [];
+  if (chartName === "activityChart") {
+    targets = logs.filter(l => String(l.actorRole || "").toLowerCase() === "admin");
+  } else if (chartName === "inspectorActivity") {
+    targets = logs.filter(l => l.type === "points" && String(l.actorRole || "").toLowerCase() === "inspector");
+  } else if (chartName === "evolutionPts" || chartName === "rankingAdmins") {
+    targets = logs.filter(l => l.type === "points");
+  } else {
+    targets = logs.slice();
+  }
+
+  let deleted = 0;
+  for (const l of targets) {
+    if (!l || !l.id) continue;
+    try {
+      await deleteDoc(doc(db, "logs", l.id));
+      deleted++;
+    } catch (e) {
+      console.error("Error borrando log:", e);
+    }
+  }
+
+  showToast(`Reinicio completado: ${deleted} registro(s) borrado(s).`, deleted > 0 ? "ok" : "err");
+
+  // Refrescar el gráfico después del reinicio (el snapshot recargará los logs).
+  if (typeof refreshSingleChart === "function") refreshSingleChart(chartName);
 };
 
 function renderEvolutionPts() {
@@ -1651,12 +1808,15 @@ function renderEvolutionPts() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  // Usar todo el equipo (admins e inspectores que pueden asignar puntos)
-  let team = allMembers.filter(u => (u.role === "admin" || u.role === "inspector") && u.status === "active");
+  // Usar todos los roles (Usuario, Admin, Inspector) respetando filtros.
+  let team = allMembers.filter(u => ["admin", "inspector", "user"].includes(String(u.role || "").toLowerCase()));
   
   // Apply filters
   if (filterState.user) {
     team = team.filter(u => u.uid === filterState.user);
+  }
+  if (filterState.rol) {
+    team = team.filter(u => String(u.role || "").toLowerCase() === filterState.rol);
   }
   if (filterState.rango) {
     team = team.filter(u => normRango(u.rango) === filterState.rango);

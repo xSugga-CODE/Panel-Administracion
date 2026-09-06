@@ -267,9 +267,9 @@ body {
 /* ── HERO SIDE (logout button) ── */
 .hero-side {
   display: flex;
-  align-items: center;
-}
-  margin-bottom: 4px;
+  align-items: flex-start;
+  justify-content: flex-end;
+  position: relative;
 }
 
 .av-admin     { background: linear-gradient(135deg,#5865f2,#3a50d9); }
@@ -972,6 +972,22 @@ li { color: #c2cceb; margin-bottom: 8px; }
   color: #fff;
 }
 
+/* Botones individuales de refrescar / reiniciar por gráfico */
+.btn-chart-ctrl {
+  font-size: 11px;
+  padding: 5px 10px;
+}
+
+/* Fila de filtros: respeta el ancho disponible en el Dashboard/Grid */
+.filters-row > div {
+  flex: 1 1 auto;
+}
+
+/* Contenedor de tabla de actividad (inspectores) con scroll en móvil */
+#inspector-activity-chart table {
+  margin-top: 8px;
+}
+
 .chart-container {
   margin-top: 8px;
   width: 100%;
@@ -1412,6 +1428,21 @@ li { color: #c2cceb; margin-bottom: 8px; }
 
   .pts-mini-bar-wrap {
     width: 48px;
+  }
+
+  /* Filtros de gráficos en móvil: ocupan el ancho disponible */
+  .filters-row > div {
+    flex: 1 1 140px;
+  }
+
+  .filters-row select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Gráficos un poco más bajos en pantallas chicas para no perder nada */
+  .chart-container {
+    min-height: 240px;
   }
 
   /* Ajustar botones y campos para tactiles */
