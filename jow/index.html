@@ -107,29 +107,67 @@
 
     <!-- TRABAJADORES DESTACADOS DEL MC TEAM (con mostrar/ocultar) -->
     <div style="margin:16px 0">
-      <button class="btn-ghost" id="btn-dest" onclick="toggleDestacados()">👁️ Mostrar trabajadores destacados</button>
+      <button class="btn-ghost" id="btn-dest" onclick="toggleDestacados()">👁️ Mostrar chambeadores destacados</button>
+      <button class="btn-ghost" id="btn-dest-hist" onclick="toggleDestacadosHistorial()" style="margin-left: 8px;">📜 Historial</button>
     </div>
     <section class="stats-detail" id="destacados-section" style="display:none">
       <div class="section-head">
-        <h3>⭐ Trabajadores destacados del MC Team</h3>
+        <h3>⭐ Chambeadores destacados del MC Team</h3>
         <p>Reconocimiento por rendimiento. Solo se consideran trabajadores con el cargo <b>MC Team</b>.</p>
       </div>
       <div class="destacado-grid">
         <article class="destacado-card">
-          <div class="dc-label">🌟 Trabajador del día</div>
+          <div class="dc-label">🌟 Chambeador del día</div>
           <div class="dc-content" id="destacado-day"><div class="dc-empty">Cargando…</div></div>
           <div class="dc-period">Últimas 24 horas</div>
         </article>
         <article class="destacado-card dc-featured">
-          <div class="dc-label">📅 Trabajador de la semana</div>
+          <div class="dc-label">📅 Chambeador de la semana</div>
           <div class="dc-content" id="destacado-week"><div class="dc-empty">Cargando…</div></div>
           <div class="dc-period">Últimos 7 días</div>
         </article>
         <article class="destacado-card">
-          <div class="dc-label">🗓 Trabajador del mes</div>
+          <div class="dc-label">🗓 Chambeador del mes</div>
           <div class="dc-content" id="destacado-month"><div class="dc-empty">Cargando…</div></div>
           <div class="dc-period">Últimos 30 días</div>
         </article>
+      </div>
+    </section>
+
+    <!-- HISTORIAL DE CHAMBEADORES DESTACADOS -->
+    <section class="stats-detail" id="destacados-hist-section" style="display:none">
+      <div class="section-head">
+        <h3>📜 Historial de Chambeadores Destacados</h3>
+        <p>Historial completo de chambeadores destacados por período.</p>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+        <div>
+          <label style="font-size:12px;color:var(--muted)">Filtrar por usuario:</label>
+          <select id="hist-filter-user" onchange="filterDestacadosHistorial()" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;font-size:13px;padding:8px 12px;outline:none;min-width:150px;">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--muted)">Filtrar por rol:</label>
+          <select id="hist-filter-rol" onchange="filterDestacadosHistorial()" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;font-size:13px;padding:8px 12px;outline:none;min-width:150px;">
+            <option value="">Todos</option>
+            <option value="user">Usuario</option>
+            <option value="admin">Admin</option>
+            <option value="inspector">Inspector</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--muted)">Filtrar por período:</label>
+          <select id="hist-filter-period" onchange="filterDestacadosHistorial()" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;font-size:13px;padding:8px 12px;outline:none;min-width:150px;">
+            <option value="">Todos</option>
+            <option value="day">Día</option>
+            <option value="week">Semana</option>
+            <option value="month">Mes</option>
+          </select>
+        </div>
+      </div>
+      <div id="destacados-hist-list" style="display:flex;flex-direction:column;gap:12px;">
+        <div class="chart-empty">Cargando historial...</div>
       </div>
     </section>
 
@@ -297,10 +335,10 @@
 
 
 
-        <!-- ACTIVIDAD DE ADMINS (separada del MC Team, NO se filtra) -->
+        <!-- ACTIVIDAD DE USUARIOS -->
         <div class="card chart-card" id="activity-admins-card">
           <div class="chart-head">
-            <h3>🕐 Actividad de Admins</h3>
+            <h3>🕐 Actividad de Usuarios</h3>
             <div class="chart-toolbar" id="chart-toolbar">
               <button class="period-btn active" data-period="day" onclick="setChartPeriod('day',this)">Día</button>
               <button class="period-btn" data-period="week" onclick="setChartPeriod('week',this)">Semana</button>
@@ -477,7 +515,7 @@
           <div class="guide-block">
             <h4>Sistema de Ascensos y Descensos de Rangos</h4>
             <p style="color:var(--muted);line-height:1.6">
-              <b>Ascensos por desempeño:</b> Cada semana se evaluará al trabajador destacado del MC Team. Si un miembro obtiene el reconocimiento de "Trabajador de la semana" consistentemente durante 4 semanas, será ascendido de rango.<br><br>
+              <b>Ascensos por desempeño:</b> Cada semana se evaluará al trabajador destacado del MC Team. Si un miembro obtiene el reconocimiento de "Chambeador de la semana" consistentemente durante 4 semanas, será ascendido de rango.<br><br>
               <b>Descensos por inactividad:</b> Cuando un miembro llega a 0 puntos, se le quitará un rango automáticamente. Este proceso continúa hasta que el miembro queda en el último rango disponible. Si sigue en 0 puntos en el último rango, será expulsado del equipo.<br><br>
               <b>Jerarquía de rangos:</b> El sistema funciona en orden ascendente: Vigia → Centinela → Admin. Los ascensos se basan en desempeño constante y los descensos en falta de actividad.
             </p>

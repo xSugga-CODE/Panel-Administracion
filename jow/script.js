@@ -38,6 +38,29 @@ const app  = getApps().length ? getApp() : initializeApp(cfg);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
+// Configuración de persistencia y manejo de errores de red
+auth.useDeviceLanguage && auth.useDeviceLanguage();
+
+// Manejo robusto de errores de Firestore
+let firestoreRetryCount = 0;
+const MAX_RETRIES = 3;
+
+async function withFirestoreRetry(operation, operationName = "operation") {
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    try {
+      return await operation();
+    } catch (e) {
+      console.error(`${operationName} attempt ${i + 1} failed:`, e);
+      if (i === MAX_RETRIES - 1) throw e;
+      if (e.code === 'unavailable' || e.code === 'network-request-failed' || e.code === 'deadline-exceeded') {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      } else {
+        throw e;
+      }
+    }
+  }
+}
+
 let currentUser = null;
 let allMembers  = [];
 let novedades   = [];
@@ -1159,6 +1182,7 @@ function setupStaffView() {
 
 // ── TRABAJADORES DESTACADOS: mostrar / ocultar ────────────────
 let destacadosOpen = false;
+let destacadosHistorialOpen = false;
 
 window.toggleDestacados = () => {
   const destSec = document.getElementById("destacados-section");
@@ -1166,9 +1190,114 @@ window.toggleDestacados = () => {
   if (!destSec) return;
   destacadosOpen = !destacadosOpen;
   destSec.style.display = destacadosOpen ? "block" : "none";
-  if (btn) btn.textContent = destacadosOpen ? "🙈 Ocultar trabajadores destacados" : "👁️ Mostrar trabajadores destacados";
+  if (btn) btn.textContent = destacadosOpen ? "🙈 Ocultar chambeadores destacados" : "👁️ Mostrar chambeadores destacados";
   if (destacadosOpen && typeof renderDestacados === "function") renderDestacados();
 };
+
+window.toggleDestacadosHistorial = () => {
+  const histSec = document.getElementById("destacados-hist-section");
+  const btn     = document.getElementById("btn-dest-hist");
+  if (!histSec) return;
+  destacadosHistorialOpen = !destacadosHistorialOpen;
+  histSec.style.display = destacadosHistorialOpen ? "block" : "none";
+  if (btn) btn.textContent = destacadosHistorialOpen ? "🙈 Ocultar historial" : "📜 Historial";
+  if (destacadosHistorialOpen && typeof renderDestacadosHistorial === "function") renderDestacadosHistorial();
+};
+
+window.filterDestacadosHistorial = () => {
+  if (typeof renderDestacadosHistorial === "function") renderDestacadosHistorial();
+};
+
+async function renderDestacadosHistorial() {
+  const listEl = document.getElementById("destacados-hist-list");
+  if (!listEl) return;
+  
+  // Filtros
+  const filterUser = document.getElementById("hist-filter-user")?.value || "";
+  const filterRol = document.getElementById("hist-filter-rol")?.value || "";
+  const filterPeriod = document.getElementById("hist-filter-period")?.value || "";
+  
+  // Poblar filtro de usuarios
+  const userSelect = document.getElementById("hist-filter-user");
+  if (userSelect && allMembers.length > 0) {
+    const currentValue = userSelect.value;
+    userSelect.innerHTML = '<option value="">Todos</option>' + 
+      allMembers.map(u => `<option value="${u.uid}">${esc(u.name || "—")}</option>`).join("");
+    userSelect.value = currentValue;
+  }
+  
+  // Generar historial simulado (en una implementación real, esto vendría de Firestore)
+  const now = Date.now();
+  const historicalData = [];
+  
+  // Generar datos basados en el historial de logs
+  for (const l of logs) {
+    if (l.type === "destacado" || (l.type === "points" && l.delta > 0)) {
+      const t = logTime(l);
+      if (!t) continue;
+      
+      const target = allMembers.find(u => u.uid === l.targetUid);
+      if (!target) continue;
+      
+      // Determinar período
+      const hoursAgo = (now - t) / (1000 * 60 * 60);
+      let period = "day";
+      if (hoursAgo > 24 * 7) period = "month";
+      else if (hoursAgo > 24) period = "week";
+      
+      historicalData.push({
+        date: new Date(t),
+        period,
+        user: target,
+        periodType: period,
+        points: l.delta || 0
+      });
+    }
+  }
+  
+  // Aplicar filtros
+  let filtered = historicalData;
+  if (filterUser) {
+    filtered = filtered.filter(d => d.user.uid === filterUser);
+  }
+  if (filterRol) {
+    filtered = filtered.filter(d => String(d.user.role || "").toLowerCase() === filterRol);
+  }
+  if (filterPeriod) {
+    filtered = filtered.filter(d => d.periodType === filterPeriod);
+  }
+  
+  // Ordenar por fecha descendente
+  filtered.sort((a, b) => b.date - a.date);
+  
+  if (!filtered.length) {
+    listEl.innerHTML = '<div class="chart-empty">No hay datos de chambeadores destacados con los filtros seleccionados.</div>';
+    return;
+  }
+  
+  listEl.innerHTML = filtered.map(d => {
+    const periodLabel = d.periodType === "day" ? "Chambeador del día" : 
+                          d.periodType === "week" ? "Chambeador de la semana" : 
+                          "Chambeador del mes";
+    const dateStr = d.date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    
+    return `
+      <div class="card" style="padding:16px;display:flex;align-items:center;gap:16px;">
+        <div class="user-avatar av-${d.user.role}" style="width:48px;height:48px;font-size:18px;">${(d.user.name || "?").charAt(0).toUpperCase()}</div>
+        <div style="flex:1">
+          <div style="font-weight:700;color:#fff">${esc(d.user.name || "—")}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+            <span style="background:rgba(88,101,242,.12);color:var(--accent);padding:2px 6px;border-radius:4px;font-size:11px;">${periodLabel}</span>
+            <span style="margin-left:8px;">${dateStr}</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+            Rol: <span style="color:#e9eeff">${String(d.user.role || "").toUpperCase()}</span>
+            ${d.user.points ? ` · Puntos: ${d.user.points.toFixed(1)}` : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join("");
+}
 
 // ══════════════════════════════════════════
 // RANGOS (nueva estructura)
@@ -1338,9 +1467,9 @@ window.setChartPeriod = (p, btn) => {
   renderActivityChart();
 };
 
-// ── GRÁFICO: ACTIVIDAD DE ADMINS ─────────────────────────────
-// Estadística de Admins e Inspectores; separada de las del resto del equipo.
-// Respeta los filtros globales de Usuario/Rol/Rango/Cargo.
+// ── GRÁFICO: ACTIVIDAD DE USUARIOS ─────────────────────────────
+// Estadística de Usuarios, Admins e Inspectores; separada de las del resto del equipo.
+// Respeta solo el filtro de Rol; ignora Usuario individual, Rango y Cargo.
 function renderActivityChart() {
   const el = document.getElementById("activity-chart");
   const legendEl = document.getElementById("chart-legend");
@@ -1349,7 +1478,7 @@ function renderActivityChart() {
   if (role !== "admin" && role !== "inspector") return;
 
   if (!logs.length) {
-    el.innerHTML = '<div class="chart-empty">Sin datos de actividad todavía. Los movimientos de los admins e inspectores aparecerán acá.</div>';
+    el.innerHTML = '<div class="chart-empty">Sin datos de actividad todavía. Los movimientos de los usuarios aparecerán acá.</div>';
     if (legendEl) legendEl.innerHTML = "";
     return;
   }
@@ -1357,31 +1486,97 @@ function renderActivityChart() {
   const now = Date.now();
   const buckets = chartBuckets(chartPeriod, now);
   let maxVal = 1;
+  
+  // Estructura para almacenar actividad por rol
+  const roleActivity = {
+    user: new Array(buckets.length).fill(0),
+    admin: new Array(buckets.length).fill(0),
+    inspector: new Array(buckets.length).fill(0)
+  };
+  
   for (const b of buckets) {
-    b.admins = 0;
+    // Calcular actividad para cada rol
     for (const l of logs) {
       const t = logTime(l);
       if (t < b.start || t >= b.end) continue;
       const actorRole = String(l.actorRole || "").toLowerCase();
-      // Incluir admins e inspectores por defecto, respetar filtros
-      let includeActor = (actorRole === "admin" || actorRole === "inspector");
+      
+      let includeActor = (actorRole === "admin" || actorRole === "inspector" || actorRole === "user");
+      
+      // Filtro de rol: SÍ afecta
       if (filterState.rol && actorRole !== filterState.rol) includeActor = false;
-      if (filterState.user && l.actorUid !== filterState.user) includeActor = false;
+      
+      // Filtro de usuario individual: NO afecta (se ignora)
+      // Filtro de rango: NO afecta (se ignora)
+      // Filtro de cargo: NO afecta (se ignora)
+      
       if (includeActor) {
         const actor = allMembers.find(u => u.uid === l.actorUid) || null;
         if (actor && isInactiveStatus(actor.status) && t >= inactiveCutoffMs(actor)) continue;
-        if (filterState.rango && normRango(actor.rango) !== filterState.rango) continue;
-        if (filterState.cargo && !hasCargo(actor, filterState.cargo)) continue;
-        b.admins++;
+        
+        const bucketIndex = buckets.indexOf(b);
+        if (bucketIndex >= 0) {
+          // Lógica específica por rol
+          if (actorRole === "user") {
+            // Usuario: promedio entre ingresos y puntos
+            const loginCount = logs.filter(log => 
+              log.actorUid === l.actorUid && 
+              log.type === "login" &&
+              logTime(log) >= b.start && 
+              logTime(log) < b.end
+            ).length;
+            const userPoints = Number(actor.points || 0);
+            roleActivity.user[bucketIndex] += (loginCount + userPoints) / 2;
+          } else if (actorRole === "inspector") {
+            // Inspector: puntos que tienen, puntos que suben y ingresos
+            const inspectorPoints = Number(actor.points || 0);
+            const pointsAdded = logs.filter(log =>
+              log.actorUid === l.actorUid &&
+              log.type === "points" &&
+              log.delta > 0 &&
+              logTime(log) >= b.start &&
+              logTime(log) < b.end
+            ).reduce((sum, log) => sum + (log.delta || 0), 0);
+            const loginCount = logs.filter(log =>
+              log.actorUid === l.actorUid &&
+              log.type === "login" &&
+              logTime(log) >= b.start &&
+              logTime(log) < b.end
+            ).length;
+            roleActivity.inspector[bucketIndex] += inspectorPoints + pointsAdded + loginCount;
+          } else if (actorRole === "admin") {
+            // Admin: puntos que agregan e ingresos
+            const pointsAdded = logs.filter(log =>
+              log.actorUid === l.actorUid &&
+              log.type === "points" &&
+              log.delta > 0 &&
+              logTime(log) >= b.start &&
+              logTime(log) < b.end
+            ).reduce((sum, log) => sum + (log.delta || 0), 0);
+            const loginCount = logs.filter(log =>
+              log.actorUid === l.actorUid &&
+              log.type === "login" &&
+              logTime(log) >= b.start &&
+              logTime(log) < b.end
+            ).length;
+            roleActivity.admin[bucketIndex] += pointsAdded + loginCount;
+          }
+        }
       }
     }
-    maxVal = Math.max(maxVal, b.admins);
+    
+    maxVal = Math.max(maxVal, roleActivity.user[buckets.indexOf(b)], roleActivity.admin[buckets.indexOf(b)], roleActivity.inspector[buckets.indexOf(b)]);
   }
 
   const mode = modeStates.admin || "line";
   const periodTxt = chartPeriod === "day" ? "últimas 24 horas" : chartPeriod === "week" ? "últimos 7 días" : "últimos 30 días";
+  const PALETTE_ROLES = {
+    user: "#ff6b6b",
+    admin: "#7f8cff", 
+    inspector: "#3ecf8e"
+  };
 
-  // ── Modo lineal: evolución de la actividad de admins en el período.
+  // ── Modo lineal: evolución de la actividad de todos los roles
   if (mode === "line") {
     const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
@@ -1403,37 +1598,47 @@ function renderActivityChart() {
       xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="${buckets.length > 12 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
     });
 
-    const pts = buckets.map((b, i) => `${xPos(i)},${yPos(b.admins)}`).join(" ");
-    series += `<polyline points="${pts}" fill="none" stroke="#7f8cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
-    buckets.forEach((b, i) => {
-      series += `<circle cx="${xPos(i)}" cy="${yPos(b.admins)}" r="2.6" fill="#7f8cff"/>`;
-    });
+    const roleSeries = [
+      { name: "Usuario", color: PALETTE_ROLES.user, values: roleActivity.user },
+      { name: "Admin", color: PALETTE_ROLES.admin, values: roleActivity.admin },
+      { name: "Inspector", color: PALETTE_ROLES.inspector, values: roleActivity.inspector }
+    ];
+
+    for (const s of roleSeries) {
+      const pts = s.values.map((v, i) => `${xPos(i)},${yPos(v)}`).join(" ");
+      series += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+      s.values.forEach((v, i) => {
+        series += `<circle cx="${xPos(i)}" cy="${yPos(v)}" r="2.6" fill="${s.color}"/>`;
+      });
+    }
 
     el.innerHTML = `
-      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Actividad de los admins (${chartPeriod})">
+      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Actividad de Usuarios (${chartPeriod})">
         ${grid}
         <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
         <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
         ${xl}
         ${series}
       </svg>
-      <div class="chart-note">Evolución de la actividad de admins · ${periodTxt} · ${logs.length} registros cargados</div>`;
+      <div class="chart-note">Evolución de la actividad de Usuarios · ${periodTxt} · ${logs.length} registros cargados</div>`;
 
     if (legendEl) {
-      legendEl.innerHTML = '<span class="legend-item"><span class="legend-dot" style="background:#7f8cff"></span>Actividad de Admins</span>';
+      legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     }
     return;
   }
 
-  // ── Modo columnas: promedio del período (columnas verticales reales).
+  // ── Modo columnas: mostrar actividad de todos los roles
   if (mode === "cols") {
     const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
     const yMax = maxVal;
     const n = buckets.length;
-    const barWidth = Math.max(8, (iw / n) * 0.6);
-    const gap = (iw - (barWidth * n)) / (n + 1);
-    const xPos = i => pl + gap + i * (barWidth + gap);
+    const groupWidth = iw / n;
+    const barWidth = Math.max(4, (groupWidth / 3) * 0.7);
+    const groupGap = groupWidth * 0.1;
+    const barGap = Math.max(2, (groupWidth - groupGap - (barWidth * 3)) / 4);
+    const xPos = (periodIdx, roleIdx) => pl + (periodIdx * groupWidth) + groupGap/2 + barGap + roleIdx * (barWidth + barGap);
     const yPos = v => pt + ih - (ih * v) / yMax;
 
     let grid = "", xl = "", bars = "";
@@ -1446,16 +1651,22 @@ function renderActivityChart() {
     }
     buckets.forEach((b, i) => {
       if (n > 10 && i % 2 === 1) return;
-      xl += `<text x="${xPos(i) + barWidth/2}" y="${H - 8}" text-anchor="middle" font-size="${n > 10 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
+      xl += `<text x="${pl + (i * groupWidth) + groupWidth/2}" y="${H - 8}" text-anchor="middle" font-size="${n > 10 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
     });
-    const totalActCols = buckets.reduce((s, b) => s + b.admins, 0);
-    const promCols = (buckets.length ? totalActCols / buckets.length : 0).toFixed(1);
-    buckets.forEach((b, i) => {
-      const hBar = (b.admins / yMax) * ih;
-      const y = pt + ih - hBar;
-      bars += `<rect x="${xPos(i)}" y="${y}" width="${barWidth}" height="${hBar}" fill="#7f8cff" rx="3"/>`;
-      bars += `<text x="${xPos(i) + barWidth/2}" y="${y - 4}" text-anchor="middle" font-size="9" fill="#e9eeff" font-weight="600">${b.admins}</text>`;
-    });
+
+    const roleSeries = [
+      { name: "Usuario", color: PALETTE_ROLES.user, values: roleActivity.user },
+      { name: "Admin", color: PALETTE_ROLES.admin, values: roleActivity.admin },
+      { name: "Inspector", color: PALETTE_ROLES.inspector, values: roleActivity.inspector }
+    ];
+
+    for (const s of roleSeries) {
+      s.values.forEach((v, i) => {
+        const hBar = (v / yMax) * ih;
+        const y = pt + ih - hBar;
+        bars += `<rect x="${xPos(i, roleSeries.indexOf(s))}" y="${y}" width="${barWidth}" height="${hBar}" fill="${s.color}" rx="2"/>`;
+      });
+    }
 
     el.innerHTML = `
       <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img">
@@ -1465,50 +1676,56 @@ function renderActivityChart() {
         ${xl}
         ${bars}
       </svg>
-      <div class="chart-note">Actividad de admins por franja · ${periodTxt} · Promedio por franja: ${promCols}</div>`;
+      <div class="chart-note">Actividad de Usuarios · ${periodTxt} · ${logs.length} registros cargados</div>`;
 
     if (legendEl) {
-      legendEl.innerHTML = '<span class="legend-item"><span class="legend-dot" style="background:#7f8cff"></span>Actividad de Admins</span>';
+      legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     }
     return;
   }
 
-  // ── Modo circular: UN SOLO CÍRCULO dividido en sectores proporcionados.
-  // Distribución de la actividad de los admins dentro del período, por admin.
-  const start = buckets[0].start;
-  const adminCounts = new Map();
-  for (const l of logs) {
-    const t = logTime(l);
-    if (!t || t < start) continue;
-    if (String(l.actorRole || "").toLowerCase() !== "admin") continue;
-    const uid = l.actorUid || "—";
-    const prev = adminCounts.get(uid) || { uid, name: l.actorName || "—", count: 0 };
-    prev.count++;
-    adminCounts.set(uid, prev);
-  }
-  const rolesItems = [...adminCounts.values()]
-    .sort((a, b) => b.count - a.count)
-    .map((r, i) => ({ label: r.name || "—", value: r.count, color: PALETTE[i % PALETTE.length] }));
+  // ── Modo circular: UN SOLO CÍRCULO dividido en sectores proporcionales.
+  // Distribución de la actividad de los usuarios dentro del período, por rol.
+  const totalActivity = roleActivity.user.reduce((a, b) => a + b, 0) + 
+                        roleActivity.admin.reduce((a, b) => a + b, 0) + 
+                        roleActivity.inspector.reduce((a, b) => a + b, 0);
 
-  if (!rolesItems.length) {
-    el.innerHTML = '<div class="chart-empty">Sin actividad de admins en el período.</div>';
+  if (!totalActivity) {
+    el.innerHTML = '<div class="chart-empty">Sin datos de actividad de Usuarios para el período seleccionado.</div>';
     if (legendEl) legendEl.innerHTML = "";
     return;
   }
 
-  const totalAct = rolesItems.reduce((s, it) => s + it.value, 0);
   const cx = 90, cy = 90, R = 62, C = 2 * Math.PI * R;
   let acc = 0, arcs = "", legend = "";
-  for (const it of rolesItems) {
-    const frac = it.value / totalAct;
+  
+  const roleData = [
+    { name: "Usuario", value: roleActivity.user.reduce((a, b) => a + b, 0), color: PALETTE_ROLES.user },
+    { name: "Admin", value: roleActivity.admin.reduce((a, b) => a + b, 0), color: PALETTE_ROLES.admin },
+    { name: "Inspector", value: roleActivity.inspector.reduce((a, b) => a + b, 0), color: PALETTE_ROLES.inspector }
+  ];
+
+  for (const it of roleData) {
+    const frac = it.value / totalActivity;
     const dash = `${Math.max(frac * C - 2, 0.5)} ${C}`;
     const rot = -90 + acc * 360;
     arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${it.color}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
     acc += frac;
-    legend += `<span class="legend-item"><span class="legend-dot" style="background:${it.color}"></span>${esc(it.label)} · ${(frac * 100).toFixed(1)}%</span>`;
+    legend += `<span class="legend-item"><span class="legend-dot" style="background:${it.color}"></span>${it.name} · ${(frac * 100).toFixed(1)}%</span>`;
   }
 
   el.innerHTML = `
+    <svg class="chart-svg" viewBox="0 0 180 180" role="img">
+      ${arcs}
+      <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${Math.round(totalActivity)}</text>
+    </svg>
+    <div class="chart-legend">${legend}</div>
+    <div class="chart-note">Actividad de Usuarios · ${periodTxt}</div>`;
+
+  if (legendEl) {
+    legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
+  }
+}
     <svg class="chart-svg" viewBox="0 0 180 180" role="img">
       ${arcs}
       <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${totalAct}</text>
@@ -2067,8 +2284,8 @@ function renderEvolutionPts() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  // Incluir inspector y user por defecto (sin admin)
-  let team = allMembers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
+  // Incluir todos los roles: admin, inspector, user
+  let team = allMembers.filter(u => ["admin", "inspector", "user"].includes(String(u.role || "").toLowerCase()));
 
   // Apply filters
   if (filterState.user) {
@@ -2084,7 +2301,7 @@ function renderEvolutionPts() {
     team = team.filter(u => hasCargo(u, filterState.cargo));
   }
   
-  team = team.sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 6);
+  team = team.sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 8);
   
   if (!team.length) { el.innerHTML = '<div class="chart-empty">Sin miembros del equipo que coincidan con los filtros.</div>'; if (legendEl) legendEl.innerHTML = ""; return; }
 
@@ -2130,16 +2347,58 @@ function renderEvolutionPts() {
   if (modeStates.evo === "line") {
     el.innerHTML = multiLineChartSVG(periods.map(d => d.label), series);
   } else {
-    // Modo columnas: mostrar suma de puntos por período
-    const periodTotals = periods.map(d => ({
-      label: d.label,
-      value: team.reduce((sum, m) => sum + (d.vals[m.uid] || 0), 0)
-    }));
-    el.innerHTML = barChartSVG(periodTotals.map(d => d.label), [{ name: "Total puntos", color: "#3ecf8e", values: periodTotals.map(d => d.value) }]);
+    // Modo columnas: mostrar una barra por usuario por período
+    // Compactar barras si hay muchos usuarios
+    const n = team.length;
+    const H = 340, W = 760, pl = 44, pr = 16, pt = 22, pb = 40;
+    const iw = W - pl - pr, ih = H - pt - pb;
+    let maxV = 1;
+    for (const s of series) for (const v of s.values) maxV = Math.max(maxV, Number(v) || 0);
+    
+    const periodCount = periods.length;
+    const groupWidth = iw / periodCount;
+    const barWidth = Math.max(4, (groupWidth / n) * 0.7);
+    const groupGap = groupWidth * 0.1;
+    const barGap = Math.max(2, (groupWidth - groupGap - (barWidth * n)) / (n + 1));
+    
+    const xPos = (periodIdx, userIdx) => pl + (periodIdx * groupWidth) + groupGap/2 + barGap + userIdx * (barWidth + barGap);
+    const yPos = v => pt + ih - (ih * v) / maxV;
+    
+    let grid = "", xl = "", bars = "";
+    const gridCount = 4;
+    for (let g = 0; g <= gridCount; g++) {
+      const val = Math.round((maxV * g) / gridCount);
+      const gy = yPos(val);
+      grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
+      grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
+    }
+    
+    periods.forEach((d, i) => {
+      if (periodCount > 10 && i % 2 === 1) return;
+      xl += `<text x="${pl + (i * groupWidth) + groupWidth/2}" y="${H - 8}" text-anchor="middle" font-size="${periodCount > 10 ? 8 : 9}" fill="#7c86ad">${d.label}</text>`;
+    });
+    
+    for (const s of series) {
+      s.values.forEach((v, i) => {
+        const hBar = (Number(v) || 0) / maxV * ih;
+        const y = pt + ih - hBar;
+        bars += `<rect x="${xPos(i, series.indexOf(s))}" y="${y}" width="${barWidth}" height="${hBar}" fill="${s.color}" rx="2"/>`;
+      });
+    }
+    
+    el.innerHTML = `
+      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img">
+        ${grid}
+        <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+        <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+        ${xl}
+        ${bars}
+      </svg>`;
   }
   
   if (legendEl) {
-    legendEl.innerHTML = series.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${esc(s.name)}</span>`).join("");
+    // Leyenda sin nombres de usuario, solo círculos de color
+    legendEl.innerHTML = series.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span></span>`).join("");
   }
 }
 

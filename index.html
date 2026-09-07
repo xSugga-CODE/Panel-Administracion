@@ -300,7 +300,9 @@ width:100% !important;
 <div class="nav-section">Puntos</div>
 <div class="nav-item" onclick="goPage('points')"><span class="ico">⭐</span>Gestión de puntos</div>
 <div class="nav-item" onclick="goPage('charts')"><span class="ico">📈</span>Gráficos</div>
-<div class="nav-item" id="nav-config" onclick="goPage('config')"><span class="ico">⚙️</span>Configurar Puntos</div>
+<div class="nav-section">Configuración</div>
+<div class="nav-item" onclick="goPage('config')"><span class="ico">⚙️</span>Configuración</div>
+<div class="nav-item" id="nav-config-points" onclick="goPage('config-points')"><span class="ico">🔢</span>Configurar Puntos</div>
 <div class="nav-item" onclick="goPage('logs')"><span class="ico">📜</span>Logs</div>
 </nav>
 <div class="sb-footer">
@@ -566,10 +568,42 @@ width:100% !important;
 
 </div>
 
-<!-- CONFIGURAR PUNTOS -->
+<!-- CONFIGURACIÓN -->
 <div class="page" id="page-config">
-<div class="ph"><div class="ph-left"><h2>Configurar Puntos</h2><p>Ajustá el tiempo para el decremento automático de puntos</p></div></div>
+<div class="ph"><div class="ph-left"><h2>Configuración</h2><p>Ajustes generales del sistema</p></div></div>
+
+<div class="card" style="margin-bottom:16px;">
+  <h3>Configuración de Chambeadores Destacados</h3>
+  <div class="field">
+    <label>Hora de revelación del Chambeador del día</label>
+    <input type="time" id="chambeador-day-reveal" value="12:00" style="width:120px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;"/>
+  </div>
+  <div class="field">
+    <label>Hora de revelación del Chambeador de la semana</label>
+    <input type="time" id="chambeador-week-reveal" value="18:00" style="width:120px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;"/>
+  </div>
+  <div class="field">
+    <label>Hora de revelación del Chambeador del mes</label>
+    <input type="time" id="chambeador-month-reveal" value="20:00" style="width:120px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;"/>
+  </div>
+  <div class="field">
+    <label>Tiempo visible del Chambeador del día (horas)</label>
+    <input type="number" id="chambeador-day-duration" min="1" max="24" value="2" style="width:120px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;"/>
+  </div>
+  <div class="field">
+    <label>Tiempo visible del Chambeador de la semana (días)</label>
+    <input type="number" id="chambeador-week-duration" min="1" max="7" value="3" style="width:120px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;"/>
+  </div>
+  <div class="field">
+    <label>Tiempo visible del Chambeador del mes (días)</label>
+    <input type="number" id="chambeador-month-duration" min="1" max="30" value="7" style="width:120px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;"/>
+  </div>
+  <button class="btn btn-primary btn-auto" onclick="saveChambeadorConfig()">💾 Guardar configuración</button>
+</div>
+
 <div class="card">
+  <h3>Configuración de Puntos</h3>
+  <p style="color:var(--muted);margin-bottom:16px;">Ajustá el tiempo para el decremento automático de puntos</p>
 <div class="field">
 <label>Tiempo para restar 1 punto (total)</label>
 <div style="display:flex;gap:12px;align-items:center;">
@@ -753,6 +787,10 @@ width:100% !important;
 <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
 <input type="checkbox" class="cargo-checkbox" value="Editor">
 <span style="font-size:14px">Editor</span>
+</label>
+<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
+<input type="checkbox" class="cargo-checkbox" value="Marketing">
+<span style="font-size:14px">Marketing</span>
 </label>
 </div>
 </div>
@@ -1120,6 +1158,91 @@ showToast("Error al guardar: " + e.message, "err");
 }
 }
 
+// ── CONFIGURACIÓN DE CHAMBEADORES ───────────────────────────────
+window.saveChambeadorConfig = async () => {
+  if (myRole !== "admin") {
+    showToast("Solo los admins pueden modificar la configuración.", "err");
+    return;
+  }
+
+  try {
+    const config = {
+      dayRevealTime: document.getElementById("chambeador-day-reveal").value,
+      weekRevealTime: document.getElementById("chambeador-week-reveal").value,
+      monthRevealTime: document.getElementById("chambeador-month-reveal").value,
+      dayDuration: parseInt(document.getElementById("chambeador-day-duration").value) || 2,
+      weekDuration: parseInt(document.getElementById("chambeador-week-duration").value) || 3,
+      monthDuration: parseInt(document.getElementById("chambeador-month-duration").value) || 7,
+      lastUpdated: serverTimestamp()
+    };
+
+    await setDoc(doc(db, "settings", "chambeadorConfig"), config, { merge: true });
+    showToast("Configuración de chambeadores guardada correctamente.", "ok");
+    startChambeadorScheduler();
+  } catch(e) {
+    showToast("Error al guardar configuración: " + e.message, "err");
+  }
+};
+
+let chambeadorSchedulerTimer = null;
+
+function startChambeadorScheduler() {
+  if (chambeadorSchedulerTimer) {
+    clearInterval(chambeadorSchedulerTimer);
+  }
+  
+  chambeadorSchedulerTimer = setInterval(checkChambeadorRevealation, 60 * 1000); // Check every minute
+  checkChambeadorRevealation();
+}
+
+async function checkChambeadorRevealation() {
+  try {
+    const snap = await getDoc(doc(db, "settings", "chambeadorConfig"));
+    if (!snap.exists()) return;
+    
+    const config = snap.data();
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    
+    // Check each chambeador type
+    const chambeadorTypes = [
+      { type: "day", revealTime: config.dayRevealTime, duration: config.dayDuration },
+      { type: "week", revealTime: config.weekRevealTime, duration: config.weekDuration },
+      { type: "month", revealTime: config.monthRevealTime, duration: config.monthDuration }
+    ];
+    
+    for (const chambeador of chambeadorTypes) {
+      const [revealHour, revealMin] = chambeador.revealTime.split(":").map(Number);
+      const revealTimeMinutes = revealHour * 60 + revealMin;
+      
+      // Check if it's time to reveal
+      if (currentTime >= revealTimeMinutes && currentTime < revealTimeMinutes + 30) {
+        await revealChambeador(chambeador.type);
+      }
+      
+      // Check if it's time to hide
+      const hideTimeMinutes = revealTimeMinutes + (chambeador.duration * 60);
+      if (currentTime >= hideTimeMinutes) {
+        await hideChambeador(chambeador.type);
+      }
+    }
+  } catch(e) {
+    console.error("Error checking chambeador revelation:", e);
+  }
+}
+
+async function revealChambeador(type) {
+  // En una implementación real, esto actualizaría Firestore para mostrar el chambeador
+  console.log(`Revelando chambeador del ${type}`);
+  // Aquí se podría agregar un log de novedad
+}
+
+async function hideChambeador(type) {
+  // En una implementación real, esto actualizaría Firestore para ocultar el chambeador
+  console.log(`Ocultando chambeador del ${type}`);
+  // Aquí se podría agregar un log de novedad
+}
+
 function cfgToMs(cfg) {
 const h = parseInt(cfg?.hours, 10) || 0;
 const m = parseInt(cfg?.minutes, 10) || 0;
@@ -1243,9 +1366,9 @@ pointDecrementBusy = false;
 
 // ── PÁGINAS ───────────────────────────────────────────────────
 window.goPage = id => {
-if (id === "config" && myRole !== "admin") {
+if (id === "config-points" && myRole !== "admin") {
 showToast("Solo un admin puede entrar a Configurar Puntos.", "err");
-id = "dashboard";
+id = "config";
 }
 
 // Mostrar botón de reset novedades solo para admins
@@ -2151,7 +2274,7 @@ window.filterPCargo = v => {
 filterPCargo = v;
 const sel = document.getElementById("pts-cargo");
 if (sel && sel.options.length <= 1) {
-sel.innerHTML = ['<option value="">Todos los cargos</option>','<option>Inspector</option>','<option>Moderador</option>','<option>Editor</option>','<option>MC Team</option>','<option>Dev</option>'].join("");
+sel.innerHTML = ['<option value="">Todos los cargos</option>','<option>Inspector</option>','<option>Moderador</option>','<option>Editor</option>','<option>Marketing</option>','<option>MC Team</option>','<option>Dev</option>'].join("");
 }
 if (sel) sel.value = v;
 renderPointsTable(filteredPoints());
@@ -3142,34 +3265,95 @@ window.renderActivityChart = () => {
   const role = myRole;
   if (role !== "admin" && role !== "inspector") return;
 
-  // ACTIVIDAD DE ADMINS E INSPECTORES: Incluir ambos por defecto, respetar filtros
+  // ACTIVIDAD DE USUARIOS: Incluir todos los roles (Usuario, Admin, Inspector)
   const now = Date.now();
   const buckets = chartBuckets(chartPeriod, now);
   let maxVal = 1;
+  
+  // Estructura para almacenar actividad por rol
+  const roleActivity = {
+    user: new Array(buckets.length).fill(0),
+    admin: new Array(buckets.length).fill(0),
+    inspector: new Array(buckets.length).fill(0)
+  };
+  
   for (const b of buckets) {
-    b.admins = 0;
+    // Calcular actividad para cada rol
     for (const l of logs) {
       const t = logTimeRaw(l);
       if (t < b.start || t >= b.end) continue;
       const actorRole = String(l.actorRole || "").toLowerCase();
-      // Incluir admins e inspectores por defecto, respetar filtros
-      let includeActor = (actorRole === "admin" || actorRole === "inspector");
+      
+      let includeActor = (actorRole === "admin" || actorRole === "inspector" || actorRole === "user");
+      
+      // Filtro de rol: SÍ afecta
       if (filterState.rol && actorRole !== filterState.rol) includeActor = false;
-      if (filterState.user && l.actorUid !== filterState.user) includeActor = false;
+      
+      // Filtro de usuario individual: NO afecta (se ignora)
+      // Filtro de rango: NO afecta (se ignora)
+      // Filtro de cargo: NO afecta (se ignora)
+      
       if (includeActor) {
         const actor = allUsers.find(u => u.uid === l.actorUid) || null;
         if (actor && isInactiveStatus(actor.status) && t >= inactiveCutoffMs(actor)) continue;
-        if (filterState.rango && normRango(actor.rango) !== filterState.rango) continue;
-        if (filterState.cargo && !hasCargo(actor, filterState.cargo)) continue;
-        b.admins++;
+        
+        const bucketIndex = buckets.indexOf(b);
+        if (bucketIndex >= 0) {
+          // Lógica específica por rol
+          if (actorRole === "user") {
+            // Usuario: promedio entre ingresos y puntos
+            const loginCount = logs.filter(log => 
+              log.actorUid === l.actorUid && 
+              log.type === "login" &&
+              logTimeRaw(log) >= b.start && 
+              logTimeRaw(log) < b.end
+            ).length;
+            const userPoints = Number(actor.points || 0);
+            roleActivity.user[bucketIndex] += (loginCount + userPoints) / 2;
+          } else if (actorRole === "inspector") {
+            // Inspector: puntos que tienen, puntos que suben y ingresos
+            const inspectorPoints = Number(actor.points || 0);
+            const pointsAdded = logs.filter(log =>
+              log.actorUid === l.actorUid &&
+              log.type === "points" &&
+              log.delta > 0 &&
+              logTimeRaw(log) >= b.start &&
+              logTimeRaw(log) < b.end
+            ).reduce((sum, log) => sum + (log.delta || 0), 0);
+            const loginCount = logs.filter(log =>
+              log.actorUid === l.actorUid &&
+              log.type === "login" &&
+              logTimeRaw(log) >= b.start &&
+              logTimeRaw(log) < b.end
+            ).length;
+            roleActivity.inspector[bucketIndex] += inspectorPoints + pointsAdded + loginCount;
+          } else if (actorRole === "admin") {
+            // Admin: puntos que agregan e ingresos
+            const pointsAdded = logs.filter(log =>
+              log.actorUid === l.actorUid &&
+              log.type === "points" &&
+              log.delta > 0 &&
+              logTimeRaw(log) >= b.start &&
+              logTimeRaw(log) < b.end
+            ).reduce((sum, log) => sum + (log.delta || 0), 0);
+            const loginCount = logs.filter(log =>
+              log.actorUid === l.actorUid &&
+              log.type === "login" &&
+              logTimeRaw(log) >= b.start &&
+              logTimeRaw(log) < b.end
+            ).length;
+            roleActivity.admin[bucketIndex] += pointsAdded + loginCount;
+          }
+        }
       }
     }
-    maxVal = Math.max(maxVal, b.admins);
+    
+    maxVal = Math.max(maxVal, roleActivity.user[buckets.indexOf(b)], roleActivity.admin[buckets.indexOf(b)], roleActivity.inspector[buckets.indexOf(b)]);
   }
 
   const mode = modeStates.admin || "line";
 
-  // Modo lineal: mostrar evolución temporal de SOLO Admins
+  // Modo lineal: mostrar evolución temporal de todos los roles
   if (mode === "line") {
     const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
@@ -3191,35 +3375,51 @@ window.renderActivityChart = () => {
       xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="${buckets.length > 12 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
     });
 
-    const pts = buckets.map((b, i) => `${xPos(i)},${yPos(b.admins)}`).join(" ");
-    series += `<polyline points="${pts}" fill="none" stroke="#7f8cff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
-    buckets.forEach((b, i) => {
-      series += `<circle cx="${xPos(i)}" cy="${yPos(b.admins)}" r="2.6" fill="#7f8cff"/>`;
-    });
+    const PALETTE_ROLES = {
+      user: "#ff6b6b",
+      admin: "#7f8cff", 
+      inspector: "#3ecf8e"
+    };
+
+    const roleSeries = [
+      { name: "Usuario", color: PALETTE_ROLES.user, values: roleActivity.user },
+      { name: "Admin", color: PALETTE_ROLES.admin, values: roleActivity.admin },
+      { name: "Inspector", color: PALETTE_ROLES.inspector, values: roleActivity.inspector }
+    ];
+
+    for (const s of roleSeries) {
+      const pts = s.values.map((v, i) => `${xPos(i)},${yPos(v)}`).join(" ");
+      series += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+      s.values.forEach((v, i) => {
+        series += `<circle cx="${xPos(i)}" cy="${yPos(v)}" r="2.6" fill="${s.color}"/>`;
+      });
+    }
 
     el.innerHTML = `
-      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Actividad de Admins (${chartPeriod})">
+      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Actividad de Usuarios (${chartPeriod})">
         ${grid}
         <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
         <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
         ${xl}
         ${series}
       </svg>
-      <div class="chart-note">Actividad de Admins · ${chartPeriod === "day" ? "24 horas completas (12 AM → 11 PM)" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
+      <div class="chart-note">Actividad de Usuarios · ${chartPeriod === "day" ? "24 horas completas (12 AM → 11 PM)" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
 
     if (legendEl) {
-      legendEl.innerHTML = `<span class="legend-item"><span class="legend-dot" style="background:#7f8cff"></span>Admins</span>`;
+      legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     }
   }
-  // Modo columnas: mostrar promedio del período de SOLO Admins
+  // Modo columnas: mostrar actividad de todos los roles
   else if (mode === "cols") {
     const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
     const yMax = maxVal;
     const n = buckets.length;
-    const barWidth = Math.max(8, (iw / n) * 0.6);
-    const gap = (iw - (barWidth * n)) / (n + 1);
-    const xPos = i => pl + gap + i * (barWidth + gap);
+    const groupWidth = iw / n;
+    const barWidth = Math.max(4, (groupWidth / 3) * 0.7);
+    const groupGap = groupWidth * 0.1;
+    const barGap = Math.max(2, (groupWidth - groupGap - (barWidth * 3)) / 4);
+    const xPos = (periodIdx, roleIdx) => pl + (periodIdx * groupWidth) + groupGap/2 + barGap + roleIdx * (barWidth + barGap);
     const yPos = v => pt + ih - (ih * v) / yMax;
 
     let grid = "", xl = "", bars = "";
@@ -3232,14 +3432,22 @@ window.renderActivityChart = () => {
     }
     buckets.forEach((b, i) => {
       if (n > 10 && i % 2 === 1) return;
-      xl += `<text x="${xPos(i) + barWidth/2}" y="${H - 8}" text-anchor="middle" font-size="${n > 10 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
+      xl += `<text x="${pl + (i * groupWidth) + groupWidth/2}" y="${H - 8}" text-anchor="middle" font-size="${n > 10 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
     });
 
-    buckets.forEach((b, i) => {
-      const hBar = (b.admins / yMax) * ih;
-      const y = pt + ih - hBar;
-      bars += `<rect x="${xPos(i)}" y="${y}" width="${barWidth}" height="${hBar}" fill="#7f8cff" rx="3"/>`;
-    });
+    const roleSeries = [
+      { name: "Usuario", color: PALETTE_ROLES.user, values: roleActivity.user },
+      { name: "Admin", color: PALETTE_ROLES.admin, values: roleActivity.admin },
+      { name: "Inspector", color: PALETTE_ROLES.inspector, values: roleActivity.inspector }
+    ];
+
+    for (const s of roleSeries) {
+      s.values.forEach((v, i) => {
+        const hBar = (v / yMax) * ih;
+        const y = pt + ih - hBar;
+        bars += `<rect x="${xPos(i, roleSeries.indexOf(s))}" y="${y}" width="${barWidth}" height="${hBar}" fill="${s.color}" rx="2"/>`;
+      });
+    }
 
     el.innerHTML = `
       <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img">
@@ -3249,37 +3457,52 @@ window.renderActivityChart = () => {
         ${xl}
         ${bars}
       </svg>
-      <div class="chart-note">Promedio de actividad de Admins · ${chartPeriod === "day" ? "24 horas" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
+      <div class="chart-note">Actividad de Usuarios · ${chartPeriod === "day" ? "24 horas" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
 
     if (legendEl) {
-      legendEl.innerHTML = `<span class="legend-item"><span class="legend-dot" style="background:#7f8cff"></span>Admins</span>`;
+      legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     }
   }
-  // Modo circular: mostrar distribución como donut de SOLO Admins (promedio del período)
+  // Modo circular: mostrar distribución como donut de todos los roles
   else if (mode === "circ") {
-    const totalAdmins = buckets.reduce((sum, b) => sum + b.admins, 0);
+    const totalActivity = roleActivity.user.reduce((a, b) => a + b, 0) + 
+                          roleActivity.admin.reduce((a, b) => a + b, 0) + 
+                          roleActivity.inspector.reduce((a, b) => a + b, 0);
 
-    if (!totalAdmins) {
-      el.innerHTML = '<div class="chart-empty">Sin datos de actividad de Admins para el período seleccionado.</div>';
+    if (!totalActivity) {
+      el.innerHTML = '<div class="chart-empty">Sin datos de actividad de Usuarios para el período seleccionado.</div>';
       if (legendEl) legendEl.innerHTML = "";
       return;
     }
 
     const cx = 90, cy = 90, R = 62, C = 2 * Math.PI * R;
-    const frac = 1;
-    const dash = `${Math.max(frac * C - 2, 0.5)} ${C}`;
-    const rot = -90;
+    let acc = 0, arcs = "", legend = "";
+    
+    const roleData = [
+      { name: "Usuario", value: roleActivity.user.reduce((a, b) => a + b, 0), color: PALETTE_ROLES.user },
+      { name: "Admin", value: roleActivity.admin.reduce((a, b) => a + b, 0), color: PALETTE_ROLES.admin },
+      { name: "Inspector", value: roleActivity.inspector.reduce((a, b) => a + b, 0), color: PALETTE_ROLES.inspector }
+    ];
+
+    for (const it of roleData) {
+      const frac = it.value / totalActivity;
+      const dash = `${Math.max(frac * C - 2, 0.5)} ${C}`;
+      const rot = -90 + acc * 360;
+      arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${it.color}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
+      acc += frac;
+      legend += `<span class="legend-item"><span class="legend-dot" style="background:${it.color}"></span>${it.name} · ${(frac * 100).toFixed(1)}%</span>`;
+    }
 
     el.innerHTML = `
       <svg class="chart-svg" viewBox="0 0 180 180" role="img">
-        <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#7f8cff" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>
-        <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${Math.round(totalAdmins)}</text>
+        ${arcs}
+        <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${Math.round(totalActivity)}</text>
       </svg>
-      <div class="chart-legend"><span class="legend-item"><span class="legend-dot" style="background:#7f8cff"></span>Admins · 100%</span></div>
-      <div class="chart-note">Actividad de Admins · ${chartPeriod === "day" ? "24 horas" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
+      <div class="chart-legend">${legend}</div>
+      <div class="chart-note">Actividad de Usuarios · ${chartPeriod === "day" ? "24 horas" : chartPeriod === "week" ? "7 días" : "30 días"}</div>`;
 
     if (legendEl) {
-      legendEl.innerHTML = `<span class="legend-item"><span class="legend-dot" style="background:#7f8cff"></span>Admins</span>`;
+      legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     }
   }
 };
