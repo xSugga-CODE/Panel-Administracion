@@ -675,8 +675,17 @@ function stopLogsLive() {
   logs = [];
 }
 
+let logFilterUser = "";
+let logFilterRole = "";
+let logFilterRango = "";
+let logFilterCargo = "";
+
 window.setLogTypeFilterJow = (v) => { logTypeFilter = v; renderLogsJow(); };
 window.setLogSearchJow = (v) => { logSearch = (v || "").toLowerCase(); renderLogsJow(); };
+window.setLogFilterUser = (v) => { logFilterUser = v; renderLogsJow(); };
+window.setLogFilterRole = (v) => { logFilterRole = v; renderLogsJow(); };
+window.setLogFilterRango = (v) => { logFilterRango = v; renderLogsJow(); };
+window.setLogFilterCargo = (v) => { logFilterCargo = v; renderLogsJow(); };
 
 // ── CHART CONTROLS ─────────────────────────────────────────────
 // refreshCharts y resetChartData ya no se usan. Ahora usamos refreshSingleChart y resetSingleChart.
@@ -830,6 +839,22 @@ function filteredLogs() {
       const t = (l.targetName || "").toLowerCase();
       const r = (l.reason || "").toLowerCase();
       return a.includes(logSearch) || t.includes(logSearch) || r.includes(logSearch);
+    });
+  }
+  if (logFilterUser) list = list.filter(l => l.actorUid === logFilterUser || l.targetUid === logFilterUser);
+  if (logFilterRole) list = list.filter(l => String(l.actorRole || "").toLowerCase() === logFilterRole);
+  if (logFilterRango) {
+    list = list.filter(l => {
+      const actor = allMembers.find(u => u.uid === l.actorUid);
+      const target = allMembers.find(u => u.uid === l.targetUid);
+      return (actor && normRango(actor.rango) === logFilterRango) || (target && normRango(target.rango) === logFilterRango);
+    });
+  }
+  if (logFilterCargo) {
+    list = list.filter(l => {
+      const actor = allMembers.find(u => u.uid === l.actorUid);
+      const target = allMembers.find(u => u.uid === l.targetUid);
+      return (actor && hasCargo(actor, logFilterCargo)) || (target && hasCargo(target, logFilterCargo));
     });
   }
   return list;
@@ -1090,6 +1115,7 @@ function setupStaffView() {
 
   if (isStaff) {
     populateUserFilter();
+    populateLogUserFilter();
     renderPointsTable();
     renderStats();
     renderActivityChart();
@@ -1102,6 +1128,12 @@ function setupStaffView() {
     document.querySelectorAll(".res-ctrl").forEach(b => {
       b.style.display = role === "admin" ? "" : "none";
     });
+
+    // Botón de reset novedades: visible solo para admins
+    const resetNovedadesBtn = document.getElementById("reset-novedades-btn");
+    if (resetNovedadesBtn) {
+      resetNovedadesBtn.style.display = role === "admin" ? "" : "none";
+    }
   } else {
     renderPointsTable();
     renderStats();
@@ -1294,8 +1326,8 @@ window.setChartPeriod = (p, btn) => {
 };
 
 // ── GRÁFICO: ACTIVIDAD DE ADMINS ─────────────────────────────
-// Estadística EXCLUSIVA de Admins; separada de las del resto del equipo.
-// NO respeta los filtros de Usuario/Rol/Rango/Cargo por diseño.
+// Estadística de Admins e Inspectores; separada de las del resto del equipo.
+// Respeta los filtros globales de Usuario/Rol/Rango/Cargo.
 function renderActivityChart() {
   const el = document.getElementById("activity-chart");
   const legendEl = document.getElementById("chart-legend");
@@ -1304,7 +1336,7 @@ function renderActivityChart() {
   if (role !== "admin" && role !== "inspector") return;
 
   if (!logs.length) {
-    el.innerHTML = '<div class="chart-empty">Sin datos de actividad todavía. Los movimientos de los admins aparecerán acá.</div>';
+    el.innerHTML = '<div class="chart-empty">Sin datos de actividad todavía. Los movimientos de los admins e inspectores aparecerán acá.</div>';
     if (legendEl) legendEl.innerHTML = "";
     return;
   }
@@ -1317,9 +1349,16 @@ function renderActivityChart() {
     for (const l of logs) {
       const t = logTime(l);
       if (t < b.start || t >= b.end) continue;
-      if (String(l.actorRole || "").toLowerCase() === "admin") {
+      const actorRole = String(l.actorRole || "").toLowerCase();
+      // Incluir admins e inspectores por defecto, respetar filtros
+      let includeActor = (actorRole === "admin" || actorRole === "inspector");
+      if (filterState.rol && actorRole !== filterState.rol) includeActor = false;
+      if (filterState.user && l.actorUid !== filterState.user) includeActor = false;
+      if (includeActor) {
         const actor = allMembers.find(u => u.uid === l.actorUid) || null;
         if (actor && isInactiveStatus(actor.status) && t >= inactiveCutoffMs(actor)) continue;
+        if (filterState.rango && normRango(actor.rango) !== filterState.rango) continue;
+        if (filterState.cargo && !hasCargo(actor, filterState.cargo)) continue;
         b.admins++;
       }
     }
@@ -1684,9 +1723,24 @@ function countActionsBy(uid) {
 function populateUserFilter() {
   const userSelect = document.getElementById("filter-user");
   if (!userSelect) return;
-  
+
   userSelect.innerHTML = '<option value="">Todos</option>';
   // Punto 3: TODOS los usuarios (user / admin / inspector) — no solo staff
+  const team = allMembers.filter(u => ["admin","inspector","user"].includes(u.role));
+  team.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  team.forEach(u => {
+    const option = document.createElement("option");
+    option.value = u.uid;
+    option.textContent = u.name || "—";
+    userSelect.appendChild(option);
+  });
+}
+
+function populateLogUserFilter() {
+  const userSelect = document.getElementById("log-filter-user");
+  if (!userSelect) return;
+
+  userSelect.innerHTML = '<option value="">Usuario</option>';
   const team = allMembers.filter(u => ["admin","inspector","user"].includes(u.role));
   team.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   team.forEach(u => {
@@ -1819,8 +1873,8 @@ function renderRankingAdmins() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  // Excluir admin del ranking de puntos SIEMPRE (incluso si el filtro de rol lo pide).
-  let members = allMembers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
+  // Incluir inspectores y usuarios en el ranking de puntos.
+  let members = allMembers.filter(u => ["admin", "inspector", "user"].includes(String(u.role || "").toLowerCase()));
   if (filterState.user) members = members.filter(u => u.uid === filterState.user);
   if (filterState.rol) members = members.filter(u => String(u.role || "").toLowerCase() === filterState.rol);
   if (filterState.rango) members = members.filter(u => normRango(u.rango) === filterState.rango);
@@ -1975,9 +2029,9 @@ function renderEvolutionPts() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
 
-  // Excluir admin de la evolución general del equipo SIEMPRE (incluso si el filtro lo pide).
+  // Incluir inspector y user por defecto (sin admin)
   let team = allMembers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
-  
+
   // Apply filters
   if (filterState.user) {
     team = team.filter(u => u.uid === filterState.user);
@@ -1991,7 +2045,6 @@ function renderEvolutionPts() {
   if (filterState.cargo) {
     team = team.filter(u => hasCargo(u, filterState.cargo));
   }
-  team = team.filter(u => String(u.role || "").toLowerCase() !== "admin");
   
   team = team.sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 6);
   
@@ -2328,9 +2381,11 @@ function renderNovedades() {
     return;
   }
 
+  const isAdmin = currentUser?.role === "admin";
   el.innerHTML = novedades.map(n => {
     const fecha = n.fecha?.toDate ? fmtFecha(n.fecha.toDate()) : "—";
     const icono = getNovedadIcon(n.texto||"");
+    const deleteBtn = isAdmin ? `<button class="logout-btn" style="position:static;font-size:12px;padding:4px 8px" onclick="deleteNovedad('${n.id}')">🗑️</button>` : "";
     return `
       <div class="novedad-item">
         <div class="nov-icon">${icono}</div>
@@ -2338,9 +2393,42 @@ function renderNovedades() {
           <div class="nov-texto">${esc(n.texto||"")}</div>
           <div class="nov-meta">${fecha}${n.autor ? ` · por ${esc(n.autor)}` : ""}</div>
         </div>
+        ${deleteBtn}
       </div>`;
   }).join("");
 }
+
+window.deleteNovedad = async (id) => {
+  if (currentUser?.role !== "admin") return;
+  const ok = confirm("¿Borrar esta novedad? No se puede deshacer.");
+  if (!ok) return;
+  try {
+    await deleteDoc(doc(db, "novedades", id));
+    showToast("Novedad borrada.", "ok");
+    // Recargar novedades
+    const snap = await getDocs(query(collection(db, "novedades"), orderBy("fecha", "desc"), limit(20)));
+    novedades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderNovedades();
+  } catch(e) {
+    showToast("Error al borrar: " + e.message, "err");
+  }
+};
+
+window.resetNovedades = async () => {
+  if (currentUser?.role !== "admin") return;
+  const ok = confirm("¿Estás seguro de borrar TODAS las novedades? Esta acción no se puede deshacer.");
+  if (!ok) return;
+  try {
+    const snap = await getDocs(collection(db, "novedades"));
+    const batch = snap.docs.map(d => deleteDoc(doc(db, "novedades", d.id)));
+    await Promise.all(batch);
+    novedades = [];
+    renderNovedades();
+    showToast("Todas las novedades han sido borradas.", "ok");
+  } catch(e) {
+    showToast("Error al borrar: " + e.message, "err");
+  }
+};
 
 function getNovedadIcon(texto) {
   const t = texto.toLowerCase();

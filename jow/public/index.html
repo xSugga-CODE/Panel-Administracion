@@ -364,12 +364,52 @@
 
         <div class="card">
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-            <select onchange="setLogTypeFilterJow(this.value)" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none">
-              <option value="">Todos</option>
-              <option value="login">Logins</option>
-              <option value="points">Cambios de puntos</option>
-            </select>
-            <input type="text" placeholder="Buscar…" oninput="setLogSearchJow(this.value)" style="flex:1;min-width:180px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none"/>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <label style="font-size:11px;color:var(--muted)">Tipo</label>
+              <select onchange="setLogTypeFilterJow(this.value)" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none;min-width:120px">
+                <option value="">Todos</option>
+                <option value="login">Logins</option>
+                <option value="points">Cambios de puntos</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <label style="font-size:11px;color:var(--muted)">Usuario</label>
+              <select id="log-filter-user" onchange="setLogFilterUser(this.value)" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none;min-width:150px">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <label style="font-size:11px;color:var(--muted)">Rol</label>
+              <select id="log-filter-role" onchange="setLogFilterRole(this.value)" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none;min-width:120px">
+                <option value="">Todos</option>
+                <option value="admin">Admin</option>
+                <option value="inspector">Inspector</option>
+                <option value="user">Usuario</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <label style="font-size:11px;color:var(--muted)">Rango</label>
+              <select id="log-filter-rango" onchange="setLogFilterRango(this.value)" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none;min-width:120px">
+                <option value="">Todos</option>
+                <option value="centinela">Centinela</option>
+                <option value="vigia">Vigia</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <label style="font-size:11px;color:var(--muted)">Cargo</label>
+              <select id="log-filter-cargo" onchange="setLogFilterCargo(this.value)" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none;min-width:120px">
+                <option value="">Todos</option>
+                <option value="Inspector">Inspector</option>
+                <option value="Moderador">Moderador</option>
+                <option value="Editor">Editor</option>
+                <option value="MC Team">MC Team</option>
+                <option value="Dev">Dev</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1">
+              <label style="font-size:11px;color:var(--muted)">Buscar</label>
+              <input type="text" placeholder="Buscar…" oninput="setLogSearchJow(this.value)" style="min-width:180px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none"/>
+            </div>
           </div>
           <table>
             <thead>
@@ -515,8 +555,11 @@
       <section id="novedades-tab" class="tab-content" style="display:none">
         <h2>Novedades</h2>
         <div class="card">
-          <div style="color:#9ba8d6;margin-bottom:18px;font-size:13px">
-            🔔 <b>Avisos importantes del equipo</b>. Aquí solo aparecerán eventos relevantes: ingresos de nuevos miembros, alertas de desempeño bajo, recuperaciones y reconocimientos destacados. <b style="color:#c7d2ff">No es un log de cada cambio de puntos</b>.
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+            <div style="color:#9ba8d6;font-size:13px">
+              🔔 <b>Avisos importantes del equipo</b>. Aquí solo aparecerán eventos relevantes: ingresos de nuevos miembros, alertas de desempeño bajo, recuperaciones y reconocimientos destacados. <b style="color:#c7d2ff">No es un log de cada cambio de puntos</b>.
+            </div>
+            <button class="logout-btn" id="reset-novedades-btn" style="display:none" onclick="resetNovedades()">🗑️ Borrar todas</button>
           </div>
           <div id="novedades-list">
             <div class="t-empty">Cargando novedades…</div>

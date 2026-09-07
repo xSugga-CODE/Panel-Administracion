@@ -601,12 +601,52 @@ width:100% !important;
 </div>
 <div class="tcard">
 <div class="ttoolbar">
-<select onchange="setLogTypeFilter(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none">
+<div style="display:flex;flex-direction:column;gap:4px">
+<label style="font-size:11px;color:var(--muted)">Tipo</label>
+<select onchange="setLogTypeFilter(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none;min-width:100px">
 <option value="">Todos</option>
 <option value="login">Logins</option>
 <option value="points">Cambios de puntos</option>
 </select>
+</div>
+<div style="display:flex;flex-direction:column;gap:4px">
+<label style="font-size:11px;color:var(--muted)">Usuario</label>
+<select id="log-filter-user" onchange="setLogFilterUser(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none;min-width:120px">
+<option value="">Todos</option>
+</select>
+</div>
+<div style="display:flex;flex-direction:column;gap:4px">
+<label style="font-size:11px;color:var(--muted)">Rol</label>
+<select id="log-filter-role" onchange="setLogFilterRole(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none;min-width:100px">
+<option value="">Todos</option>
+<option value="admin">Admin</option>
+<option value="inspector">Inspector</option>
+<option value="user">Usuario</option>
+</select>
+</div>
+<div style="display:flex;flex-direction:column;gap:4px">
+<label style="font-size:11px;color:var(--muted)">Rango</label>
+<select id="log-filter-rango" onchange="setLogFilterRango(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none;min-width:100px">
+<option value="">Todos</option>
+<option value="centinela">Centinela</option>
+<option value="vigia">Vigia</option>
+</select>
+</div>
+<div style="display:flex;flex-direction:column;gap:4px">
+<label style="font-size:11px;color:var(--muted)">Cargo</label>
+<select id="log-filter-cargo" onchange="setLogFilterCargo(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none;min-width:100px">
+<option value="">Todos</option>
+<option value="Inspector">Inspector</option>
+<option value="Moderador">Moderador</option>
+<option value="Editor">Editor</option>
+<option value="MC Team">MC Team</option>
+<option value="Dev">Dev</option>
+</select>
+</div>
+<div style="display:flex;flex-direction:column;gap:4px;flex:1">
+<label style="font-size:11px;color:var(--muted)">Buscar</label>
 <div class="search"><span>🔍</span><input type="text" placeholder="Buscar…" oninput="setLogSearch(this.value)"/></div>
+</div>
 </div>
 <table>
 <thead>
@@ -780,6 +820,10 @@ let logs         = [];
 let logsUnsub    = null;
 let logTypeFilter = "";
 let logSearch     = "";
+let logFilterUser = "";
+let logFilterRole = "";
+let logFilterRango = "";
+let logFilterCargo = "";
 let filterPCargo   = "";
 let ptsShowDetails = false;
 // Estado de gráficos: tipo por gráfico y período para los temporales
@@ -1169,6 +1213,12 @@ if (id === "config" && myRole !== "admin") {
 showToast("Solo un admin puede entrar a Configurar Puntos.", "err");
 id = "dashboard";
 }
+
+// Mostrar botón de reset novedades solo para admins
+const resetNovedadesBtn = document.getElementById("reset-novedades-btn");
+if (resetNovedadesBtn) {
+  resetNovedadesBtn.style.display = myRole === "admin" ? "" : "none";
+}
 document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
 document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
 document.getElementById("page-" + id).classList.add("active");
@@ -1193,6 +1243,10 @@ if (id === "charts") {
 
 window.setLogTypeFilter = v => { logTypeFilter = v; renderLogs(); };
 window.setLogSearch = v => { logSearch = (v || "").toLowerCase(); renderLogs(); };
+window.setLogFilterUser = v => { logFilterUser = v; renderLogs(); };
+window.setLogFilterRole = v => { logFilterRole = v; renderLogs(); };
+window.setLogFilterRango = v => { logFilterRango = v; renderLogs(); };
+window.setLogFilterCargo = v => { logFilterCargo = v; renderLogs(); };
 window.toggleInspectorPanel = () => {
 const el = document.getElementById("insp-panel");
 if (!el) return;
@@ -1635,6 +1689,22 @@ const r = (l.reason || "").toLowerCase();
 return a.includes(logSearch) || t.includes(logSearch) || r.includes(logSearch);
 });
 }
+if (logFilterUser) list = list.filter(l => l.actorUid === logFilterUser || l.targetUid === logFilterUser);
+if (logFilterRole) list = list.filter(l => String(l.actorRole || "").toLowerCase() === logFilterRole);
+if (logFilterRango) {
+list = list.filter(l => {
+const actor = allUsers.find(u => u.uid === l.actorUid);
+const target = allUsers.find(u => u.uid === l.targetUid);
+return (actor && normRango(actor.rango) === logFilterRango) || (target && normRango(target.rango) === logFilterRango);
+});
+}
+if (logFilterCargo) {
+list = list.filter(l => {
+const actor = allUsers.find(u => u.uid === l.actorUid);
+const target = allUsers.find(u => u.uid === l.targetUid);
+return (actor && hasCargo(actor, logFilterCargo)) || (target && hasCargo(target, logFilterCargo));
+});
+}
 return list;
 }
 
@@ -1819,6 +1889,7 @@ const snap = await getDocs(q);
 allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
 // Poblar filtro de usuarios con TODOS los usuarios
 if (typeof populateUserFilter === "function") populateUserFilter();
+if (typeof populateLogUserFilter === "function") populateLogUserFilter();
 renderAll();
 } catch(e) {
 console.error(e);
@@ -2613,6 +2684,22 @@ window.populateUserFilter = () => {
   });
 };
 
+// Función para poblar el filtro de usuarios en los logs
+window.populateLogUserFilter = () => {
+  const userSelect = document.getElementById("log-filter-user");
+  if (!userSelect) return;
+
+  userSelect.innerHTML = '<option value="">Usuario</option>';
+  const allUsersList = allUsers.filter(u => ["admin","inspector","user"].includes(u.role));
+  allUsersList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  allUsersList.forEach(u => {
+    const option = document.createElement("option");
+    option.value = u.uid;
+    option.textContent = u.name || "—";
+    userSelect.appendChild(option);
+  });
+};
+
 window.resetFilters = () => {
   ["filter-user","filter-rol","filter-rango","filter-cargo"].forEach(id => {
     const el = document.getElementById(id);
@@ -2761,8 +2848,8 @@ window.renderRankingAdmins = () => {
   const role = myRole;
   if (role !== "admin" && role !== "inspector") return;
 
-  // Ranking de Puntos: EXCLUIR admins SIEMPRE (incluso si el filtro lo pide).
-  let members = allUsers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
+  // Incluir todos los roles por defecto (admin, inspector, user) y dejar que los filtros decidan.
+  let members = allUsers.filter(u => ["admin", "inspector", "user"].includes(String(u.role || "").toLowerCase()));
   if (filterState.user) members = members.filter(u => u.uid === filterState.user);
   if (filterState.rol) members = members.filter(u => String(u.role || "").toLowerCase() === filterState.rol);
   if (filterState.rango) members = members.filter(u => normRango(u.rango) === filterState.rango || String(u.rango || "").toLowerCase().includes(filterState.rango));
@@ -2856,11 +2943,10 @@ window.renderEvolutionPts = () => {
   const role = myRole;
   if (role !== "admin" && role !== "inspector") return;
 
-  // Evolución General del Equipo: EXCLUIR admins SIEMPRE (incluso si el filtro lo pide).
+  // Incluir inspector y user por defecto (sin admin)
   let team = allUsers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
   if (filterState.user) team = team.filter(u => u.uid === filterState.user);
   if (filterState.rol) team = team.filter(u => String(u.role || "").toLowerCase() === filterState.rol);
-  team = team.filter(u => String(u.role || "").toLowerCase() !== "admin");
 
   team = team.sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 6);
 
@@ -2975,7 +3061,7 @@ window.renderActivityChart = () => {
   const role = myRole;
   if (role !== "admin" && role !== "inspector") return;
 
-  // ACTIVIDAD DE ADMINS: EXCLUSIVAMENTE ADMINS, sin filtros de Usuario/Rol
+  // ACTIVIDAD DE ADMINS E INSPECTORES: Incluir ambos por defecto, respetar filtros
   const now = Date.now();
   const buckets = chartBuckets(chartPeriod, now);
   let maxVal = 1;
@@ -2984,10 +3070,16 @@ window.renderActivityChart = () => {
     for (const l of logs) {
       const t = logTimeRaw(l);
       if (t < b.start || t >= b.end) continue;
-      const r = String(l.actorRole || "").toLowerCase();
-      if (r === "admin") {
+      const actorRole = String(l.actorRole || "").toLowerCase();
+      // Incluir admins e inspectores por defecto, respetar filtros
+      let includeActor = (actorRole === "admin" || actorRole === "inspector");
+      if (filterState.rol && actorRole !== filterState.rol) includeActor = false;
+      if (filterState.user && l.actorUid !== filterState.user) includeActor = false;
+      if (includeActor) {
         const actor = allUsers.find(u => u.uid === l.actorUid) || null;
         if (actor && isInactiveStatus(actor.status) && t >= inactiveCutoffMs(actor)) continue;
+        if (filterState.rango && normRango(actor.rango) !== filterState.rango) continue;
+        if (filterState.cargo && !hasCargo(actor, filterState.cargo)) continue;
         b.admins++;
       }
     }
