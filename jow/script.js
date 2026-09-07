@@ -601,7 +601,7 @@ async function bootApp() {
   const name = currentUser.name || "—";
   const role = currentUser.role || "user";
 
-  // Mostrar panel superior del usuario actual
+  // Mostrar panel superior del usuario actual (para todos los roles)
   const userStatsSection = document.getElementById("user-stats-section");
   if (userStatsSection) {
     userStatsSection.style.display = "grid";
@@ -2384,6 +2384,8 @@ function renderStaffTable() {
     return;
   }
   tb.innerHTML = allMembers.map(u => {
+    const isMe = currentUser && u.uid === currentUser.uid;
+    
     // Cargos: campo libre en Firestore (array o string), o el rol de la página si no existe
     const cargos = Array.isArray(u.cargos)
       ? u.cargos.map(c => `<span class="tag">${esc(c)}</span>`).join(" ")
@@ -2395,8 +2397,11 @@ function renderStaffTable() {
     const rango = fmtRango(u.rango);
 
     return `
-      <tr>
-        <td><b>${esc(u.name||"—")}</b></td>
+      <tr ${isMe ? 'class="my-row"' : ""}>
+        <td>
+          <b>${esc(u.name||"—")}</b>
+          ${isMe ? '<span class="you-tag">tú</span>' : ""}
+        </td>
         <td><span class="rango-tag">${rango}</span></td>
         <td>${cargos}</td>
         <td>${statusBadge(u.status)}</td>

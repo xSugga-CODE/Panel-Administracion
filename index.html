@@ -180,6 +180,19 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .chart-empty{color:var(--muted);font-size:13px;padding:40px 16px;text-align:center}
 .chart-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;justify-content:center;width:100%}
 
+/* Estilos para resaltar al usuario actual en tablas */
+tr.my-row td { background: rgba(88,101,242,.06); }
+.you-tag { 
+  background: rgba(88,101,242,.12); 
+  color: var(--accent); 
+  font-size: 10px; 
+  font-weight: 600; 
+  padding: 2px 6px; 
+  border-radius: 4px; 
+  margin-left: 6px; 
+  text-transform: uppercase; 
+}
+
 /* Disposición vertical de gráficos y leyendas en PC para el dashboard */
 @media (min-width: 1024px) {
   #page-charts .chart-card {
@@ -2187,8 +2200,11 @@ valueCell = '<td><span style="color:var(--muted);font-size:11px">—</span></td>
 adjustCell = '<td><span style="color:var(--muted);font-size:11px">—</span></td>';
 }
 return `
-   <tr>
-     <td><b>${esc(u.name||"—")}</b></td>
+   <tr ${isSelf ? 'class="my-row"' : ""}>
+     <td>
+       <b>${esc(u.name||"—")}</b>
+       ${isSelf ? '<span class="you-tag">tú</span>' : ""}
+     </td>
      <td>${roleBadge(u.role)}</td>
      <td><span class="pts-val" id="pv-${u.uid}">${fmtPts(u.points)}</span></td>
      ${detailCells}
