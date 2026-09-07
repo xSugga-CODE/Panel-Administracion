@@ -188,10 +188,16 @@ tr:hover td{background:rgba(255,255,255,.015)}
   .chart-container {
     width: 100%;
     order: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
   .chart-legend {
     width: 100%;
     order: 2;
+  }
+  .chart-svg {
+    max-width: 280px;
   }
 }
 .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
@@ -448,7 +454,7 @@ width:100% !important;
 </div>
 
 <!-- NIVEL 2: RANKING DE PUNTOS -->
-<div class="chart-grid">
+<div class="chart-grid two-col">
   <div class="card chart-card">
     <div class="chart-head">
       <h3>🏆 Ranking de Puntos</h3>
@@ -494,7 +500,7 @@ width:100% !important;
 </div>
 
 <!-- ACTIVIDAD DE ADMINS (separada del MC Team) -->
-<div class="card chart-card">
+<div class="card chart-card" id="activity-admins-card">
   <div class="chart-head">
     <h3>🕐 Actividad de Admins</h3>
     <div class="chart-toolbar" id="chart-toolbar">
@@ -517,7 +523,7 @@ width:100% !important;
 </div>
 
 <!-- ACTIVIDAD DE INSPECTORES -->
-<div class="card chart-card">
+<div class="card chart-card" id="activity-inspectors-card">
   <div class="chart-head">
     <h3>📊 Actividad de Inspectores</h3>
     <div class="chart-toolbar">
@@ -707,7 +713,7 @@ width:100% !important;
 <option value="《🪬》 Overlord">《🪬》 Overlord</option>
 <option value="《🧿》 Owner">《🧿》 Owner</option>
 <option value="《💎》 Admin">《💎》 Admin</option>
-<option value="《🔹》 Centinela" selected>《🔹》 Centinela</option>
+<option value="《💠》 Centinela" selected>《💠》 Centinela</option>
 <option value="《🔹》 Vigia">《🔹》 Vigia</option>
 </select>
 </div>
@@ -1237,14 +1243,23 @@ if (resetNovedadesBtn) {
 
 // Para usuarios, ocultar la pestaña de gráficos en el dashboard
 if (myRole === "user" && id === "charts") {
-  showToast("Solo los inspectores y admins pueden ver los gráficos.", "err");
-  id = "dashboard";
+  // Permitir que los usuarios vean los gráficos, pero ocultar algunos
+  // Los usuarios solo ven Ranking de Puntos y Evolución general
 }
 
 // Para usuarios, ocultar el gráfico de evolución general
 const evoChartCard = document.getElementById("evo-chart-card");
 if (evoChartCard) {
-  evoChartCard.style.display = myRole === "user" ? "none" : "";
+  evoChartCard.style.display = myRole === "user" ? "" : "";
+}
+
+// Para usuarios, ocultar gráficos de actividad (solo ver Ranking y Evolución)
+if (myRole === "user") {
+  const activityAdminsCard = document.getElementById("activity-admins-card");
+  if (activityAdminsCard) activityAdminsCard.style.display = "none";
+  
+  const activityInspectorsCard = document.getElementById("activity-inspectors-card");
+  if (activityInspectorsCard) activityInspectorsCard.style.display = "none";
 }
 document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
 document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
@@ -2601,7 +2616,7 @@ const RANK_LABELS_DASH = {
   overlord:  "《🪬》 Overlord",
   owner:     "《🧿》 Owner",
   admin:     "《💎》 Admin",
-  centinela: "《🔹》 Centinela",
+  centinela: "《💠》 Centinela",
   vigia:     "《🔹》 Vigia"
 };
 function normRango(r) {

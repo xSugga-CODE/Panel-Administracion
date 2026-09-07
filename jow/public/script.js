@@ -1108,14 +1108,17 @@ function setupStaffView() {
   const logsBtn = document.getElementById("logs-tab-btn");
   if (logsBtn) logsBtn.style.display = isStaff ? "" : "none";
 
-  // Punto 8: Usuarios pueden ver Gráficos pero solo Ranking de Puntos
+  // Punto 8: Usuarios pueden ver Gráficos (Ranking de Puntos y Evolución general)
   const graficosBtn = document.getElementById("graficos-tab-btn");
   if (graficosBtn) graficosBtn.style.display = (role === "user" || isStaff) ? "" : "none";
 
-  // Para usuarios, ocultar el gráfico de evolución general
-  const evoChartCard = document.getElementById("evo-chart-card");
-  if (evoChartCard) {
-    evoChartCard.style.display = role === "user" ? "none" : "";
+  // Para usuarios, ocultar gráficos de actividad (solo ver Ranking y Evolución)
+  if (role === "user") {
+    const activityAdminsCard = document.getElementById("activity-admins-card");
+    if (activityAdminsCard) activityAdminsCard.style.display = "none";
+    
+    const activityInspectorsCard = document.getElementById("activity-inspectors-card");
+    if (activityInspectorsCard) activityInspectorsCard.style.display = "none";
   }
 
   document.querySelectorAll(".tab-content").forEach(el => { el.style.display="none"; el.classList.remove("active"); });

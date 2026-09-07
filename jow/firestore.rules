@@ -59,7 +59,7 @@ service cloud.firestore {
     }
 
     match /settings/{docId} {
-      allow read: if signedIn() && isStaff();
+      allow read: if signedIn();
       allow write: if signedIn() && isAdmin();
     }
 
