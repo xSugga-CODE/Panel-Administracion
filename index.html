@@ -86,7 +86,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .dest-body{font-size:14px;line-height:1.7}
 .dest-body b{color:var(--warn)}
 .chart-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));margin-bottom:22px}
-.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;display:flex;flex-direction:column}
 .chart-card h4{font-size:14px;font-weight:700;margin-bottom:4px}
 .chart-card .csub{color:var(--muted);font-size:11px;margin-bottom:12px}
 .chart-card canvas{max-height:260px}
@@ -178,7 +178,22 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .period-btn.active{background:rgba(91,141,238,.16);border-color:var(--accent);color:var(--accent)}
 .chart-container{min-height:200px;display:flex;align-items:center;justify-content:center}
 .chart-empty{color:var(--muted);font-size:13px;padding:40px 16px;text-align:center}
-.chart-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;justify-content:center}
+.chart-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;justify-content:center;width:100%}
+
+/* Disposición vertical de gráficos y leyendas en PC */
+@media (min-width: 1024px) {
+  .chart-card {
+    flex-direction: column;
+  }
+  .chart-container {
+    width: 100%;
+    order: 1;
+  }
+  .chart-legend {
+    width: 100%;
+    order: 2;
+  }
+}
 .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .legend-dot{width:10px;height:10px;border-radius:50%}
 .chart-note-inline{font-size:11px;color:var(--muted);margin-left:auto}
@@ -433,7 +448,7 @@ width:100% !important;
 </div>
 
 <!-- NIVEL 2: RANKING DE PUNTOS -->
-<div class="chart-grid two-col">
+<div class="chart-grid">
   <div class="card chart-card">
     <div class="chart-head">
       <h3>🏆 Ranking de Puntos</h3>
@@ -456,7 +471,7 @@ width:100% !important;
 </div>
 
 <!-- NIVEL 3: GRÁFICOS PRINCIPALES -->
-<div class="card chart-card">
+<div class="card chart-card" id="evo-chart-card">
   <div class="chart-head">
     <h3>📈 Evolución general del equipo</h3>
     <div class="chart-toolbar">
@@ -1219,6 +1234,18 @@ const resetNovedadesBtn = document.getElementById("reset-novedades-btn");
 if (resetNovedadesBtn) {
   resetNovedadesBtn.style.display = myRole === "admin" ? "" : "none";
 }
+
+// Para usuarios, ocultar la pestaña de gráficos en el dashboard
+if (myRole === "user" && id === "charts") {
+  showToast("Solo los inspectores y admins pueden ver los gráficos.", "err");
+  id = "dashboard";
+}
+
+// Para usuarios, ocultar el gráfico de evolución general
+const evoChartCard = document.getElementById("evo-chart-card");
+if (evoChartCard) {
+  evoChartCard.style.display = myRole === "user" ? "none" : "";
+}
 document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
 document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
 document.getElementById("page-" + id).classList.add("active");
@@ -1866,15 +1893,37 @@ const u = allUsers.find(x => x.uid === bestUid);
 return u ? { u, count: best } : null;
 }
 
+const now = Date.now();
+const oneDayMs = 24 * 60 * 60 * 1000;
+const oneWeekMs = 7 * oneDayMs;
+const oneMonthMs = 30 * oneDayMs;
+
+// Calcular el inicio del sistema (primer log o timestamp más antiguo)
+let systemStart = now;
+if (logs.length > 0) {
+  const oldestLog = logs.reduce((min, l) => {
+    const t = logTimeRaw(l);
+    return t > 0 && t < min ? t : min;
+  }, now);
+  systemStart = oldestLog;
+}
+
 function renderDestacados() {
 const defs = [
-{ mode: "day",   id: "dest-dia",    empty: "Sin actividad hoy" },
-{ mode: "week",  id: "dest-semana", empty: "Sin actividad esta semana" },
-{ mode: "month", id: "dest-mes",    empty: "Sin actividad este mes" }
+{ mode: "day",   id: "dest-dia",    empty: "Sin actividad hoy", elapsed: now - systemStart, minRequired: oneDayMs },
+{ mode: "week", id: "dest-semana", empty: "Sin actividad esta semana", elapsed: now - systemStart, minRequired: oneWeekMs },
+{ mode: "month", id: "dest-mes",    empty: "Sin actividad este mes", elapsed: now - systemStart, minRequired: oneMonthMs }
 ];
 for (const def of defs) {
 const el = document.getElementById(def.id);
 if (!el) continue;
+// Solo mostrar si ha pasado el tiempo mínimo requerido
+if (def.elapsed < def.minRequired) {
+  const remaining = Math.ceil((def.minRequired - def.elapsed) / oneDayMs);
+  el.innerHTML = `<span style="color:var(--muted);font-size:12px">Requiere ${remaining} día(s) más de datos</span>`;
+  continue;
+}
+
 const w = periodTopStaff(def.mode);
 if (!w) { el.innerHTML = def.empty; continue; }
 el.innerHTML = `🏆 <b>${esc(w.u.name || "—")}</b><br><span style="color:var(--muted);font-size:12px">🎯 ${w.count} acciones · ⭐ ${fmtPts(w.u.points)} pts · ${def.mode === "day" ? "hoy" : def.mode === "week" ? "7 días" : "30 días"}</span>`;
@@ -2779,6 +2828,7 @@ function periodPointsForUserDash(u, period) {
     const d = typeof l.delta === "number" ? l.delta : 0;
     if (d > 0) pts += d;
   }
+  // Para semana/mes, mostrar puntos ganados en el período
   return pts;
 }
 

@@ -1108,6 +1108,16 @@ function setupStaffView() {
   const logsBtn = document.getElementById("logs-tab-btn");
   if (logsBtn) logsBtn.style.display = isStaff ? "" : "none";
 
+  // Punto 8: Usuarios pueden ver Gráficos pero solo Ranking de Puntos
+  const graficosBtn = document.getElementById("graficos-tab-btn");
+  if (graficosBtn) graficosBtn.style.display = (role === "user" || isStaff) ? "" : "none";
+
+  // Para usuarios, ocultar el gráfico de evolución general
+  const evoChartCard = document.getElementById("evo-chart-card");
+  if (evoChartCard) {
+    evoChartCard.style.display = role === "user" ? "none" : "";
+  }
+
   document.querySelectorAll(".tab-content").forEach(el => { el.style.display="none"; el.classList.remove("active"); });
   document.getElementById("points-tab").style.display = "block";
   document.getElementById("points-tab").classList.add("active");
@@ -1596,14 +1606,38 @@ function renderDestacados() {
   const role = currentUser?.role;
   // Todos los usuarios pueden ver los destacados (según especificaciones)
 
+  const now = Date.now();
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  const oneWeekMs = 7 * oneDayMs;
+  const oneMonthMs = 30 * oneDayMs;
+
+  // Calcular el inicio del sistema (primer log o timestamp más antiguo)
+  let systemStart = now;
+  if (logs.length > 0) {
+    const oldestLog = logs.reduce((min, l) => {
+      const t = logTime(l);
+      return t > 0 && t < min ? t : min;
+    }, now);
+    systemStart = oldestLog;
+  }
+
   const defs = [
-    { mode: "day",   id: "destacado-day",   empty: "Sin datos hoy" },
-    { mode: "week",  id: "destacado-week",  empty: "Sin datos esta semana" },
-    { mode: "month", id: "destacado-month", empty: "Sin datos este mes" }
+    { mode: "day",   id: "destacado-day",   empty: "Sin datos hoy", elapsed: now - systemStart, minRequired: oneDayMs },
+    { mode: "week",  id: "destacado-week",  empty: "Sin datos esta semana", elapsed: now - systemStart, minRequired: oneWeekMs },
+    { mode: "month", id: "destacado-month", empty: "Sin datos este mes", elapsed: now - systemStart, minRequired: oneMonthMs }
   ];
+
   for (const def of defs) {
     const el = document.getElementById(def.id);
     if (!el) continue;
+
+    // Solo mostrar si ha pasado el tiempo mínimo requerido
+    if (def.elapsed < def.minRequired) {
+      const remaining = Math.ceil((def.minRequired - def.elapsed) / oneDayMs);
+      el.innerHTML = `<div class="dc-empty">Requiere ${remaining} día(s) más de datos</div>`;
+      continue;
+    }
+
     const rows = periodWorkers(def.mode);
     const winner = rows[0];
     if (!winner) { el.innerHTML = `<div class="dc-empty">${def.empty}</div>`; continue; }
@@ -1649,6 +1683,8 @@ function periodPointsForUser(u, period) {
     const d = typeof l.delta === "number" ? l.delta : 0;
     if (d > 0) pts += d;
   }
+  // Para semana/mes, mostrar puntos ganados en el período
+  // Si no hay actividad, mostrar 0 pero el usuario seguirá en el ranking si tiene puntos actuales
   return pts;
 }
 
@@ -1884,7 +1920,6 @@ function renderRankingAdmins() {
 
   members = members
     .map(u => ({ u, pts: periodPointsForUser(u, rankTimeState) }))
-    .filter(r => r.pts > 0)
     .sort((a, b) => (b.pts - a.pts) || ((b.u.points || 0) - (a.u.points || 0)))
     .slice(0, 8);
 

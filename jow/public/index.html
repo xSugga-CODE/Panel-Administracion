@@ -273,7 +273,7 @@
         </div>
 
         <!-- NIVEL 3: GRÁFICOS PRINCIPALES -->
-        <div class="card chart-card">
+        <div class="card chart-card" id="evo-chart-card">
           <div class="chart-head">
             <h3>📈 Evolución general del equipo</h3>
             <div class="chart-toolbar">
@@ -485,7 +485,14 @@
         </div>
         <div class="card">
           <h3>Guías de Admins</h3>
-          <p style="color:var(--muted)">Dejar completamente vacío por ahora.</p>
+          <div class="guide-block">
+            <h4>Sistema de Ascensos y Descensos de Rangos</h4>
+            <p style="color:var(--muted);line-height:1.6">
+              <b>Ascensos por desempeño:</b> Cada semana se evaluará al trabajador destacado del MC Team. Si un miembro obtiene el reconocimiento de "Trabajador de la semana" consistentemente durante 4 semanas, será ascendido de rango.<br><br>
+              <b>Descensos por inactividad:</b> Cuando un miembro llega a 0 puntos, se le quitará un rango automáticamente. Este proceso continúa hasta que el miembro queda en el último rango disponible. Si sigue en 0 puntos en el último rango, será expulsado del equipo.<br><br>
+              <b>Jerarquía de rangos:</b> El sistema funciona en orden ascendente: Vigia → Centinela → Admin. Los ascensos se basan en desempeño constante y los descensos en falta de actividad.
+            </p>
+          </div>
         </div>
       </section>
 
