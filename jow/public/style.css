@@ -1002,13 +1002,6 @@ li { color: #c2cceb; margin-bottom: 8px; }
   margin: 0 auto;
 }
 
-/* Limitar tamaño de gráficos circulares en PC */
-@media (min-width: 1024px) {
-  .chart-svg {
-    max-width: 280px;
-  }
-}
-
 .chart-empty {
   color: var(--muted);
   font-size: 13px;

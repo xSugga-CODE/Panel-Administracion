@@ -180,23 +180,23 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .chart-empty{color:var(--muted);font-size:13px;padding:40px 16px;text-align:center}
 .chart-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;justify-content:center;width:100%}
 
-/* Disposición vertical de gráficos y leyendas en PC */
+/* Disposición vertical de gráficos y leyendas en PC para el dashboard */
 @media (min-width: 1024px) {
-  .chart-card {
+  #page-charts .chart-card {
     flex-direction: column;
   }
-  .chart-container {
+  #page-charts .chart-container {
     width: 100%;
     order: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
   }
-  .chart-legend {
+  #page-charts .chart-legend {
     width: 100%;
     order: 2;
   }
-  .chart-svg {
+  #page-charts .chart-svg {
     max-width: 280px;
   }
 }
