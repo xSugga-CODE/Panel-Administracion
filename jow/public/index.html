@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%235b8dee'/%3E%3Cstop offset='100%25' stop-color='%23a78bfa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='50%25' y='54%25' text-anchor='middle' font-size='36' font-family='Segoe UI,sans-serif' font-weight='bold' fill='white'%3E⚡%3C/text%3E%3C/svg%3E"/>
   <title>Panel de Staff — Jowiland</title>
   <link rel="stylesheet" href="style.css"/>
 </head>
@@ -653,20 +652,6 @@
 </div>
 
 <div class="notification" id="toast" style="display:none"></div>
-<script>
-// Fallback global: evita ReferenceError si el usuario hace clic antes de que cargue el script module
-(function(){
-  const noop = function(){ console.warn("[fallback] Función no disponible aún, esperando carga del script..."); };
-  const fns = ["switchLogin","loginWithPin","loginWithEmail","doLogout","toggleDestacados",
-    "toggleDestacadosHistorial","switchTab","resetFilters","setRankTime","setRankModeAdmins",
-    "refreshSingleChart","resetSingleChart","setEvoTime","setRankModeEvo","setChartPeriod",
-    "setAdminChartMode","exportLogsJow","resetNovedades","regenPin","closeModal","saveAccount",
-    "closeConfirm","doLogin","goPage","showUserModal","deleteAccount","openPointModal",
-    "openPointModalAdm","savePointChange","savePointChangeAdm","toggleDetailPts","filterPtsTable",
-    "filterStaffTable","applyCargoFilter","saveCfg","saveCfgPoints","exportLogs"];
-  fns.forEach(fn => { if (typeof window[fn] !== "function") window[fn] = noop; });
-})();
-</script>
-<script src="script.js?v=20250907" type="module"></script>
+<script src="script.js?v=20250906" type="module"></script>
 </body>
 </html>

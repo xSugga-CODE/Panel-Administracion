@@ -179,15 +179,15 @@ async function applyPointDecrementTick() {
     const decrement = fullIntervals + partialRatio; // Intervalos completos + progreso parcial
 
     let changed = 0;
-    let usersSnap = await getDocs(collection(db, "users"));
+    const usersSnap = await getDocs(collection(db, "users"));
     allMembers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
 
-    for (let u of allMembers) {
+    for (const u of allMembers) {
       if (!u || u.role === "admin") continue;
-      let oldP = Number(u.points || 0);
+      const oldP = Number(u.points || 0);
       if (!Number.isFinite(oldP)) continue;
       // Aplicar reducción calculada
-      let newP = clampPts(oldP - decrement);
+      const newP = clampPts(oldP - decrement);
       if (newP === oldP) continue;
       try {
         await updateDoc(doc(db, "users", u.uid), { points: newP });

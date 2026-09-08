@@ -1,3 +1,4 @@
+
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import {
   getAuth,
@@ -179,15 +180,15 @@ async function applyPointDecrementTick() {
     const decrement = fullIntervals + partialRatio; // Intervalos completos + progreso parcial
 
     let changed = 0;
-    const usersSnap = await getDocs(collection(db, "users"));
+    let usersSnap = await getDocs(collection(db, "users"));
     allMembers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
 
-    for (const u of allMembers) {
+    for (let u of allMembers) {
       if (!u || u.role === "admin") continue;
-      const oldP = Number(u.points || 0);
+      let oldP = Number(u.points || 0);
       if (!Number.isFinite(oldP)) continue;
       // Aplicar reducción calculada
-      const newP = clampPts(oldP - decrement);
+      let newP = clampPts(oldP - decrement);
       if (newP === oldP) continue;
       try {
         await updateDoc(doc(db, "users", u.uid), { points: newP });
@@ -2888,3 +2889,4 @@ function friendlyErr(code) {
   };
   return m[code] || "Error al iniciar sesión.";
 }
+
