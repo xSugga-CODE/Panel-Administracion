@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%235b8dee'/%3E%3Cstop offset='100%25' stop-color='%23a78bfa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='50%25' y='54%25' text-anchor='middle' font-size='36' font-family='Segoe UI,sans-serif' font-weight='bold' fill='white'%3E⚡%3C/text%3E%3C/svg%3E"/>
 <title>Panel – Jowiland</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -302,7 +303,6 @@ width:100% !important;
 <div class="nav-item" onclick="goPage('charts')"><span class="ico">📈</span>Gráficos</div>
 <div class="nav-section">Configuración</div>
 <div class="nav-item" onclick="goPage('config')"><span class="ico">⚙️</span>Configuración</div>
-<div class="nav-item" id="nav-config-points" onclick="goPage('config-points')"><span class="ico">🔢</span>Configurar Puntos</div>
 <div class="nav-item" onclick="goPage('logs')"><span class="ico">📜</span>Logs</div>
 </nav>
 <div class="sb-footer">
@@ -1323,15 +1323,15 @@ const partialRatio = partialMs / totalMs; // 0 a 1, representa progreso del inte
 const decrement = fullIntervals + partialRatio; // Intervalos completos + progreso parcial
 
 let changed = 0;
-const usersSnap = await getDocs(collection(db, "users"));
+let usersSnap = await getDocs(collection(db, "users"));
 allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
 
-for (const u of allUsers) {
+for (let u of allUsers) {
 if (!u || u.role === "admin") continue;
-const oldP = Number(u.points || 0);
+let oldP = Number(u.points || 0);
 if (!Number.isFinite(oldP)) continue;
 // Aplicar reducción calculada
-const newP = clampPts(oldP - decrement);
+let newP = clampPts(oldP - decrement);
 if (newP === oldP) continue;
 try {
 await updateDoc(doc(db, "users", u.uid), { points: newP });
@@ -3145,14 +3145,16 @@ window.renderEvolutionPts = () => {
   const el = document.getElementById("evo-pts-chart");
   if (!el) return;
   const role = myRole;
-  if (role !== "admin" && role !== "inspector") return;
+  // Permitir que usuarios admin, inspector y user vean el gráfico
+  if (role !== "admin" && role !== "inspector" && role !== "user") return;
 
-  // Incluir inspector y user por defecto (sin admin)
+  // Incluir inspector y user por defecto (sin admin para la evolución general)
   let team = allUsers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
   if (filterState.user) team = team.filter(u => u.uid === filterState.user);
   if (filterState.rol) team = team.filter(u => String(u.role || "").toLowerCase() === filterState.rol);
 
-  team = team.sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 6);
+  // Ordenar por puntos actuales pero NO limitar a 6 usuarios
+  team = team.sort((a, b) => (b.points || 0) - (a.points || 0));
 
   if (!team.length) { el.innerHTML = '<div class="chart-empty">Sin miembros que coincidan con los filtros.</div>'; return; }
 
@@ -3162,40 +3164,60 @@ window.renderEvolutionPts = () => {
     ? Array.from({length: count}, (_, i) => `${i}:00`)
     : Array.from({length: count}, (_, i) => `Día ${i+1}`);
 
-  const PALETTE = ["#3ecf8e", "#ff6b6b", "#4ecdc4", "#ffe66d", "#95e1d3", "#f38181"];
+  // Paleta de colores para usuarios (asignar color consistente por UID)
+  const PALETTE = ["#3ecf8e", "#ff6b6b", "#4ecdc4", "#ffe66d", "#95e1d3", "#f38181", "#7f8cff", "#ff9f43", "#00d2d3", "#5f27cd"];
+  const getUserColor = (uid) => {
+    let hash = 0;
+    for (let i = 0; i < uid.length; i++) {
+      hash = uid.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return PALETTE[Math.abs(hash) % PALETTE.length];
+  };
 
-  // Generar datos reales basados en logs
-  const series = team.map((m, i) => {
+  // Generar datos reales basados en logs con estado acumulado
+  const series = team.map((m) => {
     const values = [];
     const periodStart = Date.now() - (isDayView ? 24 : evoTimeState === "14" ? 7 : 30) * 24 * 60 * 60 * 1000;
     const step = (Date.now() - periodStart) / count;
     const cutoff = inactiveCutoffMs(m);
+    
+    // Calcular puntos iniciales antes del período
+    let accumulatedPts = 0;
+    for (const l of logs) {
+      if (l.type !== "points" || l.targetUid !== m.uid) continue;
+      const t = logTimeRaw(l);
+      if (t && t < periodStart && t < cutoff) {
+        const delta = typeof l.delta === "number" ? l.delta : 0;
+        accumulatedPts += delta;
+      }
+    }
 
     for (let j = 0; j < count; j++) {
       const bucketStart = periodStart + j * step;
       const bucketEnd = bucketStart + step;
-      let bucketPts = 0;
 
+      // Sumar todos los cambios de puntos en este bucket (positivos y negativos)
       for (const l of logs) {
         if (l.type !== "points" || l.targetUid !== m.uid) continue;
         const t = logTimeRaw(l);
         if (t && t >= bucketStart && t < bucketEnd && t < cutoff) {
           const delta = typeof l.delta === "number" ? l.delta : 0;
-          if (delta > 0) bucketPts += delta;
+          accumulatedPts += delta;
         }
       }
-      values.push(bucketPts);
+      values.push(Math.max(0, accumulatedPts)); // Evitar valores negativos
     }
 
     return {
+      uid: m.uid,
       name: cleanName(m.name),
-      color: PALETTE[i % PALETTE.length],
+      color: getUserColor(m.uid),
       values
     };
   });
 
   const mode = modeStates.evo || "line";
-  const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
+  const W = 900, H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
   const iw = W - pl - pr, ih = H - pt - pb;
   const maxVal = Math.max(1, ...series.flatMap(s => s.values));
   const n = count;
@@ -3230,14 +3252,17 @@ window.renderEvolutionPts = () => {
       });
     });
   } else {
-    const barWidth = Math.max(6, (iw / n) * 0.4);
-    const gap = (iw - (barWidth * n)) / (n + 1);
-    const groupWidth = barWidth * series.length + (series.length - 1) * 2;
+    // Modo columnas: UNA barra por usuario en cada período
+    // Compactar si hay muchos usuarios permitiendo scroll o agrupación
+    const maxVisibleBars = 12; // Máximo de usuarios visibles sin scroll
+    const visibleSeries = series.slice(0, maxVisibleBars);
+    const barWidth = Math.max(4, (iw / n) * 0.3);
+    const groupWidth = barWidth * visibleSeries.length + (visibleSeries.length - 1) * 1;
     const groupGap = (iw - (groupWidth * n)) / (n + 1);
     const groupXPos = i => pl + groupGap + i * (groupWidth + groupGap);
 
-    series.forEach((s, sIdx) => {
-      const offset = sIdx * (barWidth + 2);
+    visibleSeries.forEach((s, sIdx) => {
+      const offset = sIdx * (barWidth + 1);
       s.values.forEach((v, i) => {
         const hBar = (v / maxVal) * ih;
         const y = pt + ih - hBar;
@@ -3254,8 +3279,8 @@ window.renderEvolutionPts = () => {
       ${xl}
       ${content}
     </svg>
-    <div class="chart-legend">${series.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${esc(s.name)}</span>`).join("")}</div>
-    <div class="chart-note">Evolución de puntos · ${isDayView ? "24 horas" : evoTimeState === "14" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
+    <div class="chart-legend">${series.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span></span>`).join("")}</div>
+    <div class="chart-note">Evolución de puntos · ${isDayView ? "24 horas" : evoTimeState === "14" ? "7 días" : "30 días"} · ${series.length} usuarios · ${logs.length} registros cargados</div>`;
 };
 
 window.renderActivityChart = () => {
@@ -3355,7 +3380,7 @@ window.renderActivityChart = () => {
 
   // Modo lineal: mostrar evolución temporal de todos los roles
   if (mode === "line") {
-    const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
+    const W = 900, H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
     const yMax = maxVal;
     const n = buckets.length;
@@ -3411,7 +3436,7 @@ window.renderActivityChart = () => {
   }
   // Modo columnas: mostrar actividad de todos los roles
   else if (mode === "cols") {
-    const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
+    const W = 900, H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
     const yMax = maxVal;
     const n = buckets.length;
@@ -3580,18 +3605,23 @@ window.renderInspectorActivityJow = () => {
 };
 </script>
 <script>
-// Fallback shim: evita ReferenceError si `loginWithPin` no está definido
-if (!window.loginWithPin) {
-  window.loginWithPin = function() {
-    const err = document.getElementById('login-err');
-    if (err) {
-      err.textContent = 'Función de login no disponible. Recargá la página.';
-      err.style.display = 'block';
-    } else {
-      console.error('loginWithPin no está definido');
-    }
+// Fallback global: evita ReferenceError si el usuario hace clic antes de que cargue el script principal
+(function(){
+  const noop = function(){ 
+    const err = document.getElementById('login-err'); 
+    if (err) { err.textContent = 'Función no disponible aún. Esperá un momento o recargá.'; err.style.display = 'block'; }
+    console.warn("[fallback] Función no disponible aún, esperando carga del script..."); 
   };
-}
+  const fns = ["loginWithPin","loginWithEmail","doLogin","doLogout","switchLogin","toggleDestacados",
+    "toggleDestacadosHistorial","switchTab","resetFilters","setRankTime","setRankModeAdmins",
+    "refreshSingleChart","resetSingleChart","setEvoTime","setRankModeEvo","setChartPeriod",
+    "setAdminChartMode","exportLogsJow","resetNovedades","regenPin","closeModal","saveAccount",
+    "closeConfirm","goPage","showUserModal","deleteAccount","openPointModal","openPointModalAdm",
+    "savePointChange","savePointChangeAdm","toggleDetailPts","filterPtsTable","filterStaffTable",
+    "applyCargoFilter","saveCfg","saveCfgPoints","exportLogs","showUserDetails","openAddAccount",
+    "openEditAccount","resetPtsFilters","switchSection","switchPointsSection"];
+  fns.forEach(fn => { if (typeof window[fn] !== "function") window[fn] = noop; });
+})();
 </script>
 </body>
 </html>

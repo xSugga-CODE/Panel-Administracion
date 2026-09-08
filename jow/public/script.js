@@ -179,15 +179,15 @@ async function applyPointDecrementTick() {
     const decrement = fullIntervals + partialRatio; // Intervalos completos + progreso parcial
 
     let changed = 0;
-    const usersSnap = await getDocs(collection(db, "users"));
+    let usersSnap = await getDocs(collection(db, "users"));
     allMembers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
 
-    for (const u of allMembers) {
+    for (let u of allMembers) {
       if (!u || u.role === "admin") continue;
-      const oldP = Number(u.points || 0);
+      let oldP = Number(u.points || 0);
       if (!Number.isFinite(oldP)) continue;
       // Aplicar reducción calculada
-      const newP = clampPts(oldP - decrement);
+      let newP = clampPts(oldP - decrement);
       if (newP === oldP) continue;
       try {
         await updateDoc(doc(db, "users", u.uid), { points: newP });
@@ -1196,11 +1196,9 @@ window.toggleDestacados = () => {
 
 window.toggleDestacadosHistorial = () => {
   const histSec = document.getElementById("destacados-hist-section");
-  const btn     = document.getElementById("btn-dest-hist");
   if (!histSec) return;
   destacadosHistorialOpen = !destacadosHistorialOpen;
   histSec.style.display = destacadosHistorialOpen ? "block" : "none";
-  if (btn) btn.textContent = destacadosHistorialOpen ? "🙈 Ocultar historial" : "📜 Historial";
   if (destacadosHistorialOpen && typeof renderDestacadosHistorial === "function") renderDestacadosHistorial();
 };
 
@@ -1578,7 +1576,7 @@ function renderActivityChart() {
 
   // ── Modo lineal: evolución de la actividad de todos los roles
   if (mode === "line") {
-    const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
+    const W = 900, H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
     const yMax = maxVal;
     const n = buckets.length;
@@ -1630,7 +1628,7 @@ function renderActivityChart() {
 
   // ── Modo columnas: mostrar actividad de todos los roles
   if (mode === "cols") {
-    const W = 760, H = 360, pl = 40, pr = 16, pt = 22, pb = 40;
+    const W = 900, H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
     const yMax = maxVal;
     const n = buckets.length;
@@ -2282,10 +2280,11 @@ function renderEvolutionPts() {
   const legendEl = document.getElementById("evo-pts-legend");
   if (!el) return;
   const role = currentUser?.role;
-  if (role !== "admin" && role !== "inspector") return;
+  // Permitir que usuarios admin, inspector y user vean el gráfico
+  if (role !== "admin" && role !== "inspector" && role !== "user") return;
 
-  // Incluir todos los roles: admin, inspector, user
-  let team = allMembers.filter(u => ["admin", "inspector", "user"].includes(String(u.role || "").toLowerCase()));
+  // Incluir inspector y user por defecto (sin admin para la evolución general)
+  let team = allMembers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
 
   // Apply filters
   if (filterState.user) {
@@ -2301,7 +2300,8 @@ function renderEvolutionPts() {
     team = team.filter(u => hasCargo(u, filterState.cargo));
   }
   
-  team = team.sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 8);
+  // NO limitar a 8 usuarios - mostrar todos
+  team = team.sort((a, b) => (b.points || 0) - (a.points || 0));
   
   if (!team.length) { el.innerHTML = '<div class="chart-empty">Sin miembros del equipo que coincidan con los filtros.</div>'; if (legendEl) legendEl.innerHTML = ""; return; }
 
@@ -2338,9 +2338,19 @@ function renderEvolutionPts() {
     periods.forEach((d, i) => { d.vals[member.uid] = series[i]; });
   }
 
-  const series = team.map((m, i) => ({
+  // Paleta de colores para usuarios (asignar color consistente por UID)
+  const getUserColor = (uid) => {
+    let hash = 0;
+    for (let i = 0; i < uid.length; i++) {
+      hash = uid.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return PALETTE[Math.abs(hash) % PALETTE.length];
+  };
+
+  const series = team.map((m) => ({
+    uid: m.uid,
     name: cleanName(m.name),
-    color: PALETTE[i % PALETTE.length],
+    color: getUserColor(m.uid),
     values: periods.map(d => d.vals[m.uid])
   }));
 
@@ -2421,8 +2431,10 @@ function renderPointsTable() {
   const role = currentUser?.role;
   const isStaff = role === "admin" || role === "inspector";
 
-  // La tabla muestra únicamente trabajadores con cargo MC Team.
-  const list = mcWorkers().sort((a,b) => (b.points||0)-(a.points||0));
+  // La tabla muestra trabajadores con cargo MC Team Y todos los admins
+  const mcTeam = mcWorkers();
+  const admins = allMembers.filter(u => String(u.role || "").toLowerCase() === "admin");
+  const list = [...mcTeam, ...admins].sort((a,b) => (b.points||0)-(a.points||0));
 
   // Actualizar cabecera para mostrar/ocultar columna de acciones (sin rango)
   if (theadRow) {

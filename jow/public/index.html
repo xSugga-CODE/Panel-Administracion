@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%235b8dee'/%3E%3Cstop offset='100%25' stop-color='%23a78bfa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='50%25' y='54%25' text-anchor='middle' font-size='36' font-family='Segoe UI,sans-serif' font-weight='bold' fill='white'%3E⚡%3C/text%3E%3C/svg%3E"/>
   <title>Panel de Staff — Jowiland</title>
   <link rel="stylesheet" href="style.css"/>
 </head>
@@ -108,7 +109,6 @@
     <!-- TRABAJADORES DESTACADOS DEL MC TEAM (con mostrar/ocultar) -->
     <div style="margin:16px 0">
       <button class="btn-ghost" id="btn-dest" onclick="toggleDestacados()">👁️ Mostrar chambeadores destacados</button>
-      <button class="btn-ghost" id="btn-dest-hist" onclick="toggleDestacadosHistorial()" style="margin-left: 8px;">📜 Historial</button>
     </div>
     <section class="stats-detail" id="destacados-section" style="display:none">
       <div class="section-head">
@@ -132,42 +132,44 @@
           <div class="dc-period">Últimos 30 días</div>
         </article>
       </div>
-    </section>
-
-    <!-- HISTORIAL DE CHAMBEADORES DESTACADOS -->
-    <section class="stats-detail" id="destacados-hist-section" style="display:none">
-      <div class="section-head">
-        <h3>📜 Historial de Chambeadores Destacados</h3>
-        <p>Historial completo de chambeadores destacados por período.</p>
-      </div>
-      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
-        <div>
-          <label style="font-size:12px;color:var(--muted)">Filtrar por usuario:</label>
-          <select id="hist-filter-user" onchange="filterDestacadosHistorial()" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;font-size:13px;padding:8px 12px;outline:none;min-width:150px;">
-            <option value="">Todos</option>
-          </select>
+      
+      <!-- HISTORIAL DE CHAMBEADORES (dentro de la sección) -->
+      <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.12);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h4 style="margin:0;font-size:16px;color:#e9eeff;">📜 Historial de Chambeadores</h4>
+          <button class="btn-ghost" onclick="toggleDestacadosHistorial()" style="font-size:12px;padding:4px 8px;">👁️ Mostrar/Ocultar</button>
         </div>
-        <div>
-          <label style="font-size:12px;color:var(--muted)">Filtrar por rol:</label>
-          <select id="hist-filter-rol" onchange="filterDestacadosHistorial()" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;font-size:13px;padding:8px 12px;outline:none;min-width:150px;">
-            <option value="">Todos</option>
-            <option value="user">Usuario</option>
-            <option value="admin">Admin</option>
-            <option value="inspector">Inspector</option>
-          </select>
+        <div id="destacados-hist-section" style="display:none;">
+          <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+            <div>
+              <label style="font-size:12px;color:var(--muted)">Filtrar por usuario:</label>
+              <select id="hist-filter-user" onchange="filterDestacadosHistorial()" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;font-size:13px;padding:8px 12px;outline:none;min-width:150px;">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--muted)">Filtrar por rol:</label>
+              <select id="hist-filter-rol" onchange="filterDestacadosHistorial()" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;font-size:13px;padding:8px 12px;outline:none;min-width:150px;">
+                <option value="">Todos</option>
+                <option value="user">Usuario</option>
+                <option value="admin">Admin</option>
+                <option value="inspector">Inspector</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--muted)">Filtrar por período:</label>
+              <select id="hist-filter-period" onchange="filterDestacadosHistorial()" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;font-size:13px;padding:8px 12px;outline:none;min-width:150px;">
+                <option value="">Todos</option>
+                <option value="day">Día</option>
+                <option value="week">Semana</option>
+                <option value="month">Mes</option>
+              </select>
+            </div>
+          </div>
+          <div id="destacados-hist-list" style="display:flex;flex-direction:column;gap:12px;">
+            <div class="chart-empty">Cargando historial...</div>
+          </div>
         </div>
-        <div>
-          <label style="font-size:12px;color:var(--muted)">Filtrar por período:</label>
-          <select id="hist-filter-period" onchange="filterDestacadosHistorial()" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;font-size:13px;padding:8px 12px;outline:none;min-width:150px;">
-            <option value="">Todos</option>
-            <option value="day">Día</option>
-            <option value="week">Semana</option>
-            <option value="month">Mes</option>
-          </select>
-        </div>
-      </div>
-      <div id="destacados-hist-list" style="display:flex;flex-direction:column;gap:12px;">
-        <div class="chart-empty">Cargando historial...</div>
       </div>
     </section>
 
@@ -651,6 +653,20 @@
 </div>
 
 <div class="notification" id="toast" style="display:none"></div>
-<script src="script.js?v=20250906" type="module"></script>
+<script>
+// Fallback global: evita ReferenceError si el usuario hace clic antes de que cargue el script module
+(function(){
+  const noop = function(){ console.warn("[fallback] Función no disponible aún, esperando carga del script..."); };
+  const fns = ["switchLogin","loginWithPin","loginWithEmail","doLogout","toggleDestacados",
+    "toggleDestacadosHistorial","switchTab","resetFilters","setRankTime","setRankModeAdmins",
+    "refreshSingleChart","resetSingleChart","setEvoTime","setRankModeEvo","setChartPeriod",
+    "setAdminChartMode","exportLogsJow","resetNovedades","regenPin","closeModal","saveAccount",
+    "closeConfirm","doLogin","goPage","showUserModal","deleteAccount","openPointModal",
+    "openPointModalAdm","savePointChange","savePointChangeAdm","toggleDetailPts","filterPtsTable",
+    "filterStaffTable","applyCargoFilter","saveCfg","saveCfgPoints","exportLogs"];
+  fns.forEach(fn => { if (typeof window[fn] !== "function") window[fn] = noop; });
+})();
+</script>
+<script src="script.js?v=20250907" type="module"></script>
 </body>
 </html>
