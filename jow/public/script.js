@@ -2215,8 +2215,7 @@ function renderRankingAdmins() {
 
   members = members
     .map(u => ({ u, pts: periodPointsForUser(u, rankTimeState) }))
-    .sort((a, b) => (b.pts - a.pts) || ((b.u.points || 0) - (a.u.points || 0)))
-    .slice(0, 8);
+    .sort((a, b) => (b.pts - a.pts) || ((b.u.points || 0) - (a.u.points || 0)));
 
   if (!members.length) {
     box.innerHTML = '<div class="chart-empty">Sin datos para el ranking en el período seleccionado.</div>';
@@ -2475,18 +2474,20 @@ function renderEvolutionPts() {
     }
     
     el.innerHTML = `
-      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img">
-        ${grid}
-        <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
-        <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
-        ${xl}
-        ${bars}
-      </svg>`;
+      <div class="chart-scroll-wrap">
+        <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img">
+          ${grid}
+          <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+          <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+          ${xl}
+          ${bars}
+        </svg>
+      </div>`;
   }
   
   if (legendEl) {
-    // Leyenda sin nombres de usuario, solo círculos de color
-    legendEl.innerHTML = series.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span></span>`).join("");
+    // Leyenda con nombres de usuario y colores
+    legendEl.innerHTML = series.map(s => `<span class="legend-item" title="${esc(s.name)}"><span class="legend-dot" style="background:${s.color}"></span>${esc(s.name)}</span>`).join("");
   }
 }
 

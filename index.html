@@ -650,41 +650,51 @@ display: block;
 <div class="card">
   <h3>Configuración de Puntos</h3>
   <p style="color:var(--muted);margin-bottom:16px;">Ajustá el tiempo para el decremento automático de puntos</p>
-<div class="field">
-<label>Tiempo para restar 1 punto (total)</label>
-<div style="display:flex;gap:12px;align-items:center;">
-<div style="display:flex;flex-direction:column;gap:4px;">
-<label style="font-size:12px;color:var(--muted);">Horas</label>
-<input type="number" id="config-hours" min="0" placeholder="0" style="width:100px;text-align:center;">
-</div>
-<span style="font-size:24px;font-weight:bold;">:</span>
-<div style="display:flex;flex-direction:column;gap:4px;">
-<label style="font-size:12px;color:var(--muted);">Minutos</label>
-<input type="number" id="config-minutes" min="0" max="59" placeholder="0" style="width:100px;text-align:center;">
-</div>
-</div>
-</div>
-<div class="field">
-<label>Máximo de puntos</label>
-<input type="number" id="config-max" min="1" max="99" step="1" value="7" style="width:120px;text-align:center;"/>
-<p class="field-hint">Ningún trabajador podrá superar este valor (por defecto: 7).</p>
-</div>
-<div class="field">
-<label>Decimales</label>
-<select id="config-decimals" style="width:auto;max-width:220px;">
-<option value="0">0 decimales (ej: 5)</option>
-<option value="1" selected>1 decimal (ej: 1.5)</option>
-<option value="2">2 decimales (ej: 1.35)</option>
-</select>
-<p class="field-hint">Precisión usada al mostrar y guardar los puntos.</p>
-</div>
-<div class="field">
-<label>Resumen</label>
-<div style="padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
-<p id="config-summary">Cada <strong>0h 0m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>0h 0m</strong>) · Máximo: <strong>7</strong> pts · Decimales: <strong>1</strong></p>
-</div>
-</div>
-<button class="btn btn-primary" id="config-save" onclick="saveConfig()" style="width:100%;margin-top:8px;">💾 Guardar Configuración</button>
+  <table style="width:100%;border-collapse:collapse;">
+    <tr>
+      <td style="padding:12px;border-bottom:1px solid var(--border);">
+        <label style="display:block;margin-bottom:4px;">Tiempo para restar 1 punto (total)</label>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:12px;color:var(--muted);">Horas</label>
+            <input type="number" id="config-hours" min="0" placeholder="0" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
+          </div>
+          <span style="font-size:24px;font-weight:bold;color:var(--muted);">:</span>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <label style="font-size:12px;color:var(--muted);">Minutos</label>
+            <input type="number" id="config-minutes" min="0" max="59" placeholder="0" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
+          </div>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:12px;border-bottom:1px solid var(--border);">
+        <label style="display:block;margin-bottom:4px;">Máximo de puntos</label>
+        <input type="number" id="config-max" min="1" max="99" step="1" value="7" style="width:120px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
+        <p class="field-hint" style="margin-top:4px;">Ningún trabajador podrá superar este valor (por defecto: 7).</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:12px;border-bottom:1px solid var(--border);">
+        <label style="display:block;margin-bottom:4px;">Decimales</label>
+        <select id="config-decimals" style="width:auto;max-width:220px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;">
+          <option value="0">0 decimales (ej: 5)</option>
+          <option value="1" selected>1 decimal (ej: 1.5)</option>
+          <option value="2">2 decimales (ej: 1.35)</option>
+        </select>
+        <p class="field-hint" style="margin-top:4px;">Precisión usada al mostrar y guardar los puntos.</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:12px;">
+        <label style="display:block;margin-bottom:4px;">Resumen</label>
+        <div style="padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
+          <p id="config-summary">Cada <strong>0h 0m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>0h 0m</strong>) · Máximo: <strong>7</strong> pts · Decimales: <strong>1</strong></p>
+        </div>
+      </td>
+    </tr>
+  </table>
+  <button class="btn btn-primary" id="config-save" onclick="saveConfig()" style="width:100%;margin-top:16px;">💾 Guardar Configuración</button>
 </div>
 </div>
 
@@ -1244,8 +1254,8 @@ showToast("Error al guardar: " + e.message, "err");
 const CHAMBEADOR_CONFIG_DOC = "chambeadorConfig";
 const CHAMBEADOR_DEFS = [
   { key: "day",    elId: "dest-dia",    inTime: "chambeador-day-reveal",    inHours: "chambeador-day-hours",    inMinutes: "chambeador-day-minutes" },
-  { key: "week",   elId: "dest-semana", inTime: "chambeador-week-reveal",   inHours: "chambeador-week-hours",   inMinutes: "chambeador-week-minutes" },
-  { key: "month",  elId: "dest-mes",    inTime: "chambeador-month-reveal",  inHours: "chambeador-month-hours",  inMinutes: "chambeador-month-minutes" }
+  { key: "week",   elId: "dest-semana", inTime: "chambeador-week-reveal",   inDays: "chambeador-week-days" },
+  { key: "month",  elId: "dest-mes",    inTime: "chambeador-month-reveal",  inDays: "chambeador-month-days" }
 ];
 
 function chambeadorDefaults() {
@@ -1296,10 +1306,22 @@ window.saveChambeadorConfig = async () => {
     const config = {};
     for (const def of CHAMBEADOR_DEFS) {
       const revealTime = document.getElementById(def.inTime)?.value || "12:00";
-      const visibleHours = parseInt(document.getElementById(def.inHours)?.value, 10);
-      const visibleMinutes = parseInt(document.getElementById(def.inMinutes)?.value, 10);
-      const hours = Number.isFinite(visibleHours) && visibleHours >= 0 ? visibleHours : 0;
-      const minutes = Number.isFinite(visibleMinutes) && visibleMinutes >= 0 ? visibleMinutes : 0;
+      
+      let hours = 0, minutes = 0;
+      
+      if (def.key === "day") {
+        // Día usa horas y minutos
+        const visibleHours = parseInt(document.getElementById(def.inHours)?.value, 10);
+        const visibleMinutes = parseInt(document.getElementById(def.inMinutes)?.value, 10);
+        hours = Number.isFinite(visibleHours) && visibleHours >= 0 ? visibleHours : 0;
+        minutes = Number.isFinite(visibleMinutes) && visibleMinutes >= 0 ? visibleMinutes : 0;
+      } else {
+        // Semana y mes usan días
+        const visibleDays = parseInt(document.getElementById(def.inDays)?.value, 10);
+        const days = Number.isFinite(visibleDays) && visibleDays >= 0 ? visibleDays : 0;
+        hours = days * 24; // Convertir días a horas
+      }
+      
       if (hours === 0 && minutes === 0) {
         showToast("La duración visible debe ser mayor a 0 minutos en todos los períodos.", "err");
         return;
