@@ -468,6 +468,60 @@ window.switchLogin = (type) => {
   });
 };
 
+// ── Event listeners para login toggle tabs ─────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const loginToggle = document.getElementById('login-toggle');
+  if (loginToggle) {
+    loginToggle.addEventListener('click', (e) => {
+      const btn = e.target.closest('.ltab');
+      if (!btn) return;
+      const method = btn.getAttribute('data-login');
+      if (method && typeof window.switchLogin === 'function') {
+        window.switchLogin(method);
+      }
+    });
+  }
+  
+  // Event listeners para botones de login
+  const btnPin = document.getElementById('btn-pin');
+  const btnEmail = document.getElementById('btn-email');
+  
+  if (btnPin) {
+    btnPin.addEventListener('click', () => {
+      if (typeof window.loginWithPin === 'function') {
+        window.loginWithPin();
+      }
+    });
+  }
+  
+  if (btnEmail) {
+    btnEmail.addEventListener('click', () => {
+      if (typeof window.loginWithEmail === 'function') {
+        window.loginWithEmail();
+      }
+    });
+  }
+  
+  // Enter key handlers
+  const pinCode = document.getElementById('pin-code');
+  if (pinCode) {
+    pinCode.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && typeof window.loginWithPin === 'function') {
+        window.loginWithPin();
+      }
+    });
+  }
+  
+  const lPass = document.getElementById('l-pass');
+  if (lPass) {
+    lPass.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && typeof window.loginWithEmail === 'function') {
+        window.loginWithEmail();
+      }
+    });
+  }
+});
+
 // ── LOGIN PIN ──────────────────────────────────────────────────
 window.loginWithPin = async () => {
   const nameRaw = document.getElementById("pin-name").value.trim();
@@ -1755,15 +1809,6 @@ function renderActivityChart() {
   if (legendEl) {
     legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
   }
-}
-    <svg class="chart-svg" viewBox="0 0 180 180" role="img">
-      ${arcs}
-      <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${totalAct}</text>
-    </svg>
-    <div class="chart-legend">${legend}</div>
-    <div class="chart-note">Distribución de la actividad de admins · ${periodTxt} · ${logs.length} registros cargados</div>`;
-
-  if (legendEl) legendEl.innerHTML = "";
 }
 
 function countByActor(list, filterFn) {

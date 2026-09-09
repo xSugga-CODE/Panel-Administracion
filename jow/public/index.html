@@ -30,7 +30,7 @@
           <label>PIN de 4 dígitos</label>
           <input type="text" id="pin-code" placeholder="••••" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" autocapitalize="none" autocorrect="off" spellcheck="false"/>
         </div>
-        <button class="lbtn" id="btn-pin">Entrar</button>
+        <button class="lbtn" id="btn-pin" onclick="loginWithPin()">Entrar</button>
       </div>
       <div id="form-email" style="display:none">
         <div class="lfield">
@@ -41,7 +41,7 @@
           <label>Contraseña</label>
           <input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"/>
         </div>
-        <button class="lbtn" id="btn-email">Ingresar</button>
+        <button class="lbtn" id="btn-email" onclick="loginWithEmail()">Ingresar</button>
       </div>
       <div class="lerr" id="login-err"></div>
     </div>
@@ -660,7 +660,7 @@
 
 <div class="notification" id="toast" style="display:none"></div>
 
-<script src="script.js"></script>
+<script type="module" src="script.js"></script>
 
 </body>
 </html>
