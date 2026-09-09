@@ -1,912 +1,4 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Panel – Jowiland</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
---bg:#0a0c10;--surface:#13171f;--surface2:#181d27;--border:#1f2733;
---accent:#5b8dee;--accent2:#3a6fd8;
---danger:#e05555;--success:#3ecf8e;--warn:#f5a623;
---purple:#a78bfa;--text:#dde3f0;--muted:#5a6680;
---radius:10px;--font:'Segoe UI',system-ui,sans-serif;
-}
-body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
-
-/* LOGIN */
-#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
-.login-wrap{width:100%;max-width:380px}
-.login-logo{text-align:center;margin-bottom:28px}
-.login-logo .mark{background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:14px;display:inline-grid;font-size:26px;height:54px;place-items:center;width:54px;margin-bottom:12px}
-.login-logo h1{font-size:20px;font-weight:700}
-.login-logo p{color:var(--muted);font-size:13px;margin-top:3px}
-.login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px}
-.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
-.field label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
-.field input,.field select{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:14px;padding:11px 14px;outline:none;font-family:var(--font);transition:border-color .2s;width:100%}
-.field input:focus,.field select:focus{border-color:var(--accent)}
-.field select option{background:var(--surface)}
-#login-err{background:rgba(224,85,85,.1);border:1px solid var(--danger);border-radius:var(--radius);color:var(--danger);font-size:13px;margin-top:12px;padding:10px 14px;display:none}
-
-/* BUTTONS */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:var(--radius);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:600;padding:10px 16px;transition:opacity .15s,transform .1s}
-.btn:active{transform:scale(.97)}.btn:disabled{opacity:.4;cursor:not-allowed}
-.btn-primary{background:var(--accent);color:#fff;width:100%;font-size:14px;padding:12px}
-.btn-primary:hover:not(:disabled){background:var(--accent2)}
-.btn-auto{width:auto!important}
-.btn-sm{padding:7px 12px;font-size:12px}
-.btn-success{background:var(--success);color:#0a1f14}
-.btn-danger{background:var(--danger);color:#fff}
-.btn-warn{background:#2a2010;color:var(--warn);border:1px solid rgba(245,166,35,.3)}
-.btn-warn:hover{background:rgba(245,166,35,.15)}
-.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
-.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
-
-/* APP LAYOUT */
-#app{display:none;min-height:100vh}
-.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;left:0;overflow-y:auto;position:fixed;top:0;width:215px}
-.sb-logo{align-items:center;border-bottom:1px solid var(--border);display:flex;gap:10px;padding:18px 16px}
-.sb-logo .mark{background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:8px;color:#fff;font-size:16px;height:32px;width:32px;display:grid;place-items:center;flex-shrink:0}
-.sb-logo span{font-size:14px;font-weight:700}
-.nav{padding:10px 8px;flex:1}
-.nav-section{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.12em;padding:12px 10px 5px;text-transform:uppercase}
-.nav-item{align-items:center;border-radius:8px;color:var(--muted);cursor:pointer;display:flex;font-size:13px;font-weight:500;gap:9px;margin-bottom:2px;padding:9px 10px;transition:background .15s,color .15s;user-select:none}
-.nav-item:hover{background:var(--surface2);color:var(--text)}
-.nav-item.active{background:rgba(91,141,238,.14);color:var(--accent)}
-.nav-item .ico{font-size:15px;width:18px;text-align:center;flex-shrink:0}
-.sb-footer{border-top:1px solid var(--border);padding:14px 12px}
-.sb-user{align-items:center;display:flex;gap:9px;margin-bottom:10px}
-.avatar{align-items:center;border-radius:50%;color:#fff;display:flex;font-size:13px;font-weight:700;height:32px;justify-content:center;width:32px;flex-shrink:0}
-.av-admin{background:linear-gradient(135deg,var(--accent),var(--accent2))}
-.av-inspector{background:linear-gradient(135deg,var(--success),#1a7a50)}
-.sb-info .sname{font-size:13px;font-weight:600;line-height:1.3}
-.sb-info .srole{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
-.role-admin{color:var(--accent)}.role-inspector{color:var(--success)}
-
-/* MAIN */
-.main{margin-left:215px;padding:28px 32px;min-height:100vh}
-.page{display:none}.page.active{display:block}
-.ph{align-items:center;display:flex;justify-content:space-between;margin-bottom:22px;gap:12px;flex-wrap:wrap}
-.ph-left h2{font-size:20px;font-weight:700}
-.ph-left p{color:var(--muted);font-size:13px;margin-top:3px}
-
-/* Navegación móvil: oculta en escritorio, visible en pantallas chicas */
-.mobile-nav{display:none}
-
-/* STATS */
-.stats{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:22px}
-.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
-.stat .slabel{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
-.stat .sval{font-size:28px;font-weight:700}
-.stat .ssub{color:var(--muted);font-size:11px;margin-top:4px}
-.pbar{background:var(--bg);border-radius:99px;height:6px;margin-top:10px;overflow:hidden}
-.pfill{border-radius:99px;height:100%;width:0%;transition:width .5s}
-.dest-body{font-size:14px;line-height:1.7}
-.dest-body b{color:var(--warn)}
-.chart-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));margin-bottom:22px}
-.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;display:flex;flex-direction:column}
-.chart-card h4{font-size:14px;font-weight:700;margin-bottom:4px}
-.chart-card .csub{color:var(--muted);font-size:11px;margin-bottom:12px}
-.chart-card canvas{max-height:260px}
-.chart-filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
-.chart-filters select{background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:8px 12px;font-family:var(--font);outline:none}
-.chart-filters .flabel{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.c-accent{color:var(--accent)}.c-success{color:var(--success)}.c-warn{color:var(--warn)}.c-purple{color:var(--purple)}
-
-/* TABLE */
-.tcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
-.ttoolbar{align-items:center;border-bottom:1px solid var(--border);display:flex;gap:10px;justify-content:space-between;padding:14px 16px;flex-wrap:wrap}
-.ttoolbar-title{font-size:14px;font-weight:600}
-.search{align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:8px;display:flex;gap:7px;padding:7px 12px}
-.search input{background:none;border:none;color:var(--text);font-family:var(--font);font-size:13px;outline:none;width:180px}
-.search input::placeholder{color:var(--muted)}
-table{border-collapse:collapse;width:100%}
-thead{background:var(--surface2)}
-th{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;padding:10px 14px;text-align:left;text-transform:uppercase;white-space:nowrap}
-td{border-top:1px solid var(--border);font-size:13px;padding:11px 14px;vertical-align:middle}
-tr:hover td{background:rgba(255,255,255,.015)}
-.empty{color:var(--muted);font-size:13px;padding:40px;text-align:center}
-
-/* BADGES */
-.badge{border-radius:6px;display:inline-block;font-size:10px;font-weight:700;padding:3px 8px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
-.cargo-checkbox{width:18px;height:18px;cursor:pointer;accent-color:#5b8dee}
-.b-admin{background:rgba(91,141,238,.18);color:var(--accent)}
-.b-inspector{background:rgba(62,207,142,.18);color:var(--success)}
-.b-user{background:rgba(167,139,250,.18);color:var(--purple)}
-.b-active{background:rgba(62,207,142,.12);color:var(--success)}
-.b-inactive{background:rgba(224,85,85,.12);color:var(--danger)}
-
-/* POINTS CONTROLS */
-.pts-row{align-items:center;display:flex;gap:6px}
-.pts-val{font-size:15px;font-weight:700;color:var(--warn);min-width:36px;text-align:center}
-.pbtn{align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);cursor:pointer;display:inline-flex;font-size:15px;font-weight:700;height:27px;justify-content:center;transition:all .15s;width:27px;user-select:none;line-height:1}
-.pbtn.plus:hover{background:rgba(62,207,142,.15);border-color:var(--success);color:var(--success)}
-.pbtn.minus:hover{background:rgba(224,85,85,.15);border-color:var(--danger);color:var(--danger)}
-
-/* Valor de puntos (decimales) */
-.pts-input{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font);font-size:13px;font-weight:600;padding:6px 9px;width:80px;outline:none;text-align:center}
-.pts-input:focus{border-color:var(--accent)}
-.btn-active{background:var(--accent);color:#fff;border-color:transparent}
-.chart-type-badge{display:inline-block;background:rgba(91,141,238,.12);border:1px solid rgba(91,141,238,.25);border-radius:6px;color:#9db8f7;font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 8px;margin-left:6px;vertical-align:middle;text-transform:uppercase}
-
-/* MODAL */
-.overlay{align-items:center;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);display:none;inset:0;justify-content:center;padding:20px;position:fixed;z-index:100}
-.overlay.open{display:flex}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;max-height:90vh;overflow-y:auto;padding:28px;width:100%;max-width:440px}
-.modal h3{font-size:17px;font-weight:700;margin-bottom:18px}
-.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
-.modal-err{background:rgba(224,85,85,.1);border:1px solid var(--danger);border-radius:8px;color:var(--danger);font-size:12px;margin-top:8px;padding:9px 12px;display:none}
-.pin-box{background:var(--bg);border:1px solid var(--accent);border-radius:var(--radius);font-family:monospace;font-size:24px;font-weight:700;letter-spacing:.3em;padding:14px;text-align:center;color:var(--accent);margin:4px 0 2px}
-.pin-hint{color:var(--muted);font-size:11px;text-align:center;margin-bottom:12px}
-.divider{border:none;border-top:1px solid var(--border);margin:14px 0}
-.field-hint{color:var(--muted);font-size:11px;margin-top:3px}
-
-/* CONFIRM */
-#confirm-ov{align-items:center;background:rgba(0,0,0,.8);display:none;inset:0;justify-content:center;position:fixed;z-index:150}
-#confirm-ov.open{display:flex}
-.cbox{background:var(--surface);border:1px solid var(--danger);border-radius:14px;max-width:360px;padding:28px;text-align:center;width:90%}
-.cbox h4{font-size:16px;margin-bottom:8px}
-.cbox p{color:var(--muted);font-size:13px;margin-bottom:24px}
-.cactions{display:flex;gap:8px;justify-content:center}
-
-/* TOAST */
-.toast{align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:10px;bottom:20px;box-shadow:0 8px 28px rgba(0,0,0,.6);display:flex;font-size:13px;font-weight:500;gap:8px;opacity:0;padding:11px 16px;position:fixed;right:20px;transform:translateY(8px);transition:opacity .3s,transform .3s;z-index:200;max-width:320px}
-.toast.show{opacity:1;transform:translateY(0)}
-.toast.ok{border-color:var(--success)}.toast.err{border-color:var(--danger)}
-
-.spinner{animation:spin 1s linear infinite;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;height:13px;width:13px}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* CHARTS: controles de tipo / período por gráfico */
-.chart-controls{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
-.cbtns{display:flex;gap:6px;flex-wrap:wrap}
-.cbtn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600;padding:5px 10px;transition:background .15s,color .15s,border-color .15s}
-.cbtn:hover{color:var(--text)}
-.cbtn.active{background:rgba(91,141,238,.16);border-color:var(--accent);color:var(--accent)}
-.cstats{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:12px;line-height:1.7;margin-bottom:10px;padding:8px 12px}
-.cstats b{color:var(--text)}
-.chart-card canvas{max-height:280px}
-
-/* Estilos adicionales para gráficos tipo Panel de Puntos */
-.chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
-.chart-head h3{color:#fff;font-size:15px;margin:0}
-.chart-toolbar{display:flex;gap:6px;flex-wrap:wrap}
-.period-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;font-size:11px;font-weight:600;padding:5px 10px;transition:background .15s,color .15s,border-color .15s}
-.period-btn:hover{color:var(--text)}
-.period-btn.active{background:rgba(91,141,238,.16);border-color:var(--accent);color:var(--accent)}
-.chart-container{min-height:380px;display:flex;align-items:center;justify-content:center;width:100%}
-.chart-empty{color:var(--muted);font-size:13px;padding:40px 16px;text-align:center}
-.chart-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;justify-content:center;width:100%}
-
-/* Contenedor con scroll horizontal para gráficos con muchos usuarios */
-.chart-scroll-wrap{display:block;width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
-.chart-scroll-wrap .chart-svg{max-width:none;margin:0 auto;display:block}
-.chart-card{min-height:420px}
-.chart-card .chart-container{min-height:380px}
-.chart-svg{width:100%;height:auto;max-width:100%;display:block;margin:0 auto}
-
-/* Estilos para resaltar al usuario actual en tablas */
-tr.my-row td { background: rgba(88,101,242,.06); }
-.you-tag { 
-  background: rgba(88,101,242,.12); 
-  color: var(--accent); 
-  font-size: 10px; 
-  font-weight: 600; 
-  padding: 2px 6px; 
-  border-radius: 4px; 
-  margin-left: 6px; 
-  text-transform: uppercase; 
-}
-
-/* Disposición vertical de gráficos y leyendas en PC para el dashboard */
-@media (min-width: 1024px) {
-  #page-charts .chart-card {
-    flex-direction: column;
-  }
-  #page-charts .chart-container {
-    width: 100%;
-    order: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  #page-charts .chart-legend {
-    width: 100%;
-    order: 2;
-  }
-  #page-charts .chart-svg {
-    max-width: 100%;
-  }
-}
-.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
-.legend-dot{width:10px;height:10px;border-radius:50%}
-.chart-note-inline{font-size:11px;color:var(--muted);margin-left:auto}
-.chart-grid{display:grid;gap:14px}
-.chart-grid.two-col{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
-.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer;font-size:12px;padding:6px 12px;transition:background .15s,color .15s,border-color .15s}
-.btn-ghost:hover{background:var(--surface2);color:var(--text)}
-
-@media(max-width:680px){
-.sidebar{display:none}
-.main{margin-left:0;padding:16px}
-/* Navegación móvil como barra horizontal scrolleable */
-.mobile-nav{
-align-items:center;display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;
-}
-.mobile-nav button{
-background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);flex:0 0 auto;font-family:var(--font);font-size:12px;font-weight:600;padding:8px 13px;white-space:nowrap;cursor:pointer;
-}
-.mobile-nav button:hover{border-color:var(--accent);color:var(--accent)}
-.mobile-nav button.active{background:rgba(91,141,238,.16);border-color:var(--accent);color:var(--accent)}
-/* Mejoras para móviles */
-body{font-size:14px}
-.login-wrap{max-width:100%}
-.login-card{padding:20px}
-.field input,.field select,.btn{min-height:44px;font-size:16px}
-.tcard{overflow-x:auto}
-.stats{grid-template-columns:repeat(2,1fr)}
-.search input{width:120px}
-th,td{padding:9px 10px;font-size:12px}
-/* Gráficos y filtros en móvil */
-.chart-grid,.chart-grid.two-col{grid-template-columns:1fr}
-.chart-head{flex-direction:column;align-items:stretch}
-.chart-toolbar{width:100%}
-.chart-toolbar .period-btn{flex:1}
-.chart-card,.card{overflow:hidden}
-.chart-card .chart-container{min-height:300px}
-.chart-container{min-height:300px}
-#page-charts .chart-filters,.chart-filters{flex-direction:column;align-items:stretch}
-.chart-filters select{width:100%}
-/* Config page responsive */
-#page-config .field > div{
-flex-direction:column;
-align-items:stretch;
-}
-#page-config .field > div > div{
-width:100%;
-}
-#page-config .field input{
-width:100% !important;
-}
-}
-</style>
-</head>
-<body>
-
-<!-- LOGIN -->
-<div id="login-screen">
-<div class="login-wrap">
-<div class="login-logo">
-<div class="mark">⚡</div>
-<h1>Jowiland</h1>
-<p>Panel de gestión</p>
-</div>
-<div class="login-card">
-<div class="field"><label>Email</label><input type="email" id="l-email" placeholder="tu@email.com" autocomplete="email"/></div>
-<div class="field"><label>Contraseña</label><input type="password" id="l-pass" placeholder="••••••••"/></div>
-<button class="btn btn-primary" id="l-btn" onclick="window.doLogin()">Ingresar al panel</button>
-<div id="login-err"></div>
-</div>
-</div>
-</div>
-
-<!-- APP -->
-<div id="app">
-<aside class="sidebar">
-<div class="sb-logo">
-<div class="mark">⚡</div>
-<span>Jowiland</span>
-</div>
-<nav class="nav">
-<div class="nav-section">General</div>
-<div class="nav-item active" onclick="goPage('dashboard')"><span class="ico">📊</span>Dashboard</div>
-<div class="nav-section">Cuentas</div>
-<div class="nav-item" onclick="goPage('users')"><span class="ico">👥</span>Ver cuentas</div>
-<!-- Este item se muestra/oculta por JS según el rol -->
-<div class="nav-item" id="nav-crear" onclick="openCreate()" style="display:none"><span class="ico">➕</span>Crear cuenta</div>
-<div class="nav-section">Puntos</div>
-<div class="nav-item" onclick="goPage('points')"><span class="ico">⭐</span>Gestión de puntos</div>
-<div class="nav-item" onclick="goPage('charts')"><span class="ico">📈</span>Gráficos</div>
-<div class="nav-section">Configuración</div>
-<div class="nav-item" onclick="goPage('config')"><span class="ico">⚙️</span>Configuración</div>
-<div class="nav-item" onclick="goPage('logs')"><span class="ico">📜</span>Logs</div>
-</nav>
-<div class="sb-footer">
-<div class="sb-user">
-<div class="avatar av-admin" id="sb-av">A</div>
-<div class="sb-info">
-<div class="sname" id="sb-name">—</div>
-<div class="srole role-admin" id="sb-role">admin</div>
-</div>
-</div>
-<button class="btn btn-ghost btn-sm" style="width:100%" onclick="doLogout()">🚪 Cerrar sesión</button>
-</div>
-</aside>
-
-<main class="main">
-
-<!-- Navegación móvil (la sidebar se oculta en pantallas chicas) -->
-<nav class="mobile-nav" id="mobile-nav" aria-label="Navegación móvil">
-  <button onclick="goPage('dashboard')">📊 Dashboard</button>
-  <button onclick="goPage('users')">👥 Cuentas</button>
-  <button onclick="goPage('points')">⭐ Puntos</button>
-  <button onclick="goPage('charts')">📈 Gráficos</button>
-  <button class="m-nav-config" id="m-nav-config" onclick="goPage('config')">⚙️ Config</button>
-  <button onclick="goPage('logs')">📜 Logs</button>
-</nav>
-
-<!-- DASHBOARD -->
-<div class="page active" id="page-dashboard">
-<div class="ph"><div class="ph-left"><h2>Dashboard</h2><p>Resumen general</p></div></div>
-<div class="stats">
-<div class="stat"><div class="slabel">Miembros staff</div><div class="sval c-accent" id="st-total">—</div><div class="ssub" id="st-total-sub"></div><div class="pbar"><div class="pfill" id="st-total-bar" style="background:var(--accent)"></div></div></div>
-<div class="stat" id="st-insp-card"><div class="slabel">Inspectores</div><div class="sval c-success" id="st-insp">—</div><div class="ssub" id="st-insp-sub"></div><div class="pbar"><div class="pfill" id="st-insp-bar" style="background:var(--success)"></div></div></div>
-<div class="stat" id="st-users-card"><div class="slabel">Usuarios</div><div class="sval c-purple" id="st-users">—</div><div class="ssub" id="st-users-sub"></div><div class="pbar"><div class="pfill" id="st-users-bar" style="background:var(--purple)"></div></div></div>
-<div class="stat"><div class="slabel">Puntos promedio</div><div class="sval c-warn" id="st-avg">—</div><div class="ssub" id="st-avg-sub"></div><div class="pbar"><div class="pfill" id="st-avg-bar" style="background:var(--warn)"></div></div></div>
-<div class="stat"><div class="slabel">En riesgo</div><div class="sval" style="color:var(--danger)" id="st-risk">—</div><div class="ssub" id="st-risk-sub"></div><div class="pbar"><div class="pfill" id="st-risk-bar" style="background:var(--danger)"></div></div></div>
-</div>
-
-<div style="margin-bottom:16px">
-<button class="btn btn-ghost btn-sm" id="btn-dest" onclick="toggleDestacados()">👁️ Mostrar trabajadores destacados</button>
-</div>
-<div id="destacados-wrap" style="display:none;margin-bottom:22px">
-<div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
-<div class="stat"><div class="slabel">🌟 Trabajador del día</div><div id="dest-dia" class="dest-body">—</div></div>
-<div class="stat"><div class="slabel">🏅 Trabajador de la semana</div><div id="dest-semana" class="dest-body">—</div></div>
-<div class="stat"><div class="slabel">👑 Trabajador del mes</div><div id="dest-mes" class="dest-body">—</div></div>
-</div>
-</div>
-
-<div class="tcard">
-<div class="ttoolbar">
-<span class="ttoolbar-title">🏆 Top por puntos</span>
-<div class="chart-toolbar">
-<button class="period-btn active" data-rank-period="day" onclick="setRankPeriod('day',this)">Diario</button>
-<button class="period-btn" data-rank-period="week" onclick="setRankPeriod('week',this)">Semanal</button>
-<button class="period-btn" data-rank-period="month" onclick="setRankPeriod('month',this)">Mensual</button>
-</div>
-</div>
-<table>
-<thead><tr><th>#</th><th>Nombre</th><th>Rol</th><th>Puntos</th><th>Valor fijo</th><th>Ajustar</th></tr></thead>
-<tbody id="dash-tbody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody>
-</table>
-</div>
-
-</div>
-
-<!-- CUENTAS -->
-<div class="page" id="page-users">
-<div class="ph">
-<div class="ph-left"><h2>Cuentas</h2><p>Todos los usuarios registrados</p></div>
-<div id="ph-crear-btn"></div><!-- Se inyecta el botón si es admin -->
-</div>
-<div class="tcard">
-<div class="ttoolbar">
-<div class="search"><span>🔍</span><input type="text" placeholder="Buscar por nombre…" oninput="filterU(this.value)"/></div>
-<select id="role-filter" onchange="filterByRole(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none">
-<option value="">Todos los roles</option>
-<option value="inspector">Inspector</option>
-<option value="user">Usuario</option>
-<option value="admin">Admin</option>
-</select>
-</div>
-<table>
-<thead>
-<tr>
-<th>Nombre</th>
-<th>Rol</th>
-<th>PIN</th>
-<th>Rango</th>
-<th>Cargos</th>
-<th>Estado</th>
-<th>Puntos</th>
-<th id="th-acciones">Acciones</th>
-</tr>
-</thead>
-<tbody id="users-tbody"><tr><td colspan="8" class="empty">Cargando…</td></tr></tbody>
-</table>
-</div>
-</div>
-
-<!-- PUNTOS -->
-<div class="page" id="page-points">
-<div class="ph"><div class="ph-left"><h2>Gestión de puntos</h2><p>Valor fijo (Admin) · Ajuste +1/−1 (Inspección)</p></div></div>
-<div class="tcard">
-<div class="ttoolbar">
-<div class="search"><span>🔍</span><input type="text" placeholder="Buscar moderador…" oninput="filterP(this.value)"/></div>
-<select id="pts-cargo" onchange="filterPCargo(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none">
-<option value="">Todos los cargos</option>
-</select>
-<button class="btn btn-ghost btn-sm" id="pts-eye-btn" onclick="togglePtsDetails()" title="Mostrar u ocultar cargo">👁️ Detalles</button>
-</div>
-<table>
-<thead><tr><th>Nombre</th><th>Rol</th><th>Puntos actuales</th><th class="pts-detail-th" style="display:none">Cargo</th><th>Valor fijo</th><th>Ajustar</th></tr></thead>
-<tbody id="pts-tbody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody>
-</table>
-</div>
-</div>
-
-<!-- GRÁFICOS -->
-<div class="page" id="page-charts">
-<div class="ph"><div class="ph-left"><h2>Gráficos</h2><p>Estadísticas visuales y rankings del equipo</p></div></div>
-
-<!-- FILTROS GLOBALES -->
-<div class="card" style="margin-bottom: 16px;">
-  <div class="chart-head">
-    <h3>🔍 Filtros</h3>
-  </div>
-  <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-    <div>
-      <label style="font-size: 12px; color: var(--muted);">Usuario:</label>
-      <select id="filter-user" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
-        <option value="">Todos</option>
-      </select>
-    </div>
-    <div>
-      <label style="font-size: 12px; color: var(--muted);">Rol:</label>
-      <select id="filter-rol" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
-        <option value="">Todos</option>
-        <option value="user">Usuario</option>
-        <option value="admin">Admin</option>
-        <option value="inspector">Inspector</option>
-      </select>
-    </div>
-    <div>
-      <label style="font-size: 12px; color: var(--muted);">Rango:</label>
-      <select id="filter-rango" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
-        <option value="">Todos</option>
-        <option value="centinela">Centinela</option>
-        <option value="vigia">Vigia</option>
-      </select>
-    </div>
-    <div>
-      <label style="font-size: 12px; color: var(--muted);">Cargo:</label>
-      <select id="filter-cargo" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
-        <option value="">Todos</option>
-        <option value="Inspector">Inspector</option>
-        <option value="Moderador">Moderador</option>
-        <option value="Editor">Editor</option>
-        <option value="MC Team">MC Team</option>
-        <option value="Dev">Dev</option>
-        <option value="Marketing">Marketing</option>
-      </select>
-    </div>
-    <button class="btn-ghost" onclick="resetFilters()" style="margin-left: auto;">🔄 Resetear filtros</button>
-  </div>
-</div>
-
-<!-- NIVEL 2: RANKING DE PUNTOS -->
-<div class="chart-grid two-col">
-  <div class="card chart-card">
-    <div class="chart-head">
-      <h3>🏆 Ranking de Puntos</h3>
-      <div class="chart-toolbar">
-        <button class="period-btn active" data-krank="day" onclick="setRankPeriod('day',this)">Día</button>
-        <button class="period-btn" data-krank="week" onclick="setRankPeriod('week',this)">Semana</button>
-        <button class="period-btn" data-krank="month" onclick="setRankPeriod('month',this)">Mes</button>
-      </div>
-      <div class="chart-toolbar">
-        <button class="period-btn active" data-mode="cols" onclick="setRankModeAdmins('cols',this)">Columnas</button>
-        <button class="period-btn" data-mode="circ" onclick="setRankModeAdmins('circ',this)">Circular</button>
-      </div>
-      <div class="chart-toolbar">
-        <button class="btn-ghost btn-sm" onclick="refreshSingleChart('rankingAdmins')" style="font-size: 11px; padding: 4px 8px;">🔄 Refrescar</button>
-        <button class="btn-ghost btn-sm res-ctrl" id="reset-ranking-admins-btn" onclick="resetSingleChart('rankingAdmins')" style="font-size: 11px; padding: 4px 8px; display: none;">🗑️ Reiniciar</button>
-      </div>
-    </div>
-    <div class="chart-container" id="rank-admins-box"><div class="chart-empty">Cargando ranking…</div></div>
-  </div>
-</div>
-
-<!-- NIVEL 3: GRÁFICOS PRINCIPALES -->
-<div class="card chart-card" id="evo-chart-card">
-  <div class="chart-head">
-    <h3>📈 Evolución general del equipo</h3>
-    <div class="chart-toolbar">
-      <button class="period-btn active" data-time="7" onclick="setEvoTime('7',this)">Día</button>
-      <button class="period-btn" data-time="14" onclick="setEvoTime('14',this)">Semana</button>
-      <button class="period-btn" data-time="30" onclick="setEvoTime('30',this)">Mes</button>
-    </div>
-    <div class="chart-toolbar">
-      <button class="period-btn active" data-mode="line" onclick="setRankModeEvo('line',this)">Lineal</button>
-      <button class="period-btn" data-mode="cols" onclick="setRankModeEvo('cols',this)">Columnas</button>
-    </div>
-    <div class="chart-toolbar">
-      <button class="btn-ghost btn-sm" onclick="refreshSingleChart('evolutionPts')" style="font-size: 11px; padding: 4px 8px;">🔄 Refrescar</button>
-      <button class="btn-ghost btn-sm" id="reset-evolution-pts-btn" onclick="resetSingleChart('evolutionPts')" style="font-size: 11px; padding: 4px 8px; display: none;">🗑️ Reiniciar</button>
-    </div>
-    <span class="chart-note-inline">Puntos reconstruidos a partir de los registros recientes</span>
-  </div>
-  <div class="chart-container" id="evo-pts-chart"><div class="chart-empty">Cargando evolución…</div></div>
-  <div class="chart-legend" id="evo-pts-legend"></div>
-</div>
-
-<!-- ACTIVIDAD DE ADMINS (separada del MC Team) -->
-<div class="card chart-card" id="activity-admins-card">
-  <div class="chart-head">
-    <h3>🕐 Actividad de Usuarios</h3>
-    <div class="chart-toolbar" id="chart-toolbar">
-      <button class="period-btn active" data-period="day" onclick="setChartPeriod('day',this)">Día</button>
-      <button class="period-btn" data-period="week" onclick="setChartPeriod('week',this)">Semana</button>
-      <button class="period-btn" data-period="month" onclick="setChartPeriod('month',this)">Mes</button>
-    </div>
-    <div class="chart-toolbar">
-      <button class="period-btn active" data-mode="line" onclick="setAdminChartMode('line',this)">Lineal</button>
-      <button class="period-btn" data-mode="cols" onclick="setAdminChartMode('cols',this)">Columnas</button>
-      <button class="period-btn" data-mode="circ" onclick="setAdminChartMode('circ',this)">Circular</button>
-    </div>
-    <div class="chart-toolbar">
-      <button class="btn-ghost btn-sm" onclick="refreshSingleChart('activityChart')" style="font-size: 11px; padding: 4px 8px;">🔄 Refrescar</button>
-      <button class="btn-ghost btn-sm" id="reset-activity-chart-btn" onclick="resetSingleChart('activityChart')" style="font-size: 11px; padding: 4px 8px; display: none;">🗑️ Reiniciar</button>
-    </div>
-  </div>
-  <div class="chart-container" id="activity-chart"><div class="chart-empty">Cargando actividad…</div></div>
-  <div class="chart-legend" id="chart-legend"></div>
-</div>
-
-<!-- ACTIVIDAD DE INSPECTORES -->
-<div class="card chart-card" id="activity-inspectors-card">
-  <div class="chart-head">
-    <h3>📊 Actividad de Inspectores</h3>
-    <div class="chart-toolbar">
-      <button class="btn-ghost btn-sm" onclick="refreshSingleChart('inspectorActivity')" style="font-size: 11px; padding: 4px 8px;">🔄 Refrescar</button>
-      <button class="btn-ghost btn-sm" id="reset-inspector-activity-btn" onclick="resetSingleChart('inspectorActivity')" style="font-size: 11px; padding: 4px 8px; display: none;">🗑️ Reiniciar</button>
-    </div>
-  </div>
-  <div class="chart-note-inline" style="margin-bottom:8px;display:block">Últimos 20 movimientos de inspectores</div>
-  <div id="inspector-activity-chart">
-    <table>
-      <thead>
-        <tr>
-          <th>Fecha</th>
-          <th>Inspector</th>
-          <th>Acción</th>
-          <th>Objetivo</th>
-          <th>Motivo</th>
-          <th>Hace</th>
-        </tr>
-      </thead>
-      <tbody id="inspector-activity-body">
-        <tr><td colspan="6" class="t-empty">Cargando…</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-</div>
-
-<!-- CONFIGURACIÓN -->
-<div class="page" id="page-config">
-<div class="ph"><div class="ph-left"><h2>⚙️ Configuración</h2><p>Ajustes generales del sistema</p></div></div>
-
-<div class="card" style="margin-bottom:16px;">
-  <h3>Chambeadores Destacados — DÍA</h3>
-  <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">Se revela todos los días a la hora indicada y permanece visible durante la duración configurada.</p>
-  <div class="field">
-    <label>Hora de revelación</label>
-    <input type="time" id="chambeador-day-reveal" value="12:00" style="width:140px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;"/>
-  </div>
-  <div class="field">
-    <label>Duración visible</label>
-    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <label style="font-size:11px;color:var(--muted);">Horas</label>
-        <input type="number" id="chambeador-day-hours" min="0" max="72" value="2" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-      </div>
-      <span style="font-size:22px;font-weight:bold;color:var(--muted);">:</span>
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <label style="font-size:11px;color:var(--muted);">Minutos</label>
-        <input type="number" id="chambeador-day-minutes" min="0" max="59" value="0" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="card" style="margin-bottom:16px;">
-  <h3>Chambeadores Destacados — SEMANA</h3>
-  <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">Se revela cada semana a la hora indicada y permanece visible durante la duración configurada.</p>
-  <div class="field">
-    <label>Hora de revelación</label>
-    <input type="time" id="chambeador-week-reveal" value="18:00" style="width:140px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;"/>
-  </div>
-  <div class="field">
-    <label>Duración visible</label>
-    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <label style="font-size:11px;color:var(--muted);">Horas</label>
-        <input type="number" id="chambeador-week-hours" min="0" max="168" value="72" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-      </div>
-      <span style="font-size:22px;font-weight:bold;color:var(--muted);">:</span>
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <label style="font-size:11px;color:var(--muted);">Minutos</label>
-        <input type="number" id="chambeador-week-minutes" min="0" max="59" value="0" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="card" style="margin-bottom:16px;">
-  <h3>Chambeadores Destacados — MES</h3>
-  <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">Se revela cada mes a la hora indicada y permanece visible durante la duración configurada.</p>
-  <div class="field">
-    <label>Hora de revelación</label>
-    <input type="time" id="chambeador-month-reveal" value="20:00" style="width:140px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;"/>
-  </div>
-  <div class="field">
-    <label>Duración visible</label>
-    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <label style="font-size:11px;color:var(--muted);">Horas</label>
-        <input type="number" id="chambeador-month-hours" min="0" max="720" value="168" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-      </div>
-      <span style="font-size:22px;font-weight:bold;color:var(--muted);">:</span>
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <label style="font-size:11px;color:var(--muted);">Minutos</label>
-        <input type="number" id="chambeador-month-minutes" min="0" max="59" value="0" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="card" style="margin-bottom:16px;">
-  <button class="btn btn-primary btn-auto" onclick="saveChambeadorConfig()">💾 Guardar Configuración Chambeadores</button>
-  <p style="color:var(--muted);font-size:12px;margin-top:8px;" id="chambeador-config-hint">La hora se interpreta en el horario local del navegador. La revelación y ocultación son automáticas.</p>
-</div>
-
-<div class="card">
-  <h3>Configuración de Puntos</h3>
-  <p style="color:var(--muted);margin-bottom:16px;">Ajustá el tiempo para el decremento automático de puntos</p>
-<div class="field">
-<label>Tiempo para restar 1 punto (total)</label>
-<div style="display:flex;gap:12px;align-items:center;">
-<div style="display:flex;flex-direction:column;gap:4px;">
-<label style="font-size:12px;color:var(--muted);">Horas</label>
-<input type="number" id="config-hours" min="0" placeholder="0" style="width:100px;text-align:center;">
-</div>
-<span style="font-size:24px;font-weight:bold;">:</span>
-<div style="display:flex;flex-direction:column;gap:4px;">
-<label style="font-size:12px;color:var(--muted);">Minutos</label>
-<input type="number" id="config-minutes" min="0" max="59" placeholder="0" style="width:100px;text-align:center;">
-</div>
-</div>
-</div>
-<div class="field">
-<label>Máximo de puntos</label>
-<input type="number" id="config-max" min="1" max="99" step="1" value="7" style="width:120px;text-align:center;"/>
-<p class="field-hint">Ningún trabajador podrá superar este valor (por defecto: 7).</p>
-</div>
-<div class="field">
-<label>Decimales</label>
-<select id="config-decimals" style="width:auto;max-width:220px;">
-<option value="0">0 decimales (ej: 5)</option>
-<option value="1" selected>1 decimal (ej: 1.5)</option>
-<option value="2">2 decimales (ej: 1.35)</option>
-</select>
-<p class="field-hint">Precisión usada al mostrar y guardar los puntos.</p>
-</div>
-<div class="field">
-<label>Resumen</label>
-<div style="padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
-<p id="config-summary">Cada <strong>0h 0m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>0h 0m</strong>) · Máximo: <strong>7</strong> pts · Decimales: <strong>1</strong></p>
-</div>
-</div>
-<button class="btn btn-primary" id="config-save" onclick="saveConfig()" style="width:100%;margin-top:8px;">💾 Guardar Configuración</button>
-</div>
-</div>
-
-<!-- LOGS -->
-<div class="page" id="page-logs">
-<div class="ph">
-<div class="ph-left"><h2>Logs</h2><p>Accesos y cambios de puntos</p></div>
-<div style="display:flex;gap:8px;align-items:center">
-<button class="btn btn-ghost btn-sm" onclick="toggleInspectorPanel()">📊 Actividad inspectores</button>
-<button class="btn btn-ghost btn-sm" id="logs-export" onclick="exportLogs()">📥 Exportar</button>
-</div>
-</div>
-<div class="tcard" id="insp-panel" style="display:none;margin-bottom:14px">
-<div class="ttoolbar"><span class="ttoolbar-title">📊 Actividad de inspectores (hoy)</span></div>
-<table>
-<thead>
-<tr>
-<th>Inspector</th>
-<th>Puntos asignados hoy</th>
-<th>Acciones hoy</th>
-<th>Última acción</th>
-<th>Hace</th>
-<th>Estado</th>
-</tr>
-</thead>
-<tbody id="insp-tbody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody>
-</table>
-</div>
-<div class="tcard">
-<div class="ttoolbar">
-<div style="display:flex;flex-direction:column;gap:4px">
-<label style="font-size:11px;color:var(--muted)">Tipo</label>
-<select onchange="setLogTypeFilter(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none;min-width:100px">
-<option value="">Todos</option>
-<option value="login">Logins</option>
-<option value="points">Cambios de puntos</option>
-</select>
-</div>
-<div style="display:flex;flex-direction:column;gap:4px">
-<label style="font-size:11px;color:var(--muted)">Usuario</label>
-<select id="log-filter-user" onchange="setLogFilterUser(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none;min-width:120px">
-<option value="">Todos</option>
-</select>
-</div>
-<div style="display:flex;flex-direction:column;gap:4px">
-<label style="font-size:11px;color:var(--muted)">Rol</label>
-<select id="log-filter-role" onchange="setLogFilterRole(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none;min-width:100px">
-<option value="">Todos</option>
-<option value="admin">Admin</option>
-<option value="inspector">Inspector</option>
-<option value="user">Usuario</option>
-</select>
-</div>
-<div style="display:flex;flex-direction:column;gap:4px">
-<label style="font-size:11px;color:var(--muted)">Rango</label>
-<select id="log-filter-rango" onchange="setLogFilterRango(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none;min-width:100px">
-<option value="">Todos</option>
-<option value="centinela">Centinela</option>
-<option value="vigia">Vigia</option>
-</select>
-</div>
-<div style="display:flex;flex-direction:column;gap:4px">
-<label style="font-size:11px;color:var(--muted)">Cargo</label>
-<select id="log-filter-cargo" onchange="setLogFilterCargo(this.value)" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 10px;font-family:var(--font);outline:none;min-width:100px">
-<option value="">Todos</option>
-<option value="Inspector">Inspector</option>
-<option value="Moderador">Moderador</option>
-<option value="Editor">Editor</option>
-<option value="MC Team">MC Team</option>
-<option value="Dev">Dev</option>
-<option value="Marketing">Marketing</option>
-</select>
-</div>
-<div style="display:flex;flex-direction:column;gap:4px;flex:1">
-<label style="font-size:11px;color:var(--muted)">Buscar</label>
-<div class="search"><span>🔍</span><input type="text" placeholder="Buscar…" oninput="setLogSearch(this.value)"/></div>
-</div>
-</div>
-<table>
-<thead>
-<tr>
-<th>Fecha y hora</th>
-<th>Inspector/Admin</th>
-<th>Usuario afectado</th>
-<th>Cambio</th>
-<th>Motivo</th>
-<th id="logs-th-actions">Acciones</th>
-</tr>
-</thead>
-<tbody id="logs-tbody"><tr><td colspan="6" class="empty">Cargando…</td></tr></tbody>
-</table>
-</div>
-</div>
-
-</main>
-</div>
-
-<!-- MODAL CREAR/EDITAR -->
-<div class="overlay" id="modal-ov">
-<div class="modal">
-<h3 id="modal-title">Crear cuenta</h3>
-
-<div class="field">
-<label>Nombre completo</label>
-<input type="text" id="m-name" placeholder="Nombre del moderador"/>
-</div>
-
-<div class="field">
-<label>Rol</label>
-<select id="m-role" onchange="onRoleChange(this.value)">
-<option value="user">Usuario – solo ve sus puntos (acceso por PIN)</option>
-<option value="inspector">Inspector – suma/resta puntos (acceso por email)</option>
-<option value="admin">Admin – acceso completo (acceso por email)</option>
-</select>
-</div>
-
-<div class="field">
-<label>Rango</label>
-<select id="m-rango">
-<option value="《🪬》 Overlord">《🪬》 Overlord</option>
-<option value="《🧿》 Owner">《🧿》 Owner</option>
-<option value="《💎》 Admin">《💎》 Admin</option>
-<option value="《💠》 Centinela" selected>《💠》 Centinela</option>
-<option value="《🔹》 Vigia">《🔹》 Vigia</option>
-</select>
-</div>
-
-<div class="field">
-<label>Cargos</label>
-<div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;background:var(--bg);padding:12px;border-radius:8px;border:1px solid var(--border)">
-<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
-<input type="checkbox" class="cargo-checkbox" value="Inspector">
-<span style="font-size:14px">Inspector</span>
-</label>
-<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
-<input type="checkbox" class="cargo-checkbox" value="Moderador">
-<span style="font-size:14px">Moderador</span>
-</label>
-<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
-<input type="checkbox" class="cargo-checkbox" value="MC Team">
-<span style="font-size:14px">MC Team</span>
-</label>
-<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
-<input type="checkbox" class="cargo-checkbox" value="Dev">
-<span style="font-size:14px">Dev</span>
-</label>
-<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
-<input type="checkbox" class="cargo-checkbox" value="Editor">
-<span style="font-size:14px">Editor</span>
-</label>
-<label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:6px;transition:background .15s">
-<input type="checkbox" class="cargo-checkbox" value="Marketing">
-<span style="font-size:14px">Marketing</span>
-</label>
-</div>
-</div>
-
-<!-- Campos para inspector/admin -->
-<div id="email-section">
-<div class="field">
-<label>Email</label>
-<input type="email" id="m-email" placeholder="correo@ejemplo.com" autocomplete="off"/>
-</div>
-<div class="field" id="pass-field">
-<label>Contraseña</label>
-<input type="password" id="m-pass" placeholder="Mínimo 6 caracteres" autocomplete="new-password"/>
-<div class="field-hint">Solo se usa al crear. No se puede cambiar desde acá después.</div>
-</div>
-<div class="field-hint" id="auth-hint" style="display:none; color:var(--accent);">Para cambiar a Admin/Inspector necesita Gmail y contraseña</div>
-</div>
-
-<!-- PIN para usuarios -->
-<div id="pin-section" style="display:none">
-<div class="pin-box" id="pin-val">——</div>
-<div class="pin-hint">PIN generado automáticamente. Compartíselo al usuario.</div>
-<button class="btn btn-ghost btn-sm" style="margin-bottom:10px" onclick="regenPin()">🔄 Generar otro PIN</button>
-</div>
-
-<div class="divider"></div>
-
-<div class="field">
-<label>Estado</label>
-<select id="m-status">
-<option value="active">Activo</option>
-<option value="inactive">Inactivo</option>
-</select>
-</div>
-
-<div class="modal-err" id="modal-err"></div>
-
-<div class="modal-footer">
-<button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-<button class="btn btn-primary btn-auto" id="m-save" onclick="saveAccount()">Crear cuenta</button>
-</div>
-</div>
-</div>
-
-<!-- CONFIRM DELETE -->
-<div id="confirm-ov">
-<div class="cbox">
-<h4>¿Eliminar cuenta?</h4>
-<p id="confirm-msg">Esta acción no se puede deshacer.</p>
-<div class="cactions">
-<button class="btn btn-ghost" onclick="closeConfirm()">Cancelar</button>
-<button class="btn btn-danger" id="confirm-yes">Sí, eliminar</button>
-</div>
-</div>
-</div>
-
-<!-- TOAST -->
-<div class="toast" id="toast"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js?v=20250906"></script>
-<script type="module">
+﻿
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import {
 getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
@@ -931,7 +23,7 @@ const app  = getApps().length ? getApp() : initializeApp(cfg, "main");
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-// ── Delegado global de clicks (captura todos los onclick= sin necesidad de funciones globales antes del parseo) ──
+// â”€â”€ Delegado global de clicks (captura todos los onclick= sin necesidad de funciones globales antes del parseo) â”€â”€
 (function installClickDelegate() {
   function parseArgs(str) {
     try {
@@ -962,7 +54,7 @@ const db   = getFirestore(app);
   }, { capture: true });
 })();
 
-// ── ESTADO GLOBAL ─────────────────────────────────────────────
+// â”€â”€ ESTADO GLOBAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let allUsers     = [];
 let myRole       = null;
 let myUid        = null;
@@ -984,7 +76,7 @@ let logFilterRango = "";
 let logFilterCargo = "";
 let filterPCargo   = "";
 let ptsShowDetails = false;
-// Estado de gráficos: tipo por gráfico y período para los temporales
+// Estado de grÃ¡ficos: tipo por grÃ¡fico y perÃ­odo para los temporales
 const chartState = {
 rank:   { type: "bar" },
 evo:    { type: "line", period: "week" },
@@ -1064,7 +156,7 @@ const m = Math.ceil(s / 60);
 return `${m} min`;
 }
 
-// ── AUTH ──────────────────────────────────────────────────────
+// â”€â”€ AUTH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 onAuthStateChanged(auth, async user => {
 if (!user) { showLogin(); return; }
 
@@ -1080,14 +172,14 @@ showToast("Acceso denegado: solo admins e inspectores.", "err");
 await signOut(auth); return;
 }
 if (d.status === "inactive") {
-showToast("Tu cuenta está inactiva.", "err");
+showToast("Tu cuenta estÃ¡ inactiva.", "err");
 await signOut(auth); return;
 }
 myRole = d.role;
 myUid  = user.uid;
 await bootApp(user, d);
 } catch(e) {
-showToast("Error al verificar sesión: " + e.message, "err");
+showToast("Error al verificar sesiÃ³n: " + e.message, "err");
 }
 });
 
@@ -1097,11 +189,11 @@ const pass  = document.getElementById("l-pass").value;
 const btn   = document.getElementById("l-btn");
 const err   = document.getElementById("login-err");
 err.style.display = "none";
-if (!email || !pass) { err.textContent="Completá los dos campos."; err.style.display="block"; return; }
+if (!email || !pass) { err.textContent="CompletÃ¡ los dos campos."; err.style.display="block"; return; }
 const chk = rlCheck("email");
-if (!chk.ok) { err.textContent = `Demasiados intentos. Esperá ${fmtWait(chk.waitMs)} y probá de nuevo.`; err.style.display="block"; return; }
+if (!chk.ok) { err.textContent = `Demasiados intentos. EsperÃ¡ ${fmtWait(chk.waitMs)} y probÃ¡ de nuevo.`; err.style.display="block"; return; }
 btn.disabled = true;
-btn.innerHTML = '<div class="spinner"></div> Ingresando…';
+btn.innerHTML = '<div class="spinner"></div> Ingresandoâ€¦';
 try {
 await signInWithEmailAndPassword(auth, email, pass);
 rlReset("email");
@@ -1109,8 +201,8 @@ rlReset("email");
 const extra = e.code === "auth/too-many-requests" ? 10 * 60 * 1000 : 0;
 const fail = rlFail("email", extra);
 err.textContent = fail.locked
-? `Demasiados intentos. Esperá ${fmtWait(fail.waitMs)} y probá de nuevo.`
-: (friendlyErr(e.code) || e.message || "Error al iniciar sesión.");
+? `Demasiados intentos. EsperÃ¡ ${fmtWait(fail.waitMs)} y probÃ¡ de nuevo.`
+: (friendlyErr(e.code) || e.message || "Error al iniciar sesiÃ³n.");
 err.style.display = "block";
 btn.disabled = false;
 btn.textContent = "Ingresar al panel";
@@ -1120,7 +212,7 @@ btn.textContent = "Ingresar al panel";
 document.getElementById("l-pass").addEventListener("keydown", e => { if(e.key==="Enter") window.doLogin(); });
 window.doLogout = () => signOut(auth);
 
-// ── BOOT ──────────────────────────────────────────────────────
+// â”€â”€ BOOT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function bootApp(user, data) {
 document.getElementById("login-screen").style.display = "none";
 document.getElementById("app").style.display = "block";
@@ -1138,7 +230,7 @@ av.className = "avatar av-" + data.role;
 if (myRole === "admin") {
 document.getElementById("nav-crear").style.display = "flex";
 document.getElementById("ph-crear-btn").innerHTML =
-'<button class="btn btn-primary btn-auto" onclick="openCreate()">➕ Crear cuenta</button>';
+'<button class="btn btn-primary btn-auto" onclick="openCreate()">âž• Crear cuenta</button>';
 } else {
 document.getElementById("nav-config").style.display = "none";
 // Inspector: ocultar columna acciones
@@ -1174,7 +266,7 @@ document.getElementById("login-screen").style.display = "flex";
 document.getElementById("app").style.display = "none";
 }
 
-// ── CONFIGURACIÓN DE DECREMENTO DE PUNTOS ───────────────────────────────────────────
+// â”€â”€ CONFIGURACIÃ“N DE DECREMENTO DE PUNTOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadConfig() {
 try {
 const snap = await getDoc(doc(db, "settings", "pointDecrement"));
@@ -1212,13 +304,13 @@ const intervalHours = Math.floor(intervalMinutes / 60);
 const intervalMins = Math.max(1, Math.round(intervalMinutes % 60));
 
 document.getElementById("config-summary").innerHTML =
-`Cada <strong>${hours}h ${minutes}m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>${intervalHours}h ${intervalMins}m</strong>) · Máximo: <strong>${maxP}</strong> pts · Decimales: <strong>${dec}</strong>`;
+`Cada <strong>${hours}h ${minutes}m</strong> se restarÃ¡ <strong>1 punto</strong> (0.1 puntos cada <strong>${intervalHours}h ${intervalMins}m</strong>) Â· MÃ¡ximo: <strong>${maxP}</strong> pts Â· Decimales: <strong>${dec}</strong>`;
 }
 
 window.saveConfig = async (e) => {
 if (e && e.preventDefault) e.preventDefault();
 if (myRole !== "admin") {
-showToast("Solo un admin puede guardar esta configuración.", "err");
+showToast("Solo un admin puede guardar esta configuraciÃ³n.", "err");
 return;
 }
 const hours = parseInt(document.getElementById("config-hours").value) || 0;
@@ -1227,18 +319,18 @@ const maxPoints = parseInt(document.getElementById("config-max").value) || 7;
 const decimals = [0,1,2].includes(parseInt(document.getElementById("config-decimals").value)) ? parseInt(document.getElementById("config-decimals").value) : 1;
 
 if (hours === 0 && minutes === 0) {
-showToast("Ingresá un tiempo válido!", "err");
+showToast("IngresÃ¡ un tiempo vÃ¡lido!", "err");
 return;
 }
 if (!(maxPoints >= 1)) {
-showToast("El máximo de puntos debe ser al menos 1.", "err");
+showToast("El mÃ¡ximo de puntos debe ser al menos 1.", "err");
 return;
 }
 
 currentConfig = { hours, minutes, maxPoints, decimals, updatedAt: serverTimestamp() };
 try {
 await setDoc(doc(db, "settings", "pointDecrement"), currentConfig, { merge: true });
-showToast("✅ Configuración guardada!", "ok");
+showToast("âœ… ConfiguraciÃ³n guardada!", "ok");
 startPointDecrementScheduler();
 renderAll();
 } catch (e) {
@@ -1247,7 +339,7 @@ showToast("Error al guardar: " + e.message, "err");
 }
 }
 
-// ── CONFIGURACIÓN DE CHAMBEADORES (día / semana / mes) ─────────
+// â”€â”€ CONFIGURACIÃ“N DE CHAMBEADORES (dÃ­a / semana / mes) â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const CHAMBEADOR_CONFIG_DOC = "chambeadorConfig";
 const CHAMBEADOR_DEFS = [
   { key: "day",    elId: "dest-dia",    inTime: "chambeador-day-reveal",    inHours: "chambeador-day-hours",    inMinutes: "chambeador-day-minutes" },
@@ -1289,13 +381,13 @@ async function loadChambeadorConfig() {
       if (elM) elM.value = cfg.visibleMinutes;
     }
   } catch(e) {
-    console.error("Error cargando configuración de chambeadores:", e);
+    console.error("Error cargando configuraciÃ³n de chambeadores:", e);
   }
 }
 
 window.saveChambeadorConfig = async () => {
   if (myRole !== "admin") {
-    showToast("Solo los admins pueden modificar la configuración.", "err");
+    showToast("Solo los admins pueden modificar la configuraciÃ³n.", "err");
     return;
   }
 
@@ -1308,7 +400,7 @@ window.saveChambeadorConfig = async () => {
       const hours = Number.isFinite(visibleHours) && visibleHours >= 0 ? visibleHours : 0;
       const minutes = Number.isFinite(visibleMinutes) && visibleMinutes >= 0 ? visibleMinutes : 0;
       if (hours === 0 && minutes === 0) {
-        showToast("La duración visible debe ser mayor a 0 minutos en todos los períodos.", "err");
+        showToast("La duraciÃ³n visible debe ser mayor a 0 minutos en todos los perÃ­odos.", "err");
         return;
       }
       config[def.key] = { revealTime, visibleHours: hours, visibleMinutes: minutes };
@@ -1316,10 +408,10 @@ window.saveChambeadorConfig = async () => {
     config.lastUpdated = serverTimestamp();
 
     await setDoc(doc(db, "settings", CHAMBEADOR_CONFIG_DOC), config, { merge: true });
-    showToast("Configuración de chambeadores guardada correctamente.", "ok");
+    showToast("ConfiguraciÃ³n de chambeadores guardada correctamente.", "ok");
     startChambeadorScheduler();
   } catch(e) {
-    showToast("Error al guardar configuración: " + e.message, "err");
+    showToast("Error al guardar configuraciÃ³n: " + e.message, "err");
   }
 };
 
@@ -1335,7 +427,7 @@ function startChambeadorScheduler() {
   applyChambeadorVisibility();
 }
 
-// Devuelve { revealTs, hideTs } de la ventana de hoy para un período.
+// Devuelve { revealTs, hideTs } de la ventana de hoy para un perÃ­odo.
 function periodWindowToday(periodCfg) {
   const now = new Date();
   const parts = String(periodCfg.revealTime || "").split(":").map(Number);
@@ -1359,7 +451,7 @@ async function applyChambeadorVisibility() {
     }
 
     if (!hasStored) {
-      // Sin configuración guardada: se respetan los valores actuales del formulario.
+      // Sin configuraciÃ³n guardada: se respetan los valores actuales del formulario.
       for (const def of CHAMBEADOR_DEFS) {
         const elT = document.getElementById(def.inTime);
         const elH = document.getElementById(def.inHours);
@@ -1385,7 +477,7 @@ async function applyChambeadorVisibility() {
         visible = inWindow || inNextWindow;
         if (visible && config) {
           const hideTs = nowMs >= nextReveal ? nextReveal + durationMs : win.hideTs;
-          console.log(`[Chambeadores] "${def.key}" revelado · ocultamiento automático programado para ${new Date(hideTs).toLocaleTimeString()}`);
+          console.log(`[Chambeadores] "${def.key}" revelado Â· ocultamiento automÃ¡tico programado para ${new Date(hideTs).toLocaleTimeString()}`);
         }
       }
       el.style.display = visible ? "" : "none";
@@ -1417,7 +509,7 @@ const d = decimalsN();
 return Math.round(n * Math.pow(10, d)) / Math.pow(10, d);
 }
 
-// Limita el valor entre 0 y el máximo configurado, con la precisión elegida
+// Limita el valor entre 0 y el mÃ¡ximo configurado, con la precisiÃ³n elegida
 function clampPts(n) {
 const r = roundPts(n);
 return Math.max(0, Math.min(maxPts(), r));
@@ -1437,14 +529,14 @@ pointDecrementTimer = null;
 }
 
 function startPointDecrementScheduler() {
-// Eliminar la verificación de rol - debe funcionar sin depender de admin conectado
+// Eliminar la verificaciÃ³n de rol - debe funcionar sin depender de admin conectado
 stopPointDecrementScheduler();
 pointDecrementTimer = setInterval(applyPointDecrementTick, 60 * 1000);
 applyPointDecrementTick();
 }
 
 async function applyPointDecrementTick() {
-// Eliminar la verificación de rol - debe funcionar sin admin conectado
+// Eliminar la verificaciÃ³n de rol - debe funcionar sin admin conectado
 if (pointDecrementBusy) return;
 pointDecrementBusy = true;
 try {
@@ -1462,12 +554,12 @@ await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: now, 
 return;
 }
 
-// Calcular cuántos intervalos completos han pasado
+// Calcular cuÃ¡ntos intervalos completos han pasado
 const elapsedMs = now - last;
 const fullIntervals = Math.floor(elapsedMs / totalMs);
 if (fullIntervals <= 0) return;
 
-// Calcular la reducción gradual: 1 punto por intervalo completo, pero aplicado gradualmente
+// Calcular la reducciÃ³n gradual: 1 punto por intervalo completo, pero aplicado gradualmente
 // Ejemplo: si configuraron 24h, cada 24h se reduce 1 punto total
 // Se aplica gradualmente durante el intervalo actual
 const partialMs = elapsedMs % totalMs;
@@ -1482,7 +574,7 @@ for (const u of allUsers) {
 if (!u || u.role === "admin") continue;
 const oldP = Number(u.points || 0);
 if (!Number.isFinite(oldP)) continue;
-// Aplicar reducción calculada
+// Aplicar reducciÃ³n calculada
 const newP = clampPts(oldP - decrement);
 if (newP === oldP) continue;
 try {
@@ -1490,19 +582,19 @@ await updateDoc(doc(db, "users", u.uid), { points: newP });
 u.points = newP;
 changed++;
 
-// REGISTRAR LA REDUCCIÓN AUTOMÁTICA EN LOS LOGS
+// REGISTRAR LA REDUCCIÃ“N AUTOMÃTICA EN LOS LOGS
 await writeLog({
 type: "points",
 actorUid: "system",
 actorRole: "system",
-actorName: "Sistema Automático",
+actorName: "Sistema AutomÃ¡tico",
 targetUid: u.uid,
 targetName: u.name || "",
 delta: -decrement,
-reason: `Reducción automática (${cfgToMs(cfg) / (1000 * 60 * 60)}h)`,
+reason: `ReducciÃ³n automÃ¡tica (${cfgToMs(cfg) / (1000 * 60 * 60)}h)`,
 newPoints: newP
 });
-await writePointSnapshot(u.uid, newP, `Reducción automática (${cfgToMs(cfg) / (1000 * 60 * 60)}h)`, Date.now());
+await writePointSnapshot(u.uid, newP, `ReducciÃ³n automÃ¡tica (${cfgToMs(cfg) / (1000 * 60 * 60)}h)`, Date.now());
 } catch {}
 }
 
@@ -1517,32 +609,32 @@ pointDecrementBusy = false;
 }
 }
 
-// ── PÁGINAS ───────────────────────────────────────────────────
+// â”€â”€ PÃGINAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 window.goPage = id => {
 if (id === "config-points" && myRole !== "admin") {
 showToast("Solo un admin puede entrar a Configurar Puntos.", "err");
 id = "config";
 }
 
-// Mostrar botón de reset novedades solo para admins
+// Mostrar botÃ³n de reset novedades solo para admins
 const resetNovedadesBtn = document.getElementById("reset-novedades-btn");
 if (resetNovedadesBtn) {
   resetNovedadesBtn.style.display = myRole === "admin" ? "" : "none";
 }
 
-// Para usuarios, ocultar la pestaña de gráficos en el dashboard
+// Para usuarios, ocultar la pestaÃ±a de grÃ¡ficos en el dashboard
 if (myRole === "user" && id === "charts") {
-  // Permitir que los usuarios vean los gráficos, pero ocultar algunos
-  // Los usuarios solo ven Ranking de Puntos y Evolución general
+  // Permitir que los usuarios vean los grÃ¡ficos, pero ocultar algunos
+  // Los usuarios solo ven Ranking de Puntos y EvoluciÃ³n general
 }
 
-// Para usuarios, ocultar el gráfico de evolución general
+// Para usuarios, ocultar el grÃ¡fico de evoluciÃ³n general
 const evoChartCard = document.getElementById("evo-chart-card");
 if (evoChartCard) {
   evoChartCard.style.display = myRole === "user" ? "" : "";
 }
 
-// Para usuarios, ocultar gráficos de actividad (solo ver Ranking y Evolución)
+// Para usuarios, ocultar grÃ¡ficos de actividad (solo ver Ranking y EvoluciÃ³n)
 if (myRole === "user") {
   const activityAdminsCard = document.getElementById("activity-admins-card");
   if (activityAdminsCard) activityAdminsCard.style.display = "none";
@@ -1556,7 +648,7 @@ document.getElementById("page-" + id).classList.add("active");
 const ni = document.querySelector(`.nav-item[onclick="goPage('${id}')"]`);
 if (ni) ni.classList.add("active");
 
-// Inicializar gráficos si entramos a la pestaña charts
+// Inicializar grÃ¡ficos si entramos a la pestaÃ±a charts
 if (id === "charts") {
   if (myRole === "admin") {
     // Mostrar botones de reset individuales para admins
@@ -1584,16 +676,16 @@ if (!el) return;
 el.style.display = el.style.display === "none" ? "block" : "none";
 };
 
-// ── GRÁFICOS (centralizados en el panel central) ──────────────
-// Tipos de gráficos:
-//  Lineal  → evolución / tendencia temporal
-//  Columnas → comparación entre miembros / rankings
-//  Circular (doughnut) → distribución / proporción
+// â”€â”€ GRÃFICOS (centralizados en el panel central) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Tipos de grÃ¡ficos:
+//  Lineal  â†’ evoluciÃ³n / tendencia temporal
+//  Columnas â†’ comparaciÃ³n entre miembros / rankings
+//  Circular (doughnut) â†’ distribuciÃ³n / proporciÃ³n
 const chartInstances = {};
 
 const CHART_COLORS = ["#5b8dee","#3ecf8e","#f5a623","#a78bfa","#e05555","#4cc9f0","#ffd166","#57cc99","#2ecc71","#e67e22"];
 
-// Cambia el tipo de un gráfico específico (line / bar / doughnut)
+// Cambia el tipo de un grÃ¡fico especÃ­fico (line / bar / doughnut)
 window.setChartType = (key, type) => {
 if (!chartState[key]) return;
 chartState[key].type = type;
@@ -1601,7 +693,7 @@ updateChartButtons();
 renderCharts();
 };
 
-// Cambia el período (Día / Semana / Mes) de un gráfico temporal
+// Cambia el perÃ­odo (DÃ­a / Semana / Mes) de un grÃ¡fico temporal
 window.setChartPeriod = (key, period) => {
 if (!chartState[key]) return;
 chartState[key].period = period;
@@ -1609,7 +701,7 @@ updateChartButtons();
 renderCharts();
 };
 
-// Sincroniza los botones activos de cada tarjeta de gráfico
+// Sincroniza los botones activos de cada tarjeta de grÃ¡fico
 function updateChartButtons() {
 document.querySelectorAll(".chart-card[data-cchart]").forEach(card => {
 const key = card.dataset.cchart;
@@ -1659,7 +751,7 @@ sel.value = cur;
 function filteredChartUsers() {
 const { cargo, rango } = currentFilter();
 return allUsers.filter(u => {
-// Filtrar por cargo - usar hasCargo si existe, si no lógica manual
+// Filtrar por cargo - usar hasCargo si existe, si no lÃ³gica manual
 if (cargo) {
   const cargos = u.cargos || [];
   const arr = Array.isArray(cargos) ? cargos : [String(cargos)];
@@ -1682,11 +774,11 @@ c++;
 return c;
 }
 
-// Dibuja un gráfico simple (line / bar / doughnut) según el tipo elegido
+// Dibuja un grÃ¡fico simple (line / bar / doughnut) segÃºn el tipo elegido
 function renderSingleChart(canvasId, type, labels, values, labelText, colors) {
 const cv = document.getElementById(canvasId);
 if (!cv) return;
-if (typeof Chart === "undefined") { cv.parentElement.innerHTML = '<div class="empty">Chart.js no cargó.</div>'; return; }
+if (typeof Chart === "undefined") { cv.parentElement.innerHTML = '<div class="empty">Chart.js no cargÃ³.</div>'; return; }
 destroyChart(canvasId);
 const isDough = type === "doughnut";
 const isLine  = type === "line";
@@ -1712,7 +804,7 @@ x: { ticks: { color: "#5a6680", maxRotation: 45, autoSkip: true } }
 function chartLineMulti(canvasId, labels, seriesList) {
 const cv = document.getElementById(canvasId);
 if (!cv) return;
-if (typeof Chart === "undefined") { cv.parentElement.innerHTML = '<div class="empty">Chart.js no cargó.</div>'; return; }
+if (typeof Chart === "undefined") { cv.parentElement.innerHTML = '<div class="empty">Chart.js no cargÃ³.</div>'; return; }
 destroyChart(canvasId);
 const datasets = seriesList.map((s, i) => ({
 label: s.name,
@@ -1743,7 +835,7 @@ const mult = period === "day" ? 1 : period === "week" ? 7 : 30;
 return Date.now() - mult * 24 * 60 * 60 * 1000;
 }
 
-// Genera los intervalos de tiempo para un período dado
+// Genera los intervalos de tiempo para un perÃ­odo dado
 function bucketsFor(period) {
 const now = Date.now();
 const out = [];
@@ -1776,8 +868,8 @@ return t > 0 && t >= start && t < end;
 }
 
 function renderCharts() {
-// El sistema Chart.js viejo se eliminó. Ahora usamos los gráficos SVG que coinciden con Panel de Puntos.
-// Esta función es solo para compatibilidad.
+// El sistema Chart.js viejo se eliminÃ³. Ahora usamos los grÃ¡ficos SVG que coinciden con Panel de Puntos.
+// Esta funciÃ³n es solo para compatibilidad.
 if (typeof renderRankingAdmins === "function") renderRankingAdmins();
 if (typeof renderEvolutionPts === "function") renderEvolutionPts();
 if (typeof renderActivityChart === "function") renderActivityChart();
@@ -1803,7 +895,7 @@ return null;
 
 function fmtDateTime(ts) {
 const d = tsToDate(ts);
-return d ? d.toLocaleString("es-CO") : "—";
+return d ? d.toLocaleString("es-CO") : "â€”";
 }
 
 function fmtSince(ms) {
@@ -1830,7 +922,7 @@ console.error("Error guardando log:", e);
 }
 }
 
-// ── SNAPSHOTS DE PUNTOS (historial inmutable, nunca se sobrescribe) ──
+// â”€â”€ SNAPSHOTS DE PUNTOS (historial inmutable, nunca se sobrescribe) â”€â”€
 function weekKeyOf(dt) {
   const d = new Date(dt);
   const dayN = (d.getDay() + 6) % 7; // lunes = 0
@@ -1936,12 +1028,12 @@ return arr[Math.floor(Math.random() * arr.length)];
 
 function prettyRole(r) {
 const m = { admin: "Admin", inspector: "Inspector", user: "Usuario" };
-return m[r] || r || "—";
+return m[r] || r || "â€”";
 }
 
 function fmtCargos(cargos) {
-if (!cargos) return "—";
-if (Array.isArray(cargos)) return cargos.length ? cargos.join(", ") : "—";
+if (!cargos) return "â€”";
+if (Array.isArray(cargos)) return cargos.length ? cargos.join(", ") : "â€”";
 return String(cargos);
 }
 
@@ -1951,20 +1043,20 @@ const abs = Math.abs(delta);
 const isUp = delta > 0;
 const main = isUp
 ? pick([
-`✅ Buen desempeño: ${name} sumó +${abs} punto(s).`,
-`✅ ${name} fue reconocido: +${abs} punto(s).`,
-`✅ ¡Buen trabajo, ${name}! +${abs} punto(s).`
+`âœ… Buen desempeÃ±o: ${name} sumÃ³ +${abs} punto(s).`,
+`âœ… ${name} fue reconocido: +${abs} punto(s).`,
+`âœ… Â¡Buen trabajo, ${name}! +${abs} punto(s).`
 ])
 : pick([
-`⚠️ Ajuste de puntos: ${name} recibió -${abs} punto(s).`,
-`⚠️ ${name} tuvo un ajuste: -${abs} punto(s).`,
-`⚠️ Se registró un descuento para ${name}: -${abs} punto(s).`
+`âš ï¸ Ajuste de puntos: ${name} recibiÃ³ -${abs} punto(s).`,
+`âš ï¸ ${name} tuvo un ajuste: -${abs} punto(s).`,
+`âš ï¸ Se registrÃ³ un descuento para ${name}: -${abs} punto(s).`
 ]);
 
 const estado = newVal <= 2
-? " Quedó en estado: En riesgo."
+? " QuedÃ³ en estado: En riesgo."
 : newVal >= 6
-? " Quedó en estado: Óptimo."
+? " QuedÃ³ en estado: Ã“ptimo."
 : "";
 
 return `${main} Motivo: ${reason}. Total: ${newVal} pts.${estado}`;
@@ -1973,24 +1065,24 @@ return `${main} Motivo: ${reason}. Total: ${newVal} pts.${estado}`;
 function buildUserCreatedNovedad(name, role, rango, cargos) {
 const who = name || "Nuevo usuario";
 const main = pick([
-`✨ Nuevo ingreso: ${who} se unió al equipo.`,
-`✨ Se registró un nuevo integrante: ${who}.`,
-`✨ Bienvenido/a: ${who}.`
+`âœ¨ Nuevo ingreso: ${who} se uniÃ³ al equipo.`,
+`âœ¨ Se registrÃ³ un nuevo integrante: ${who}.`,
+`âœ¨ Bienvenido/a: ${who}.`
 ]);
-return `${main} Rol: ${prettyRole(role)} · Rango: ${rango || "—"} · Cargos: ${fmtCargos(cargos)}.`;
+return `${main} Rol: ${prettyRole(role)} Â· Rango: ${rango || "â€”"} Â· Cargos: ${fmtCargos(cargos)}.`;
 }
 
 function buildUserUpdatedNovedad(prev, next) {
 const who = next?.name || prev?.name || "Un usuario";
 const parts = [];
-if ((prev?.role || "") !== (next?.role || "")) parts.push(`Rol: ${prettyRole(prev?.role)} → ${prettyRole(next?.role)}`);
-if ((prev?.rango || "") !== (next?.rango || "")) parts.push(`Rango: ${prev?.rango || "—"} → ${next?.rango || "—"}`);
+if ((prev?.role || "") !== (next?.role || "")) parts.push(`Rol: ${prettyRole(prev?.role)} â†’ ${prettyRole(next?.role)}`);
+if ((prev?.rango || "") !== (next?.rango || "")) parts.push(`Rango: ${prev?.rango || "â€”"} â†’ ${next?.rango || "â€”"}`);
 const pc = fmtCargos(prev?.cargos);
 const nc = fmtCargos(next?.cargos);
-if (pc !== nc) parts.push(`Cargos: ${pc} → ${nc}`);
-if ((prev?.status || "") !== (next?.status || "")) parts.push(`Estado: ${prev?.status || "—"} → ${next?.status || "—"}`);
+if (pc !== nc) parts.push(`Cargos: ${pc} â†’ ${nc}`);
+if ((prev?.status || "") !== (next?.status || "")) parts.push(`Estado: ${prev?.status || "â€”"} â†’ ${next?.status || "â€”"}`);
 if (!parts.length) return null;
-return `🔄 Actualización de perfil: ${who}. ${parts.join(" · ")}.`;
+return `ðŸ”„ ActualizaciÃ³n de perfil: ${who}. ${parts.join(" Â· ")}.`;
 }
 
 async function logNovedad(texto) {
@@ -2094,12 +1186,12 @@ return;
 tb.innerHTML = list.map(l => {
 const isPoints = l.type === "points";
 const dt = fmtDateTime(l.createdAt);
-const actor = esc(l.actorName || "—");
-const target = esc(l.targetName || (l.type === "login" ? (l.actorName || "—") : "—"));
+const actor = esc(l.actorName || "â€”");
+const target = esc(l.targetName || (l.type === "login" ? (l.actorName || "â€”") : "â€”"));
 const delta = isPoints ? (typeof l.delta === "number" ? l.delta : 0) : null;
-const deltaTxt = isPoints ? `${delta > 0 ? "+" : ""}${delta}` : "—";
-const motivo = esc(l.reason || (l.type === "login" ? "Inicio de sesión" : "Sin motivo"));
-const delBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="deleteLog('${l.id}')">🗑️</button>` : "";
+const deltaTxt = isPoints ? `${delta > 0 ? "+" : ""}${delta}` : "â€”";
+const motivo = esc(l.reason || (l.type === "login" ? "Inicio de sesiÃ³n" : "Sin motivo"));
+const delBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="deleteLog('${l.id}')">ðŸ—‘ï¸</button>` : "";
 return `
      <tr>
        <td>${dt}</td>
@@ -2114,7 +1206,7 @@ return `
 
 window.deleteLog = async (id) => {
 if (myRole !== "admin") return;
-const ok = confirm("¿Borrar este registro? No se puede deshacer.");
+const ok = confirm("Â¿Borrar este registro? No se puede deshacer.");
 if (!ok) return;
 try {
 await deleteDoc(doc(db, "logs", id));
@@ -2152,14 +1244,14 @@ return;
 
 const mp = new Map();
 for (const l of todays) {
-const uid = l.actorUid || "—";
+const uid = l.actorUid || "â€”";
 const prev = mp.get(uid) || {
 uid,
-name: l.actorName || "—",
+name: l.actorName || "â€”",
 pts: 0,
 actions: 0,
 lastAt: null,
-lastTxt: "—"
+lastTxt: "â€”"
 };
 const delta = typeof l.delta === "number" ? l.delta : 0;
 if (delta > 0) prev.pts += delta;
@@ -2167,7 +1259,7 @@ prev.actions += 1;
 const d = tsToDate(l.createdAt);
 if (d && (!prev.lastAt || d > prev.lastAt)) {
 prev.lastAt = d;
-const tgt = l.targetName ? ` → ${l.targetName}` : "";
+const tgt = l.targetName ? ` â†’ ${l.targetName}` : "";
 prev.lastTxt = `${delta > 0 ? "+" : ""}${delta}${tgt}`;
 }
 mp.set(uid, prev);
@@ -2184,27 +1276,27 @@ return tb - ta;
 tb.innerHTML = list.map(r => {
 const now = Date.now();
 const lastMs = r.lastAt ? (now - r.lastAt.getTime()) : Infinity;
-const state = lastMs <= 15 * 60 * 1000 ? "🟢 Activo" : lastMs <= 60 * 60 * 1000 ? "🟡 Poco activo" : "🔴 Inactivo";
+const state = lastMs <= 15 * 60 * 1000 ? "ðŸŸ¢ Activo" : lastMs <= 60 * 60 * 1000 ? "ðŸŸ¡ Poco activo" : "ðŸ”´ Inactivo";
 return `
      <tr>
        <td><b>${esc(r.name)}</b></td>
        <td><b style="color:var(--warn)">${r.pts}</b></td>
        <td>${r.actions}</td>
        <td>${esc(r.lastTxt)}</td>
-       <td>${r.lastAt ? fmtSince(lastMs) : "—"}</td>
+       <td>${r.lastAt ? fmtSince(lastMs) : "â€”"}</td>
        <td>${state}</td>
      </tr>`;
 }).join("");
 }
 
-// ── TRABAJADORES DESTACADOS (Día / Semana / Mes) ──────────────
+// â”€â”€ TRABAJADORES DESTACADOS (DÃ­a / Semana / Mes) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 window.toggleDestacados = () => {
 const wrap = document.getElementById("destacados-wrap");
 const btn  = document.getElementById("btn-dest");
 if (!wrap) return;
 const show = wrap.style.display !== "grid";
 wrap.style.display = show ? "grid" : "none";
-if (btn) btn.textContent = show ? "🙈 Ocultar trabajadores destacados" : "👁️ Mostrar trabajadores destacados";
+if (btn) btn.textContent = show ? "ðŸ™ˆ Ocultar trabajadores destacados" : "ðŸ‘ï¸ Mostrar trabajadores destacados";
 if (show && typeof renderDestacados === "function") renderDestacados();
 };
 
@@ -2225,7 +1317,7 @@ if (!l) continue;
 if (String(l.actorRole || "").toLowerCase() === "admin") continue;
 const t = logTimeRaw(l);
 if (!t || t < start) continue;
-const uid = l.actorUid || "—";
+const uid = l.actorUid || "â€”";
 counts.set(uid, (counts.get(uid) || 0) + 1);
 }
 let bestUid = null, best = 0;
@@ -2240,7 +1332,7 @@ const oneDayMs = 24 * 60 * 60 * 1000;
 const oneWeekMs = 7 * oneDayMs;
 const oneMonthMs = 30 * oneDayMs;
 
-// Calcular el inicio del sistema (primer log o timestamp más antiguo)
+// Calcular el inicio del sistema (primer log o timestamp mÃ¡s antiguo)
 let systemStart = now;
 if (logs.length > 0) {
   const oldestLog = logs.reduce((min, l) => {
@@ -2259,20 +1351,20 @@ const defs = [
 for (const def of defs) {
 const el = document.getElementById(def.id);
 if (!el) continue;
-// Solo mostrar si ha pasado el tiempo mínimo requerido
+// Solo mostrar si ha pasado el tiempo mÃ­nimo requerido
 if (def.elapsed < def.minRequired) {
   const remaining = Math.ceil((def.minRequired - def.elapsed) / oneDayMs);
-  el.innerHTML = `<span style="color:var(--muted);font-size:12px">Requiere ${remaining} día(s) más de datos</span>`;
+  el.innerHTML = `<span style="color:var(--muted);font-size:12px">Requiere ${remaining} dÃ­a(s) mÃ¡s de datos</span>`;
   continue;
 }
 
 const w = periodTopStaff(def.mode);
 if (!w) { el.innerHTML = def.empty; continue; }
-el.innerHTML = `🏆 <b>${esc(w.u.name || "—")}</b><br><span style="color:var(--muted);font-size:12px">🎯 ${w.count} acciones · ⭐ ${fmtPts(w.u.points)} pts · ${def.mode === "day" ? "hoy" : def.mode === "week" ? "7 días" : "30 días"}</span>`;
+el.innerHTML = `ðŸ† <b>${esc(w.u.name || "â€”")}</b><br><span style="color:var(--muted);font-size:12px">ðŸŽ¯ ${w.count} acciones Â· â­ ${fmtPts(w.u.points)} pts Â· ${def.mode === "day" ? "hoy" : def.mode === "week" ? "7 dÃ­as" : "30 dÃ­as"}</span>`;
 }
 }
 
-// ── CARGAR USUARIOS ───────────────────────────────────────────
+// â”€â”€ CARGAR USUARIOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadUsers() {
 try {
 const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
@@ -2295,9 +1387,9 @@ renderPointsTable(filteredPoints());
 // populateCargoFilter y renderCharts ya no se usan con el sistema SVG
 }
 
-// ── DASHBOARD ─────────────────────────────────────────────────
+// â”€â”€ DASHBOARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderDash() {
-// Staff = todos menos admins (inspectores SÍ se incluyen)
+// Staff = todos menos admins (inspectores SÃ se incluyen)
 const staff = allUsers.filter(u => u.role !== "admin");
 const insp  = allUsers.filter(u => u.role === "inspector");
 const users = allUsers.filter(u => u.role === "user");
@@ -2308,34 +1400,34 @@ const risk = staff.filter(u => Number(u.points||0) <= 2).length;
 const maxP = Math.max(1, ...ptsArr);
 
 document.getElementById("st-total").textContent = total;
-document.getElementById("st-total-sub").textContent = `${insp.length} inspectores · ${users.length} usuarios`;
+document.getElementById("st-total-sub").textContent = `${insp.length} inspectores Â· ${users.length} usuarios`;
 document.getElementById("st-total-bar").style.width = Math.min(100, total*10) + "%";
 
 document.getElementById("st-insp").textContent = insp.length;
-document.getElementById("st-insp-sub").textContent = total ? Math.round(insp.length/total*100) + "% del staff" : "—";
+document.getElementById("st-insp-sub").textContent = total ? Math.round(insp.length/total*100) + "% del staff" : "â€”";
 document.getElementById("st-insp-bar").style.width = (total ? insp.length/total*100 : 0) + "%";
 
 document.getElementById("st-users").textContent = users.length;
-document.getElementById("st-users-sub").textContent = total ? Math.round(users.length/total*100) + "% del staff" : "—";
+document.getElementById("st-users-sub").textContent = total ? Math.round(users.length/total*100) + "% del staff" : "â€”";
 document.getElementById("st-users-bar").style.width = (total ? users.length/total*100 : 0) + "%";
 
 document.getElementById("st-avg").textContent = (Math.round(avg*100)/100).toString();
-document.getElementById("st-avg-sub").textContent = `Máximo: ${fmtPts(maxP)} pts`;
+document.getElementById("st-avg-sub").textContent = `MÃ¡ximo: ${fmtPts(maxP)} pts`;
 document.getElementById("st-avg-bar").style.width = Math.min(100, avg/maxP*100) + "%";
 
 document.getElementById("st-risk").textContent = risk;
-document.getElementById("st-risk-sub").textContent = total ? Math.round(risk/total*100) + "% del staff (≤2 pts)" : "—";
+document.getElementById("st-risk-sub").textContent = total ? Math.round(risk/total*100) + "% del staff (â‰¤2 pts)" : "â€”";
 document.getElementById("st-risk-bar").style.width = (total ? risk/total*100 : 0) + "%";
 
 renderDestacados();
 
-// Calcular puntos según el período seleccionado para el ranking
+// Calcular puntos segÃºn el perÃ­odo seleccionado para el ranking
 const now = Date.now();
 const periodStart = rankPeriod === "day" ? now - 24 * 60 * 60 * 1000 :
                     rankPeriod === "week" ? now - 7 * 24 * 60 * 60 * 1000 :
                     now - 30 * 24 * 60 * 60 * 1000;
 
-// Para cada usuario, calcular puntos ganados en el período
+// Para cada usuario, calcular puntos ganados en el perÃ­odo
 const usersWithPeriodPoints = allUsers.map(u => {
   let periodPoints = 0;
   if (rankPeriod === "day") {
@@ -2358,34 +1450,34 @@ const usersWithPeriodPoints = allUsers.map(u => {
 const top = [...usersWithPeriodPoints].sort((a,b) => (b.periodPoints||0)-(a.periodPoints||0)).slice(0, 8);
 const tb = document.getElementById("dash-tbody");
 const canEdit = myRole === "admin" || myRole === "inspector";
-if (!top.length) { tb.innerHTML='<tr><td colspan="6" class="empty">Sin datos aún.</td></tr>'; return; }
+if (!top.length) { tb.innerHTML='<tr><td colspan="6" class="empty">Sin datos aÃºn.</td></tr>'; return; }
 tb.innerHTML = top.map((u,i) => {
 const isSelf = u.uid === myUid;
 const dis = (isSelf || !canEdit) ? 'disabled style="opacity:0.45;cursor:not-allowed"' : '';
 let cells;
 if (!canEdit) {
-cells = '<td colspan="2"><span style="color:var(--muted);font-size:11px">—</span></td>';
+cells = '<td colspan="2"><span style="color:var(--muted);font-size:11px">â€”</span></td>';
 } else if (myRole === "admin") {
 const stepVal = decimalsN() === 0 ? "1" : decimalsN() === 1 ? "0.1" : "0.01";
 const placeholderVal = decimalsN() === 0 ? "0" : decimalsN() === 1 ? "0.0" : "0.00";
-cells = `<td>${isSelf ? '<span style="color:var(--muted);font-size:11px">—</span>' : `<div class="pts-row" style="gap:8px">
-  <button class="btn btn-success btn-sm" onclick="dashApplyPts('${u.uid}',1)" ${dis} title="Sumar +1">＋</button>
-  <button class="btn btn-danger btn-sm" onclick="dashApplyPts('${u.uid}',-1)" ${dis} title="Restar -1">−</button>
+cells = `<td>${isSelf ? '<span style="color:var(--muted);font-size:11px">â€”</span>' : `<div class="pts-row" style="gap:8px">
+  <button class="btn btn-success btn-sm" onclick="dashApplyPts('${u.uid}',1)" ${dis} title="Sumar +1">ï¼‹</button>
+  <button class="btn btn-danger btn-sm" onclick="dashApplyPts('${u.uid}',-1)" ${dis} title="Restar -1">âˆ’</button>
   <input type="number" step="${stepVal}" min="0" id="dvin-${u.uid}" class="pts-input" style="width:80px" placeholder="${placeholderVal}" title="Valor fijo a establecer (Enter para guardar)" onkeydown="if(event.key==='Enter')dashSetPts('${u.uid}')"/>
-  <button class="btn btn-primary btn-sm" onclick="dashSetPts('${u.uid}')" ${dis}>💾</button>
+  <button class="btn btn-primary btn-sm" onclick="dashSetPts('${u.uid}')" ${dis}>ðŸ’¾</button>
 </div>`}</td>
-  <td><span style="color:var(--muted);font-size:11px">—</span></td>`;
+  <td><span style="color:var(--muted);font-size:11px">â€”</span></td>`;
 } else {
-cells = `<td><span style="color:var(--muted);font-size:11px">—</span></td>
+cells = `<td><span style="color:var(--muted);font-size:11px">â€”</span></td>
   <td><div class="pts-row" style="flex-wrap:wrap">
-    <button class="btn btn-success btn-sm" onclick="dashApplyPts('${u.uid}',1)" ${dis} title="Sumar +1">＋</button>
-    <button class="btn btn-danger btn-sm" onclick="dashApplyPts('${u.uid}',-1)" ${dis} title="Restar -1">−</button>
+    <button class="btn btn-success btn-sm" onclick="dashApplyPts('${u.uid}',1)" ${dis} title="Sumar +1">ï¼‹</button>
+    <button class="btn btn-danger btn-sm" onclick="dashApplyPts('${u.uid}',-1)" ${dis} title="Restar -1">âˆ’</button>
   </div></td>`;
 }
 return `
    <tr>
      <td style="color:var(--muted);font-weight:700;width:30px">${i+1}</td>
-     <td><b>${esc(u.name||"—")}</b></td>
+     <td><b>${esc(u.name||"â€”")}</b></td>
      <td>${roleBadge(u.role)}</td>
      <td><b style="color:var(--warn);font-size:15px" id="dpv-${u.uid}">${fmtPts(u.periodPoints)}</b></td>
      ${cells}
@@ -2393,7 +1485,7 @@ return `
 }).join("");
 }
 
-// Acción rápida de puntos desde el Dashboard (misma fuente de datos).
+// AcciÃ³n rÃ¡pida de puntos desde el Dashboard (misma fuente de datos).
 window.dashApplyPts = async (uid, sign) => {
 if (myRole !== "admin" && myRole !== "inspector") { showToast("Sin permisos para modificar puntos.", "err"); return; }
 await adjPts(uid, sign * 1);
@@ -2401,19 +1493,19 @@ const el = document.getElementById("dpv-" + uid);
 if (el) el.textContent = fmtPts(allUsers.find(x=>x.uid===uid)?.points || 0);
 };
 
-// Admin: establecer un valor fijo desde el Dashboard (Enter o botón Fijar)
+// Admin: establecer un valor fijo desde el Dashboard (Enter o botÃ³n Fijar)
 window.dashSetPts = async (uid) => {
 if (myRole !== "admin") { showToast("Solo un admin puede fijar el valor.", "err"); return; }
 const inp = document.getElementById("dvin-" + uid);
 const raw = inp ? inp.value : "";
 const v = parseFloat(String(raw).replace(",", "."));
-if (!Number.isFinite(v) || v < 0) { showToast("Ingresá un valor válido (ej: 7 o 3.5).", "err"); return; }
+if (!Number.isFinite(v) || v < 0) { showToast("IngresÃ¡ un valor vÃ¡lido (ej: 7 o 3.5).", "err"); return; }
 await setPtsFixed(uid, v);
 const el = document.getElementById("dpv-" + uid);
 if (el) el.textContent = fmtPts(allUsers.find(x=>x.uid===uid)?.points || 0);
 };
 
-// ── TABLA USUARIOS ────────────────────────────────────────────
+// â”€â”€ TABLA USUARIOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function filteredUsers() {
 let list = allUsers;
 if (filterText) list = list.filter(u => (u.name||"").toLowerCase().includes(filterText)||(u.email||"").toLowerCase().includes(filterText));
@@ -2430,22 +1522,22 @@ if (!list.length) { tb.innerHTML='<tr><td colspan="8" class="empty">Sin resultad
 const isAdmin = myRole === "admin";
 tb.innerHTML = list.map(u => `
    <tr>
-     <td><b>${esc(u.name||"—")}</b><br><span style="color:var(--muted);font-size:11px">${esc(u.email||"")}</span></td>
+     <td><b>${esc(u.name||"â€”")}</b><br><span style="color:var(--muted);font-size:11px">${esc(u.email||"")}</span></td>
      <td>${roleBadge(u.role)}</td>
-     <td>${u.pin ? `<code style="background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:13px;padding:3px 8px;letter-spacing:.1em">${u.pin}</code>` : '<span style="color:var(--muted)">—</span>'}</td>
-     <td>${esc(u.rango||"—")}</td>
-     <td>${(u.cargos||[]).map(c => `<span class="badge">${esc(c)}</span>`).join(" ") || '<span style="color:var(--muted)">—</span>'}</td>
+     <td>${u.pin ? `<code style="background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:13px;padding:3px 8px;letter-spacing:.1em">${u.pin}</code>` : '<span style="color:var(--muted)">â€”</span>'}</td>
+     <td>${esc(u.rango||"â€”")}</td>
+     <td>${(u.cargos||[]).map(c => `<span class="badge">${esc(c)}</span>`).join(" ") || '<span style="color:var(--muted)">â€”</span>'}</td>
      <td>${statusBadge(u.status)}</td>
      <td><b style="color:var(--warn)">${u.points||0}</b></td>
      <td>${isAdmin ? `
        <div style="display:flex;gap:6px">
-         <button class="btn btn-warn btn-sm" onclick="openEdit('${u.uid}')">✏️ Editar</button>
-         <button class="btn btn-danger btn-sm" onclick="askDelete('${u.uid}','${esc(u.name||"")}')">🗑️</button>
-       </div>` : '<span style="color:var(--muted)">—</span>'}</td>
+         <button class="btn btn-warn btn-sm" onclick="openEdit('${u.uid}')">âœï¸ Editar</button>
+         <button class="btn btn-danger btn-sm" onclick="askDelete('${u.uid}','${esc(u.name||"")}')">ðŸ—‘ï¸</button>
+       </div>` : '<span style="color:var(--muted)">â€”</span>'}</td>
    </tr>`).join("");
 }
 
-// ── TABLA PUNTOS ──────────────────────────────────────────────
+// â”€â”€ TABLA PUNTOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function filteredPoints() {
 let list = allUsers.filter(u => u.role !== "admin");
 if (filterPText) list = list.filter(u => (u.name||"").toLowerCase().includes(filterPText));
@@ -2471,14 +1563,14 @@ if (sel) sel.value = v;
 renderPointsTable(filteredPoints());
 };
 
-// Botón "ojo" del admin: mostrar/ocultar rango y cargos en la tabla de puntos
+// BotÃ³n "ojo" del admin: mostrar/ocultar rango y cargos en la tabla de puntos
 window.togglePtsDetails = () => {
 ptsShowDetails = !ptsShowDetails;
 document.querySelectorAll(".pts-detail-th").forEach(th => {
 th.style.display = ptsShowDetails ? "" : "none";
 });
 const btn = document.getElementById("pts-eye-btn");
-if (btn) btn.textContent = ptsShowDetails ? "🙈 Ocultar detalles" : "👁️ Detalles";
+if (btn) btn.textContent = ptsShowDetails ? "ðŸ™ˆ Ocultar detalles" : "ðŸ‘ï¸ Detalles";
 renderPointsTable(filteredPoints());
 };
 
@@ -2490,34 +1582,34 @@ tb.innerHTML = list.map(u => {
 const isSelf = u.uid === myUid;
 const dis = isSelf ? 'disabled style="opacity:0.5;cursor:not-allowed"' : '';
 const detailCells = ptsShowDetails
-? `<td>${(Array.isArray(u.cargos) ? u.cargos : [String(u.cargos||"")]).filter(Boolean).map(c => `<span class="badge">${esc(c)}</span>`).join(" ") || '<span style="color:var(--muted)">—</span>'}</td>`
+? `<td>${(Array.isArray(u.cargos) ? u.cargos : [String(u.cargos||"")]).filter(Boolean).map(c => `<span class="badge">${esc(c)}</span>`).join(" ") || '<span style="color:var(--muted)">â€”</span>'}</td>`
 : "";
 let valueCell, adjustCell;
 if (myRole === "admin") {
 const stepVal = decimalsN() === 0 ? "1" : decimalsN() === 1 ? "0.1" : "0.01";
 const placeholderVal = decimalsN() === 0 ? "0" : decimalsN() === 1 ? "0.0" : "0.00";
-valueCell = `<td>${isSelf ? '<span style="color:var(--muted);font-size:11px">—</span>' : `<div class="pts-row" style="gap:8px">
-  <button class="btn btn-success btn-sm" onclick="adjPts('${u.uid}',1)" ${dis} title="Sumar +1">＋</button>
-  <button class="btn btn-danger btn-sm" onclick="adjPts('${u.uid}',-1)" ${dis} title="Restar -1">−</button>
+valueCell = `<td>${isSelf ? '<span style="color:var(--muted);font-size:11px">â€”</span>' : `<div class="pts-row" style="gap:8px">
+  <button class="btn btn-success btn-sm" onclick="adjPts('${u.uid}',1)" ${dis} title="Sumar +1">ï¼‹</button>
+  <button class="btn btn-danger btn-sm" onclick="adjPts('${u.uid}',-1)" ${dis} title="Restar -1">âˆ’</button>
   <input type="number" step="${stepVal}" min="0" id="pvin-${u.uid}" class="pts-input" style="width:80px" placeholder="${placeholderVal}" title="Valor fijo a establecer (Enter para guardar)" onkeydown="if(event.key==='Enter')setPtsFixed('${u.uid}')"/>
-  <button class="btn btn-primary btn-sm" onclick="setPtsFixed('${u.uid}')" ${dis}>💾</button>
+  <button class="btn btn-primary btn-sm" onclick="setPtsFixed('${u.uid}')" ${dis}>ðŸ’¾</button>
 </div>`}</td>`;
-adjustCell = '<td><span style="color:var(--muted);font-size:11px">—</span></td>';
+adjustCell = '<td><span style="color:var(--muted);font-size:11px">â€”</span></td>';
 } else if (myRole === "inspector") {
-valueCell = '<td><span style="color:var(--muted);font-size:11px">—</span></td>';
+valueCell = '<td><span style="color:var(--muted);font-size:11px">â€”</span></td>';
 adjustCell = `<td><div class="pts-row" style="flex-wrap:wrap">
-  <button class="btn btn-success btn-sm" onclick="adjPts('${u.uid}',1)" ${dis} title="Sumar +1">＋ +1</button>
-  <button class="btn btn-danger btn-sm" onclick="adjPts('${u.uid}',-1)" ${dis} title="Restar -1">− -1</button>
+  <button class="btn btn-success btn-sm" onclick="adjPts('${u.uid}',1)" ${dis} title="Sumar +1">ï¼‹ +1</button>
+  <button class="btn btn-danger btn-sm" onclick="adjPts('${u.uid}',-1)" ${dis} title="Restar -1">âˆ’ -1</button>
 </div></td>`;
 } else {
-valueCell = '<td><span style="color:var(--muted);font-size:11px">—</span></td>';
-adjustCell = '<td><span style="color:var(--muted);font-size:11px">—</span></td>';
+valueCell = '<td><span style="color:var(--muted);font-size:11px">â€”</span></td>';
+adjustCell = '<td><span style="color:var(--muted);font-size:11px">â€”</span></td>';
 }
 return `
    <tr ${isSelf ? 'class="my-row"' : ""}>
      <td>
-       <b>${esc(u.name||"—")}</b>
-       ${isSelf ? '<span class="you-tag">tú</span>' : ""}
+       <b>${esc(u.name||"â€”")}</b>
+       ${isSelf ? '<span class="you-tag">tÃº</span>' : ""}
      </td>
      <td>${roleBadge(u.role)}</td>
      <td><span class="pts-val" id="pv-${u.uid}">${fmtPts(u.points)}</span></td>
@@ -2528,16 +1620,16 @@ return `
 }).join("");
 }
 
-// ── PUNTOS ────────────────────────────────────────────────────
-// Ajustar +1 / -1: únicamente valores fijos (no cantidades personalizadas).
-// El inspector puede hacer como máximo 2 cambios por usuario al día.
+// â”€â”€ PUNTOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ajustar +1 / -1: Ãºnicamente valores fijos (no cantidades personalizadas).
+// El inspector puede hacer como mÃ¡ximo 2 cambios por usuario al dÃ­a.
 window.adjPts = async (uid, delta) => {
 if (myRole !== "admin" && myRole !== "inspector") {
-showToast("No tenés permisos para modificar puntos.", "err");
+showToast("No tenÃ©s permisos para modificar puntos.", "err");
 return;
 }
 if (uid === myUid) {
-showToast("No podés modificar tus propios puntos!", "err");
+showToast("No podÃ©s modificar tus propios puntos!", "err");
 return;
 }
 const u = allUsers.find(x => x.uid===uid);
@@ -2546,28 +1638,28 @@ delta = delta > 0 ? 1 : -1;
 if (myRole === "inspector") {
 const cd = checkInspectorCooldown(uid);
 if (!cd.ok) {
-showToast(`Cooldown activo (máx. 2 cambios/día). Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, "err");
+showToast(`Cooldown activo (mÃ¡x. 2 cambios/dÃ­a). PodÃ©s volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, "err");
 return;
 }
 }
 
-// ── Motivo ──
+// â”€â”€ Motivo â”€â”€
 let reason = "";
 if (myRole === "inspector") {
   while (true) {
-    const r = prompt(`Motivo de la modificación (${delta > 0 ? '+' : ''}${delta} pts a ${u.name}):\n\nCampo OBLIGATORIO para inspectores.`);
+    const r = prompt(`Motivo de la modificaciÃ³n (${delta > 0 ? '+' : ''}${delta} pts a ${u.name}):\n\nCampo OBLIGATORIO para inspectores.`);
     if (r === null) return;
     reason = r.trim();
-    if (!reason) { showToast("Tenés que escribir un motivo obligatorio.", "err"); continue; }
+    if (!reason) { showToast("TenÃ©s que escribir un motivo obligatorio.", "err"); continue; }
     break;
   }
 } else {
-  const r = prompt(`Motivo (opcional) de la modificación (${delta > 0 ? '+' : ''}${delta} pts a ${u.name}):`);
+  const r = prompt(`Motivo (opcional) de la modificaciÃ³n (${delta > 0 ? '+' : ''}${delta} pts a ${u.name}):`);
   if (r === null) return;
-  reason = r.trim() || `Modificación manual (${delta > 0 ? '+' : ''}${delta})`;
+  reason = r.trim() || `ModificaciÃ³n manual (${delta > 0 ? '+' : ''}${delta})`;
 }
 
-// Se respeta el máximo configurado y la cantidad de decimales elegida.
+// Se respeta el mÃ¡ximo configurado y la cantidad de decimales elegida.
 const oldVal = u.points || 0;
 const nv = clampPts(oldVal + delta);
 try {
@@ -2578,7 +1670,7 @@ if (el) el.textContent = fmtPts(nv);
 const dv = document.getElementById("dpv-" + uid);
 if (dv) dv.textContent = fmtPts(nv);
 renderAll();
-showToast((delta>0?"➕":"➖") + " " + fmtPts(Math.abs(delta)) + " pt a " + (u.name||"usuario"), "ok");
+showToast((delta>0?"âž•":"âž–") + " " + fmtPts(Math.abs(delta)) + " pt a " + (u.name||"usuario"), "ok");
 
 // Punto 7 Dashboard: solo novedades en umbrales (NO buildPointsNovedad por cada +/-)
 await maybeEmitThresholdNovedadDash(u, oldVal, nv, delta, myRole);
@@ -2599,7 +1691,7 @@ if (myRole === "inspector") writeCooldown(myUid, uid, Date.now());
 } catch(e) { showToast("Error: "+e.message,"err"); }
 };
 
-// Valor fijo: el admin escribe el número de puntos y presiona Enter (o Fijar)
+// Valor fijo: el admin escribe el nÃºmero de puntos y presiona Enter (o Fijar)
 // para ESTABLECER el valor directamente, sin cantidades personalizadas de ajuste.
 window.setPtsFixed = async (uid, forcedVal) => {
 if (myRole !== "admin") {
@@ -2607,7 +1699,7 @@ showToast("Solo un admin puede fijar el valor de puntos.", "err");
 return;
 }
 if (uid === myUid) {
-showToast("No podés modificar tus propios puntos!", "err");
+showToast("No podÃ©s modificar tus propios puntos!", "err");
 return;
 }
 const u = allUsers.find(x => x.uid===uid);
@@ -2619,7 +1711,7 @@ const raw = inp ? inp.value : "";
 v = parseFloat(String(raw).replace(",", "."));
 }
 if (!Number.isFinite(v) || v < 0) {
-showToast("Ingresá un valor válido (mayor o igual a 0).", "err");
+showToast("IngresÃ¡ un valor vÃ¡lido (mayor o igual a 0).", "err");
 return;
 }
 const oldVal = u.points || 0;
@@ -2640,7 +1732,7 @@ if (el) el.textContent = fmtPts(nv);
 const dv = document.getElementById("dpv-" + uid);
 if (dv) dv.textContent = fmtPts(nv);
 renderAll();
-showToast("⚙️ Puntos de " + (u.name||"usuario") + " → " + fmtPts(nv), "ok");
+showToast("âš™ï¸ Puntos de " + (u.name||"usuario") + " â†’ " + fmtPts(nv), "ok");
 
 await maybeEmitThresholdNovedadDash(u, oldVal, nv, delta, myRole);
 
@@ -2670,36 +1762,36 @@ await writePointSnapshot(uid, nv, reason, Date.now());
 async function maybeEmitThresholdNovedadDash(u, oldVal, newVal, delta, role) {
   const name = u.name || 'un miembro';
   if (oldVal === 0 && newVal > 0) {
-    await logNovedad(`✅ ${name} volvió a tener actividad (${fmtPts(newVal)} pts) y salió del estado crítico.`);
+    await logNovedad(`âœ… ${name} volviÃ³ a tener actividad (${fmtPts(newVal)} pts) y saliÃ³ del estado crÃ­tico.`);
     return;
   }
   if (oldVal > 0 && newVal === 0) {
-    await logNovedad(`🚨 ${name} llegó a 0 puntos · Estado crítico · Requiere apelación o acción inmediata.`);
+    await logNovedad(`ðŸš¨ ${name} llegÃ³ a 0 puntos Â· Estado crÃ­tico Â· Requiere apelaciÃ³n o acciÃ³n inmediata.`);
     return;
   }
   if (oldVal > 2 && newVal > 0 && newVal <= 2) {
-    await logNovedad(`⚠️ ${name} está en riesgo alto (${fmtPts(newVal)} pts) · Entró en seguimiento por bajo desempeño.`);
+    await logNovedad(`âš ï¸ ${name} estÃ¡ en riesgo alto (${fmtPts(newVal)} pts) Â· EntrÃ³ en seguimiento por bajo desempeÃ±o.`);
     return;
   }
   if (oldVal <= 2 && newVal > 4) {
-    await logNovedad(`💪 ${name} recuperó puntos (${fmtPts(newVal)}) y salió del estado de seguimiento. Buen desempeño!`);
+    await logNovedad(`ðŸ’ª ${name} recuperÃ³ puntos (${fmtPts(newVal)}) y saliÃ³ del estado de seguimiento. Buen desempeÃ±o!`);
     return;
   }
   if (newVal >= 6 && delta >= 2) {
-    await logNovedad(`🔥 ${name} tuvo un desempeño excelente! Subió ${delta} pts y quedó en ${fmtPts(newVal)}.`);
+    await logNovedad(`ðŸ”¥ ${name} tuvo un desempeÃ±o excelente! SubiÃ³ ${delta} pts y quedÃ³ en ${fmtPts(newVal)}.`);
     return;
   }
   const MAX = maxPts();
   if ((oldVal === 0 || !Number.isFinite(oldVal)) && newVal === MAX && delta === MAX) {
-    await logNovedad(`✨ ${name} ingresó al staff con ${fmtPts(newVal)} pts iniciales. Bienvenido/a!`);
+    await logNovedad(`âœ¨ ${name} ingresÃ³ al staff con ${fmtPts(newVal)} pts iniciales. Bienvenido/a!`);
     return;
   }
 }
 
-// (Se eliminaron promptPts / adjPtsWithReason: Ajustar solo permite +1/−1 fijos
-// y el valor directo queda exclusivo del Admin, vía setPtsFixed).
+// (Se eliminaron promptPts / adjPtsWithReason: Ajustar solo permite +1/âˆ’1 fijos
+// y el valor directo queda exclusivo del Admin, vÃ­a setPtsFixed).
 
-// ── MODAL ─────────────────────────────────────────────────────
+// â”€â”€ MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 window.openCreate = () => {
 editUid = null;
 document.getElementById("modal-title").textContent = "Crear cuenta";
@@ -2738,7 +1830,7 @@ document.getElementById("m-status").value = u.status || "active";
 document.getElementById("m-pass").value   = "";
 document.getElementById("m-save").textContent = "Guardar cambios";
 document.getElementById("modal-err").style.display = "none";
-// Al editar no mostramos campo contraseña
+// Al editar no mostramos campo contraseÃ±a
 document.getElementById("pass-field").style.display = "none";
 if (u.role==="user") {
 document.getElementById("pin-val").textContent = u.pin || genPin();
@@ -2818,24 +1910,24 @@ if (!editUid) {
 // Validar al crear
 if ((role==="admin"||role==="inspector") && !email) return setModalErr("Inspector/Admin necesitan Gmail.");
 if ((role==="admin"||role==="inspector") && !email.includes("@gmail.com")) return setModalErr("Debe usar Gmail (@gmail.com).");
-if ((role==="admin"||role==="inspector") && pass.length<6) return setModalErr("La contraseña debe tener al menos 6 caracteres.");
-if (role==="user" && !pin) return setModalErr("Los usuarios necesitan PIN de 4 dígitos.");
+if ((role==="admin"||role==="inspector") && pass.length<6) return setModalErr("La contraseÃ±a debe tener al menos 6 caracteres.");
+if (role==="user" && !pin) return setModalErr("Los usuarios necesitan PIN de 4 dÃ­gitos.");
 } else {
-// Validar al editar según cambio de rol
+// Validar al editar segÃºn cambio de rol
 const prev = allUsers.find(u => u.uid === editUid) || null;
 const prevRole = prev ? prev.role : "user";
 const isRoleChange = prevRole !== role;
 
 if (isRoleChange && (role==="admin"||role==="inspector")) {
-// Cambiando a Admin/Inspector: necesita Gmail y contraseña
+// Cambiando a Admin/Inspector: necesita Gmail y contraseÃ±a
 if (!email) return setModalErr("Para cambiar a Admin/Inspector necesita Gmail.");
 if (!email.includes("@gmail.com")) return setModalErr("Debe usar Gmail (@gmail.com).");
-if (pass.length<6) return setModalErr("La contraseña debe tener al menos 6 caracteres.");
+if (pass.length<6) return setModalErr("La contraseÃ±a debe tener al menos 6 caracteres.");
 }
 
 if (isRoleChange && role==="user") {
 // Cambiando a Usuario: necesita PIN
-if (!pin) return setModalErr("Para cambiar a Usuario necesita PIN de 4 dígitos.");
+if (!pin) return setModalErr("Para cambiar a Usuario necesita PIN de 4 dÃ­gitos.");
 }
 }
 
@@ -2852,7 +1944,7 @@ if (prev && String(prev.status || "").toLowerCase() !== String(status || "").toL
 if (isInactiveStatus(status)) upd.inactiveAt = serverTimestamp();
 }
 
-// Manejar campos según rol
+// Manejar campos segÃºn rol
 if (role==="user") {
 upd.pin = pin;
 // Eliminar email/pass si existe
@@ -2876,7 +1968,7 @@ let uid;
 const data = { name, role, rango, cargos, status, inactiveAt: isInactiveStatus(status) ? serverTimestamp() : null, points: 0, createdAt: serverTimestamp(), createdBy: myUid };
 
 if (role==="admin" || role==="inspector") {
-// Necesita Firebase Auth — segunda instancia para no cerrar sesión del admin actual
+// Necesita Firebase Auth â€” segunda instancia para no cerrar sesiÃ³n del admin actual
 const secondName = "secondary-" + Date.now();
 const secondApp  = initializeApp(cfg, secondName);
 const secondAuth = getAuth(secondApp);
@@ -2893,7 +1985,7 @@ data.pin = pin;
 
 await setDoc(doc(db,"users",uid), data);
 allUsers.unshift({ uid, ...data, createdAt: new Date() });
-showToast("✅ Cuenta creada: " + name, "ok");
+showToast("âœ… Cuenta creada: " + name, "ok");
 await logNovedad(buildUserCreatedNovedad(name, role, rango, cargos));
 await writePointSnapshot(uid, 0, "Cuenta creada", Date.now());
 }
@@ -2909,11 +2001,11 @@ btn.textContent = editUid ? "Guardar cambios" : "Crear cuenta";
 }
 };
 
-// ── ELIMINAR ──────────────────────────────────────────────────
+// â”€â”€ ELIMINAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let pendingDel = null;
 window.askDelete = (uid, name) => {
 pendingDel = uid;
-document.getElementById("confirm-msg").textContent = `¿Eliminar la cuenta de "${name}"? No se puede deshacer.`;
+document.getElementById("confirm-msg").textContent = `Â¿Eliminar la cuenta de "${name}"? No se puede deshacer.`;
 document.getElementById("confirm-ov").classList.add("open");
 };
 window.closeConfirm = () => { document.getElementById("confirm-ov").classList.remove("open"); pendingDel=null; };
@@ -2928,7 +2020,7 @@ showToast("Cuenta eliminada.", "ok");
 closeConfirm();
 };
 
-// ── UTILIDADES ────────────────────────────────────────────────
+// â”€â”€ UTILIDADES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function genPin() { return String(Math.floor(1000 + Math.random()*9000)); }
 
 function roleBadge(r) {
@@ -2946,15 +2038,15 @@ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
 }
 
 const RANK_LABELS_DASH = {
-  overlord:  "《🪬》 Overlord",
-  owner:     "《🧿》 Owner",
-  admin:     "《💎》 Admin",
-  centinela: "《💠》 Centinela",
-  vigia:     "《🔹》 Vigia"
+  overlord:  "ã€ŠðŸª¬ã€‹ Overlord",
+  owner:     "ã€ŠðŸ§¿ã€‹ Owner",
+  admin:     "ã€ŠðŸ’Žã€‹ Admin",
+  centinela: "ã€ŠðŸ’ ã€‹ Centinela",
+  vigia:     "ã€ŠðŸ”¹ã€‹ Vigia"
 };
 function normRango(r) {
   let s = String(r || "").trim().toLowerCase();
-  s = s.replace(/《.*?》/g, "").replace(/[^a-záéíóúñ ]/g, "").replace(/\s+/g, " ").trim();
+  s = s.replace(/ã€Š.*?ã€‹/g, "").replace(/[^a-zÃ¡Ã©Ã­Ã³ÃºÃ± ]/g, "").replace(/\s+/g, " ").trim();
   if (s.includes("overlord")) return "overlord";
   if (s.includes("owner"))    return "owner";
   if (s.includes("admin"))    return "admin";
@@ -2965,7 +2057,7 @@ function normRango(r) {
 }
 function fmtRango(r) {
   const k = normRango(r);
-  return k ? RANK_LABELS_DASH[k] : (r ? esc(String(r)) : "—");
+  return k ? RANK_LABELS_DASH[k] : (r ? esc(String(r)) : "â€”");
 }
 function getCargos(u) {
   if (!u) return [];
@@ -2980,13 +2072,13 @@ function hasCargo(u, name) {
 // Limpia un nombre: remueve etiquetas/emojis de rango que puedan venir pegadas.
 function cleanName(s) {
   let n = String(s || "").trim();
-  if (!n) return "—";
-  n = n.replace(/《.*?》/g, " ");
-  n = n.replace(/[（(][^）)]*(Vigia|Centinela|Admin|Owner|Overlord)[^）)]*[）)]/gi, " ");
-  n = n.replace(/《[^》]*》\s*(Vigia|Centinela|Admin|Owner|Overlord)/gi, " ");
+  if (!n) return "â€”";
+  n = n.replace(/ã€Š.*?ã€‹/g, " ");
+  n = n.replace(/[ï¼ˆ(][^ï¼‰)]*(Vigia|Centinela|Admin|Owner|Overlord)[^ï¼‰)]*[ï¼‰)]/gi, " ");
+  n = n.replace(/ã€Š[^ã€‹]*ã€‹\s*(Vigia|Centinela|Admin|Owner|Overlord)/gi, " ");
   n = n.replace(/(\s|^)(Vigia|Centinela|Admin|Owner|Overlord)(\s|$)/gi, " ");
   n = n.replace(/\s+/g, " ").trim();
-  return n || "—";
+  return n || "â€”";
 }
 
 function isInactiveStatus(s) {
@@ -3003,42 +2095,42 @@ function inactiveCutoffMs(u) {
 }
 function friendlyErr(code) {
 const m = {
-"auth/email-already-in-use":"Ese email ya está registrado.",
-"auth/invalid-email":"Email inválido.",
-"auth/weak-password":"Contraseña muy corta (mínimo 6).",
-"auth/wrong-password":"Contraseña incorrecta.",
+"auth/email-already-in-use":"Ese email ya estÃ¡ registrado.",
+"auth/invalid-email":"Email invÃ¡lido.",
+"auth/weak-password":"ContraseÃ±a muy corta (mÃ­nimo 6).",
+"auth/wrong-password":"ContraseÃ±a incorrecta.",
 "auth/user-not-found":"No existe cuenta con ese email.",
-"auth/invalid-credential":"Email o contraseña incorrectos.",
-"auth/too-many-requests":"Demasiados intentos, esperá unos minutos.",
-"auth/network-request-failed":"Error de red. Verificá tu conexión.",
-"auth/operation-not-allowed":"Email/contraseña no habilitado en Firebase.",
+"auth/invalid-credential":"Email o contraseÃ±a incorrectos.",
+"auth/too-many-requests":"Demasiados intentos, esperÃ¡ unos minutos.",
+"auth/network-request-failed":"Error de red. VerificÃ¡ tu conexiÃ³n.",
+"auth/operation-not-allowed":"Email/contraseÃ±a no habilitado en Firebase.",
 };
 return m[code] || "";
 }
 let toastT;
 window.showToast = (msg, type="ok") => {
 const t = document.getElementById("toast");
-t.textContent = (type==="ok"?"✅ ":"❌ ") + msg;
+t.textContent = (type==="ok"?"âœ… ":"âŒ ") + msg;
 t.className = "toast show " + type;
 clearTimeout(toastT);
 toastT = setTimeout(() => { t.className="toast"; }, 3500);
 };
 
-// ── ESTADO DE GRÁFICOS (para la pestaña Gráficos del Dashboard) ──────────
+// â”€â”€ ESTADO DE GRÃFICOS (para la pestaÃ±a GrÃ¡ficos del Dashboard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let filterState = { user: "", rol: "", rango: "", cargo: "" };
 let modeStates = { admins: "cols", evo: "line", admin: "line" };
 let evoTimeState = "7";
 let chartPeriod = "day";
-let rankPeriod = "day"; // Período para el ranking de puntos
-let inspPeriodState = "day"; // Período para la actividad de inspectores
+let rankPeriod = "day"; // PerÃ­odo para el ranking de puntos
+let inspPeriodState = "day"; // PerÃ­odo para la actividad de inspectores
 
-// ── CHART CONTROLS ─────────────────────────────────────────────
+// â”€â”€ CHART CONTROLS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 window.refreshCharts = () => {
   if (typeof renderRankingAdmins === "function") renderRankingAdmins();
   if (typeof renderEvolutionPts === "function") renderEvolutionPts();
   if (typeof renderActivityChart === "function") renderActivityChart();
   if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
-  showToast("Gráficos actualizados", "ok");
+  showToast("GrÃ¡ficos actualizados", "ok");
 };
 
 window.resetChartData = () => {
@@ -3047,9 +2139,9 @@ window.resetChartData = () => {
     showToast("Solo los admins pueden reiniciar los datos", "err");
     return;
   }
-  const ok = confirm("¿Estás seguro de que quieres borrar todos los datos históricos de los gráficos? Esta acción no se puede deshacer.");
+  const ok = confirm("Â¿EstÃ¡s seguro de que quieres borrar todos los datos histÃ³ricos de los grÃ¡ficos? Esta acciÃ³n no se puede deshacer.");
   if (!ok) return;
-  showToast("Función de reinicio de datos implementada (borrar logs históricos)", "ok");
+  showToast("FunciÃ³n de reinicio de datos implementada (borrar logs histÃ³ricos)", "ok");
   if (typeof refreshCharts === "function") refreshCharts();
 };
 
@@ -3061,10 +2153,10 @@ window.applyFilters = () => {
   if (typeof renderRankingAdmins === "function") renderRankingAdmins();
   if (typeof renderEvolutionPts === "function") renderEvolutionPts();
   if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
-  // La "Actividad de Admins" NO se filtra por diseño.
+  // La "Actividad de Admins" NO se filtra por diseÃ±o.
 };
 
-// Función para poblar el filtro de usuarios con TODOS los usuarios
+// FunciÃ³n para poblar el filtro de usuarios con TODOS los usuarios
 window.populateUserFilter = () => {
   const userSelect = document.getElementById("filter-user");
   if (!userSelect) return;
@@ -3076,12 +2168,12 @@ window.populateUserFilter = () => {
   allUsersList.forEach(u => {
     const option = document.createElement("option");
     option.value = u.uid;
-    option.textContent = u.name || "—";
+    option.textContent = u.name || "â€”";
     userSelect.appendChild(option);
   });
 };
 
-// Función para poblar el filtro de usuarios en los logs
+// FunciÃ³n para poblar el filtro de usuarios en los logs
 window.populateLogUserFilter = () => {
   const userSelect = document.getElementById("log-filter-user");
   if (!userSelect) return;
@@ -3092,7 +2184,7 @@ window.populateLogUserFilter = () => {
   allUsersList.forEach(u => {
     const option = document.createElement("option");
     option.value = u.uid;
-    option.textContent = u.name || "—";
+    option.textContent = u.name || "â€”";
     userSelect.appendChild(option);
   });
 };
@@ -3147,7 +2239,7 @@ window.setRankPeriod = (period, btn) => {
   rankPeriod = period;
   document.querySelectorAll('[data-rank-period]').forEach(b => b.classList.toggle("active", b.getAttribute("data-rank-period") === period));
   document.querySelectorAll('[data-krank]').forEach(b => b.classList.toggle("active", b.getAttribute("data-krank") === period));
-  renderDash(); // Re-renderizar el dashboard con el nuevo período
+  renderDash(); // Re-renderizar el dashboard con el nuevo perÃ­odo
   if (typeof renderRankingAdmins === "function") renderRankingAdmins();
 };
 
@@ -3158,14 +2250,14 @@ window.setInspPeriod = (p, btn) => {
   if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
 };
 
-// Helpers compartidos de períodos (Día / Semana / Mes)
+// Helpers compartidos de perÃ­odos (DÃ­a / Semana / Mes)
 function periodStartMsDash(p) {
   const m = p === "day" ? 1 : p === "week" ? 7 : 30;
   return Date.now() - m * 24 * 60 * 60 * 1000;
 }
 
 function periodPointsForUserDash(u, period) {
-  if (period === "day") return Number(u.points || 0); // Día → puntos actuales
+  if (period === "day") return Number(u.points || 0); // DÃ­a â†’ puntos actuales
   const start = periodStartMsDash(period);
   const cutoff = inactiveCutoffMs(u);
   let pts = 0;
@@ -3176,11 +2268,11 @@ function periodPointsForUserDash(u, period) {
     const d = typeof l.delta === "number" ? l.delta : 0;
     if (d > 0) pts += d;
   }
-  // Para semana/mes, mostrar puntos ganados en el período
+  // Para semana/mes, mostrar puntos ganados en el perÃ­odo
   return pts;
 }
 
-// Funciones para refrescar y reiniciar gráficos individuales
+// Funciones para refrescar y reiniciar grÃ¡ficos individuales
 window.refreshSingleChart = (chartName) => {
   switch(chartName) {
     case 'rankingAdmins':
@@ -3196,7 +2288,7 @@ window.refreshSingleChart = (chartName) => {
       if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
       break;
   }
-  showToast("Gráfico actualizado", "ok");
+  showToast("GrÃ¡fico actualizado", "ok");
 };
 
 window.resetSingleChart = async (chartName) => {
@@ -3206,7 +2298,7 @@ window.resetSingleChart = async (chartName) => {
     return;
   }
 
-  const ok = confirm("¿Estás seguro de que querés reiniciar los datos de este gráfico? Se borrarán los registros históricos correspondientes y no se puede deshacer.");
+  const ok = confirm("Â¿EstÃ¡s seguro de que querÃ©s reiniciar los datos de este grÃ¡fico? Se borrarÃ¡n los registros histÃ³ricos correspondientes y no se puede deshacer.");
   if (!ok) return;
 
   let targets = [];
@@ -3235,11 +2327,11 @@ window.resetSingleChart = async (chartName) => {
 
   showToast(`Reinicio completado: ${deleted} registro(s) borrado(s).`, deleted > 0 ? "ok" : "err");
 
-  // Refrescar el gráfico después del reinicio (el snapshot recargará los logs).
+  // Refrescar el grÃ¡fico despuÃ©s del reinicio (el snapshot recargarÃ¡ los logs).
   refreshSingleChart(chartName);
 };
 
-// Funciones de renderizado para el Dashboard (misma lógica que Panel de Puntos)
+// Funciones de renderizado para el Dashboard (misma lÃ³gica que Panel de Puntos)
 window.renderRankingAdmins = () => {
   const box = document.getElementById("rank-admins-box");
   if (!box) return;
@@ -3262,7 +2354,7 @@ window.renderRankingAdmins = () => {
     .slice(0, 8);
 
   if (!members.length) {
-    box.innerHTML = '<div class="chart-empty">Sin datos para el ranking en el período seleccionado.</div>';
+    box.innerHTML = '<div class="chart-empty">Sin datos para el ranking en el perÃ­odo seleccionado.</div>';
     return;
   }
 
@@ -3270,7 +2362,7 @@ window.renderRankingAdmins = () => {
   const PALETTE = ["#5865f2", "#3ecf8e", "#ffd166", "#ff9f43", "#ff5c75", "#4cc9f0", "#a78bfa", "#57cc99"];
 
   if (modeStates.admins === "circ") {
-    // UN SOLO CÍRCULO dividido en sectores proporcionales.
+    // UN SOLO CÃRCULO dividido en sectores proporcionales.
     const total = members.reduce((s, r) => s + r.pts, 0);
     const cx = 90, cy = 90, R = 62, C = 2 * Math.PI * R;
     let acc = 0, arcs = "", legend = "";
@@ -3280,7 +2372,7 @@ window.renderRankingAdmins = () => {
       const rot = -90 + acc * 360;
       arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${PALETTE[i % PALETTE.length]}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
       acc += frac;
-      legend += `<span class="legend-item"><span class="legend-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>${esc(cleanName(r.u.name))} · ${(frac * 100).toFixed(1)}%</span>`;
+      legend += `<span class="legend-item"><span class="legend-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>${esc(cleanName(r.u.name))} Â· ${(frac * 100).toFixed(1)}%</span>`;
     });
     box.innerHTML = `
       <svg class="chart-svg" viewBox="0 0 180 180" role="img">
@@ -3288,11 +2380,11 @@ window.renderRankingAdmins = () => {
         <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${total.toFixed(decimalsN())}</text>
       </svg>
       <div class="chart-legend">${legend}</div>
-      <div class="chart-note">Ranking de puntos · ${periodTxt}</div>`;
+      <div class="chart-note">Ranking de puntos Â· ${periodTxt}</div>`;
     return;
   }
 
-  // Modo columnas: gráfico real de columnas verticales.
+  // Modo columnas: grÃ¡fico real de columnas verticales.
   const maxP = Math.max(1, ...members.map(r => r.pts));
   const W = 600, H = 300, pl = 40, pr = 16, pt = 32, pb = 46;
   const iw = W - pl - pr, ih = H - pt - pb;
@@ -3332,7 +2424,7 @@ window.renderRankingAdmins = () => {
       ${bars}
     </svg>
     <div class="chart-legend">${leg}</div>
-    <div class="chart-note">Ranking de puntos · ${periodTxt}</div>`;
+    <div class="chart-note">Ranking de puntos Â· ${periodTxt}</div>`;
 };
 
 window.renderEvolutionPts = () => {
@@ -3349,7 +2441,7 @@ window.renderEvolutionPts = () => {
   if (filterState.rango) team = team.filter(u => normRango(u.rango) === filterState.rango || String(u.rango || "").toLowerCase().includes(filterState.rango));
   if (filterState.cargo) team = team.filter(u => hasCargo(u, filterState.cargo));
 
-  // Sin límites arbitrarios: se muestran todos los usuarios.
+  // Sin lÃ­mites arbitrarios: se muestran todos los usuarios.
   team = team.sort((a, b) => (Number(b.points || 0)) - (Number(a.points || 0)));
 
   if (!team.length) {
@@ -3374,7 +2466,7 @@ window.renderEvolutionPts = () => {
     periods.push({ start, end, label });
   }
 
-  // Paleta amplia: cada usuario conserva su color (hash del uid y caché).
+  // Paleta amplia: cada usuario conserva su color (hash del uid y cachÃ©).
   const PALETTE = ["#3ecf8e", "#ff6b6b", "#4ecdc4", "#ffe66d", "#95e1d3", "#f38181", "#7f8cff", "#ff9f43", "#00d2d3", "#5f27cd", "#57cc99", "#ffd166", "#e05555", "#4cc9f0", "#a78bfa", "#2ecc71", "#e67e22", "#1dd3b0", "#f79256", "#7bdff2", "#c3aed6", "#86e3ce"];
   const userColorCache = {};
   const getUserColor = (uid) => {
@@ -3387,7 +2479,7 @@ window.renderEvolutionPts = () => {
     return userColorCache[uid];
   };
 
-  // Reconstrucción: parte de los puntos actuales y descuenta los deltas por bucket.
+  // ReconstrucciÃ³n: parte de los puntos actuales y descuenta los deltas por bucket.
   const series = team.map((m) => {
     const periodChanges = new Array(count).fill(0);
     for (const l of logs) {
@@ -3426,7 +2518,7 @@ window.renderEvolutionPts = () => {
 
   let svgMinWidth = null;
   if (mode === "line") {
-    // Líneas: cada usuario con exactamente el color de su círculo en la leyenda.
+    // LÃ­neas: cada usuario con exactamente el color de su cÃ­rculo en la leyenda.
     series.forEach((s) => {
       const pts = s.values.map((v, i) => `${xPos(i)},${yPos(v)}`).join(" ");
       content += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"/>`;
@@ -3435,7 +2527,7 @@ window.renderEvolutionPts = () => {
       });
     });
   } else {
-    // Columnas: UNA barra por cada usuario en cada período, sin omitir a nadie.
+    // Columnas: UNA barra por cada usuario en cada perÃ­odo, sin omitir a nadie.
     const userCount = team.length;
     const groupWidth = iw / n;
     const barWidth = Math.max(3, (groupWidth / userCount) * 0.62);
@@ -3475,7 +2567,7 @@ window.renderEvolutionPts = () => {
       </svg>
     </div>
     <div class="chart-legend">${series.map(s => `<span class="legend-item" title="${esc(s.name)}"><span class="legend-dot" style="background:${s.color}"></span></span>`).join("")}</div>
-    <div class="chart-note">Evolución de puntos · ${isDayView ? "24 horas" : evoTimeState === "14" ? "7 días" : "30 días"} · ${series.length} usuarios · ${logs.length} registros cargados</div>`;
+    <div class="chart-note">EvoluciÃ³n de puntos Â· ${isDayView ? "24 horas" : evoTimeState === "14" ? "7 dÃ­as" : "30 dÃ­as"} Â· ${series.length} usuarios Â· ${logs.length} registros cargados</div>`;
 };
 
 window.renderActivityChart = () => {
@@ -3486,7 +2578,7 @@ window.renderActivityChart = () => {
   if (role !== "admin" && role !== "inspector") return;
 
   // ACTIVIDAD DE USUARIOS: Incluir todos los roles (Usuario, Admin, Inspector).
-  // Solo el filtro de Rol afecta este gráfico; Usuario individual, Rango y Cargo no.
+  // Solo el filtro de Rol afecta este grÃ¡fico; Usuario individual, Rango y Cargo no.
   const now = Date.now();
   const buckets = chartBuckets(chartPeriod, now);
   let maxVal = 1;
@@ -3506,7 +2598,7 @@ window.renderActivityChart = () => {
     return -1;
   };
 
-  // Agrupar los logs por (bucket, actor) para computar métricas únicas por actor.
+  // Agrupar los logs por (bucket, actor) para computar mÃ©tricas Ãºnicas por actor.
   const perBucketActors = new Map();
   for (const l of logs) {
     const t = logTimeRaw(l);
@@ -3536,7 +2628,7 @@ window.renderActivityChart = () => {
       const actor = allUsers.find(u => u.uid === uid) || null;
       if (actor && isInactiveStatus(actor.status) && rec.t >= inactiveCutoffMs(actor)) continue;
       if (rec.role === "user") {
-        // Usuario: promedio entre entradas a la página y puntos actuales.
+        // Usuario: promedio entre entradas a la pÃ¡gina y puntos actuales.
         userV += Math.round(((rec.logins + Number(actor?.points || 0)) / 2) * 10) / 10;
       } else if (rec.role === "inspector") {
         // Inspector: puntos actuales + puntos que sube + entradas.
@@ -3554,7 +2646,7 @@ window.renderActivityChart = () => {
 
   const mode = modeStates.admin || "line";
 
-  // Modo lineal: mostrar evolución temporal de todos los roles
+  // Modo lineal: mostrar evoluciÃ³n temporal de todos los roles
   if (mode === "line") {
     const W = 900, H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
@@ -3604,7 +2696,7 @@ window.renderActivityChart = () => {
         ${xl}
         ${series}
       </svg>
-      <div class="chart-note">Actividad de Usuarios · ${chartPeriod === "day" ? "24 horas completas (12 AM → 11 PM)" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
+      <div class="chart-note">Actividad de Usuarios Â· ${chartPeriod === "day" ? "24 horas completas (12 AM â†’ 11 PM)" : chartPeriod === "week" ? "7 dÃ­as" : "30 dÃ­as"} Â· ${logs.length} registros cargados</div>`;
 
     if (legendEl) {
       legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
@@ -3658,20 +2750,20 @@ window.renderActivityChart = () => {
         ${xl}
         ${bars}
       </svg>
-      <div class="chart-note">Actividad de Usuarios · ${chartPeriod === "day" ? "24 horas" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
+      <div class="chart-note">Actividad de Usuarios Â· ${chartPeriod === "day" ? "24 horas" : chartPeriod === "week" ? "7 dÃ­as" : "30 dÃ­as"} Â· ${logs.length} registros cargados</div>`;
 
     if (legendEl) {
       legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     }
   }
-  // Modo circular: mostrar distribución como donut de todos los roles
+  // Modo circular: mostrar distribuciÃ³n como donut de todos los roles
   else if (mode === "circ") {
     const totalActivity = roleActivity.user.reduce((a, b) => a + b, 0) + 
                           roleActivity.admin.reduce((a, b) => a + b, 0) + 
                           roleActivity.inspector.reduce((a, b) => a + b, 0);
 
     if (!totalActivity) {
-      el.innerHTML = '<div class="chart-empty">Sin datos de actividad de Usuarios para el período seleccionado.</div>';
+      el.innerHTML = '<div class="chart-empty">Sin datos de actividad de Usuarios para el perÃ­odo seleccionado.</div>';
       if (legendEl) legendEl.innerHTML = "";
       return;
     }
@@ -3691,7 +2783,7 @@ window.renderActivityChart = () => {
       const rot = -90 + acc * 360;
       arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${it.color}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
       acc += frac;
-      legend += `<span class="legend-item"><span class="legend-dot" style="background:${it.color}"></span>${it.name} · ${(frac * 100).toFixed(1)}%</span>`;
+      legend += `<span class="legend-item"><span class="legend-dot" style="background:${it.color}"></span>${it.name} Â· ${(frac * 100).toFixed(1)}%</span>`;
     }
 
     el.innerHTML = `
@@ -3700,7 +2792,7 @@ window.renderActivityChart = () => {
         <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${Math.round(totalActivity)}</text>
       </svg>
       <div class="chart-legend">${legend}</div>
-      <div class="chart-note">Actividad de Usuarios · ${chartPeriod === "day" ? "24 horas" : chartPeriod === "week" ? "7 días" : "30 días"}</div>`;
+      <div class="chart-note">Actividad de Usuarios Â· ${chartPeriod === "day" ? "24 horas" : chartPeriod === "week" ? "7 dÃ­as" : "30 dÃ­as"}</div>`;
 
     if (legendEl) {
       legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
@@ -3708,7 +2800,7 @@ window.renderActivityChart = () => {
   }
 };
 
-// Función auxiliar para generar buckets de tiempo
+// FunciÃ³n auxiliar para generar buckets de tiempo
 function chartBuckets(period, now) {
   const buckets = [];
   let step, count, lab;
@@ -3761,8 +2853,8 @@ window.renderInspectorActivityJow = () => {
     const actor = allUsers.find(u => u.uid === l.actorUid) || null;
     const target = allUsers.find(u => u.uid === l.targetUid) || null;
     const dt = fmtDateTime(l.createdAt);
-    const actorName = actor?.name || l.actorName || "—";
-    const targetName = target?.name || l.targetName || "—";
+    const actorName = actor?.name || l.actorName || "â€”";
+    const targetName = target?.name || l.targetName || "â€”";
     const delta = typeof l.delta === "number" ? l.delta : 0;
     const deltaTxt = `${delta > 0 ? "+" : ""}${delta}`;
     const motivo = esc(l.reason || "Sin motivo");
@@ -3779,7 +2871,4 @@ window.renderInspectorActivityJow = () => {
       </tr>`;
   }).join("");
 };
-</script>
 
-</body>
-</html>

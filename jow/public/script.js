@@ -38,6 +38,37 @@ const app  = getApps().length ? getApp() : initializeApp(cfg);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
+// ── Delegado global de clicks (captura todos los onclick= sin necesidad de funciones globales antes del parseo) ──
+(function installClickDelegate() {
+  function parseArgs(str) {
+    try {
+      if (!str.trim()) return [];
+      return Function('"use strict"; return [' + str + ']')();
+    } catch (e) { return []; }
+  }
+  document.addEventListener('click', function globalOnClickHandler(e) {
+    const el = e.target.closest('[onclick]');
+    if (!el) return;
+    const raw = el.getAttribute('onclick');
+    if (!raw) return;
+    el.removeAttribute('onclick');
+    const m = raw.match(/^\s*([\w\.]+)\s*\(([\s\S]*)\)\s*;?\s*$/);
+    if (!m) return;
+    const [, fnPath, argsStr] = m;
+    const parts = fnPath.split('.');
+    let fn = window;
+    for (const p of parts) { if (fn == null) break; fn = fn[p]; }
+    if (typeof fn !== 'function') return;
+    const args = parseArgs(argsStr);
+    e.preventDefault();
+    try {
+      fn.apply(el, args);
+    } catch (err) {
+      console.error('Error delegado onclick (jow):', fnPath, err);
+    }
+  }, { capture: true });
+})();
+
 // Configuración de persistencia y manejo de errores de red
 auth.useDeviceLanguage && auth.useDeviceLanguage();
 

@@ -1,694 +1,4 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>Panel de Staff — Jowiland</title>
-  <link rel="stylesheet" href="style.css"/>
-</head>
-<body>
-
-<!-- LOGIN -->
-<div id="login-screen">
-  <div class="login-wrap">
-    <div class="login-logo">
-      <div class="login-mark">⚡</div>
-      <h1>Jowiland</h1>
-      <p>Panel de Staff Discord</p>
-    </div>
-    <div class="login-card">
-      <div class="login-toggle" id="login-toggle">
-        <button class="ltab active" data-login="pin" onclick="switchLogin('pin')">🔑 PIN</button>
-        <button class="ltab" data-login="email" onclick="switchLogin('email')">📧 Email</button>
-      </div>
-      <div id="form-pin">
-        <div class="lfield">
-          <label>Nombre de usuario</label>
-          <input type="text" id="pin-name" placeholder="Ej: Juan" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"/>
-        </div>
-        <div class="lfield">
-          <label>PIN de 4 dígitos</label>
-          <input type="text" id="pin-code" placeholder="••••" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" autocapitalize="none" autocorrect="off" spellcheck="false"/>
-        </div>
-        <button class="lbtn" id="btn-pin" onclick="loginWithPin()">Entrar</button>
-      </div>
-      <div id="form-email" style="display:none">
-        <div class="lfield">
-          <label>Email</label>
-          <input type="email" id="l-email" placeholder="tu@email.com" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false"/>
-        </div>
-        <div class="lfield">
-          <label>Contraseña</label>
-          <input type="password" id="l-pass" placeholder="••••••••" autocomplete="current-password"/>
-        </div>
-        <button class="lbtn" id="btn-email" onclick="loginWithEmail()">Ingresar</button>
-      </div>
-      <div class="lerr" id="login-err"></div>
-    </div>
-  </div>
-</div>
-
-<!-- APP -->
-<div id="app" style="display:none">
-  <div class="container">
-
-    <!-- HEADER -->
-    <header class="hero">
-      <div class="hero-copy">
-        <span class="eyebrow">Comunidad Jow</span>
-        <h1>Panel de Staff Discord</h1>
-        <p>Base administrativa para controlar actividad, puntos, rangos, cargos y seguimiento del staff.</p>
-      </div>
-      <div class="hero-side">
-        <button class="logout-btn" onclick="doLogout()">Salir</button>
-      </div>
-    </header>
-
-    <!-- PANEL SUPERIOR DEL USUARIO ACTUAL -->
-    <section class="stats-grid" id="user-stats-section" style="display:none">
-      <article class="stat-card user-stat">
-        <span class="stat-label">Tu perfil</span>
-        <div class="user-info-grid">
-          <div class="user-avatar" id="uc-avatar">?</div>
-          <div class="user-details">
-            <div class="user-name" id="uc-name">—</div>
-            <div class="user-rango" id="uc-rango">—</div>
-            <div class="user-cargos" id="uc-cargos">—</div>
-          </div>
-          <div class="user-points-section">
-            <div class="user-pts-label">Puntos</div>
-            <div class="user-pts-value" id="uc-pts">0</div>
-          </div>
-        </div>
-      </article>
-    </section>
-
-    <!-- STATS (mejoradas con sub-info y barras) -->
-    <section class="stats-grid" id="stats-section">
-      <article class="stat-card">
-        <span class="stat-label">Miembros staff</span>
-        <strong id="total-members">0</strong>
-        <span class="stat-sub" id="total-members-sub">—</span>
-        <div class="stat-bar-wrap"><div class="stat-bar" id="total-members-bar"></div></div>
-      </article>
-      <article class="stat-card">
-        <span class="stat-label">Puntos promedio</span>
-        <strong id="avg-points">0</strong>
-        <span class="stat-sub" id="avg-points-sub">—</span>
-        <div class="stat-bar-wrap"><div class="stat-bar" id="avg-points-bar"></div></div>
-      </article>
-      <article class="stat-card">
-        <span class="stat-label">En riesgo</span>
-        <strong id="staff-at-risk">0</strong>
-        <span class="stat-sub" id="staff-at-risk-sub">—</span>
-        <div class="stat-bar-wrap"><div class="stat-bar" id="staff-at-risk-bar"></div></div>
-      </article>
-    </section>
-
-    <!-- TRABAJADORES DESTACADOS DEL MC TEAM (con mostrar/ocultar) -->
-    <div style="margin:16px 0">
-      <button class="btn-ghost" id="btn-dest" onclick="toggleDestacados()">👁️ Mostrar chambeadores destacados</button>
-    </div>
-    <section class="stats-detail" id="destacados-section" style="display:none">
-      <div class="section-head">
-        <h3>⭐ Chambeadores destacados del MC Team</h3>
-        <p>Reconocimiento por rendimiento. Solo se consideran trabajadores con el cargo <b>MC Team</b>.</p>
-      </div>
-      <div class="destacado-grid">
-        <article class="destacado-card">
-          <div class="dc-label">🌟 Chambeador del día</div>
-          <div class="dc-content" id="destacado-day"><div class="dc-empty">Cargando…</div></div>
-          <div class="dc-period">Últimas 24 horas</div>
-        </article>
-        <article class="destacado-card dc-featured">
-          <div class="dc-label">📅 Chambeador de la semana</div>
-          <div class="dc-content" id="destacado-week"><div class="dc-empty">Cargando…</div></div>
-          <div class="dc-period">Últimos 7 días</div>
-        </article>
-        <article class="destacado-card">
-          <div class="dc-label">🗓 Chambeador del mes</div>
-          <div class="dc-content" id="destacado-month"><div class="dc-empty">Cargando…</div></div>
-          <div class="dc-period">Últimos 30 días</div>
-        </article>
-      </div>
-      
-      <!-- HISTORIAL DE CHAMBEADORES (dentro de la sección) -->
-      <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.12);">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <h4 style="margin:0;font-size:16px;color:#e9eeff;">📜 Historial de Chambeadores</h4>
-        </div>
-        <div id="destacados-hist-section" style="display:none;">
-          <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
-            <div>
-              <label style="font-size:12px;color:var(--muted)">Filtrar por usuario:</label>
-              <select id="hist-filter-user" onchange="filterDestacadosHistorial()" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;font-size:13px;padding:8px 12px;outline:none;min-width:150px;">
-                <option value="">Todos</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--muted)">Filtrar por rol:</label>
-              <select id="hist-filter-rol" onchange="filterDestacadosHistorial()" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;font-size:13px;padding:8px 12px;outline:none;min-width:150px;">
-                <option value="">Todos</option>
-                <option value="user">Usuario</option>
-                <option value="admin">Admin</option>
-                <option value="inspector">Inspector</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:12px;color:var(--muted)">Filtrar por período:</label>
-              <select id="hist-filter-period" onchange="filterDestacadosHistorial()" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;font-size:13px;padding:8px 12px;outline:none;min-width:150px;">
-                <option value="">Todos</option>
-                <option value="day">Día</option>
-                <option value="week">Semana</option>
-                <option value="month">Mes</option>
-              </select>
-            </div>
-          </div>
-          <div id="destacados-hist-list" style="display:flex;flex-direction:column;gap:12px;">
-            <div class="chart-empty">Cargando historial...</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TABS -->
-    <nav class="tabs-container" id="tabs-nav">
-      <button class="tab active" onclick="switchTab('points-tab',this)">⭐ Puntos</button>
-      <button class="tab" id="graficos-tab-btn" style="display:none" onclick="switchTab('graficos-tab',this)">📊 Gráficos</button>
-      <button class="tab"        onclick="switchTab('staff-tab',this)">👥 Staff</button>
-      <button class="tab"        onclick="switchTab('guide-tab',this)">📖 Guía</button>
-      <button class="tab"        onclick="switchTab('rangos-tab',this)">🏅 Rangos y Cargos</button>
-      <button class="tab"        onclick="switchTab('rules-tab',this)">📋 Normas</button>
-      <button class="tab"        onclick="switchTab('novedades-tab',this)">🔔 Novedades</button>
-      <button class="tab" id="my-perfil-tab-btn" style="display:none" onclick="switchTab('user-view',this)">🙋 Mi perfil</button>
-      <button class="tab" id="logs-tab-btn" style="display:none" onclick="switchTab('logs-tab',this)">📜 Logs</button>
-    </nav>
-
-    <main class="content">
-
-      <!-- ── PUNTOS ── -->
-      <section id="points-tab" class="tab-content active" style="display:none">
-        <h2>Tabla de Puntos</h2>
-        <div class="card" style="padding:0;">
-          <div style="max-height:70vh;overflow-y:auto;">
-          <table>
-            <thead>
-              <tr id="pts-thead-row"><th>#</th><th>Nombre</th><th>Rango</th><th>Puntos</th><th>Estado</th></tr>
-            </thead>
-            <tbody id="pts-full-body">
-              <tr><td colspan="5" class="t-empty">Cargando…</td></tr>
-            </tbody>
-          </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── STAFF ── -->
-      <section id="staff-tab" class="tab-content" style="display:none">
-        <h2>Staff</h2>
-        <div class="card" style="padding:0;">
-          <div style="padding:16px 16px 0;">
-          <h3>Resumen del equipo</h3>
-          <p>Vista general del staff actual: rango, cargos asignados y estado operativo.</p>
-          </div>
-          <div style="max-height:70vh;overflow-y:auto;">
-          <table>
-            <thead>
-              <tr><th>Nombre</th><th>Rango</th><th>Cargos</th><th>Estado</th></tr>
-            </thead>
-            <tbody id="staff-full-body">
-              <tr><td colspan="4" class="t-empty">Cargando…</td></tr>
-            </tbody>
-          </table>
-          </div>
-        </div>
-        <div class="card">
-          <h3>Papeles dentro de la página</h3>
-          <div class="info-grid">
-            <article>
-              <h4>🔧 Admin</h4>
-              <p>Acceso completo al panel. Puede crear, editar y eliminar cuentas, y gestionar todos los puntos.</p>
-            </article>
-            <article>
-              <h4>🔍 Inspector</h4>
-              <p>Accede al panel de staff. Puede sumar y restar puntos a los moderadores.</p>
-            </article>
-            <article>
-              <h4>👤 Usuario</h4>
-              <p>Miembro activo. Ingresa con PIN y solo puede ver sus propios puntos.</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── GRÁFICOS ── -->
-      <section id="graficos-tab" class="tab-content" style="display:none">
-        <h2>Gráficos</h2>
-        <p class="tab-sub">Estadísticas visuales y rankings del MC Team. Los trabajadores se identifican por el cargo <b>MC Team</b>.</p>
-        
-        <!-- FILTROS GLOBALES -->
-        <div class="card" style="margin-bottom: 16px;">
-          <div class="chart-head">
-            <h3>🔍 Filtros</h3>
-            <span class="chart-note-inline">Filtran los gráficos y el ranking. La actividad de Admins nunca se filtra.</span>
-            <div style="display: flex; gap: 8px; margin-left: auto;">
-              <button class="btn-ghost" onclick="resetFilters()">🔄 Resetear filtros</button>
-            </div>
-          </div>
-          <div class="filters-row" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-            <div>
-              <label style="font-size: 12px; color: var(--muted);">Usuario:</label>
-              <select id="filter-user" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
-                <option value="">Todos</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size: 12px; color: var(--muted);">Rol:</label>
-              <select id="filter-rol" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
-                <option value="">Todos</option>
-                <option value="user">Usuario</option>
-                <option value="admin">Admin</option>
-                <option value="inspector">Inspector</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size: 12px; color: var(--muted);">Rango:</label>
-              <select id="filter-rango" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
-                <option value="">Todos</option>
-                <option value="centinela">Centinela</option>
-                <option value="vigia">Vigia</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size: 12px; color: var(--muted);">Cargo:</label>
-              <select id="filter-cargo" onchange="applyFilters()" style="background: #0f1428; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; color: #e9eeff; font-size: 13px; padding: 8px 12px; outline: none; min-width: 150px;">
-                <option value="">Todos</option>
-                <option value="Inspector">Inspector</option>
-                <option value="Moderador">Moderador</option>
-                <option value="Editor">Editor</option>
-                <option value="MC Team">MC Team</option>
-                <option value="Dev">Dev</option>
-                <option value="Marketing">Marketing</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- NIVEL 2: RANKING DE PUNTOS -->
-        <div class="chart-grid two-col">
-          <div class="card chart-card">
-            <div class="chart-head">
-              <h3>🏆 Ranking de Puntos</h3>
-              <div class="chart-toolbar">
-                <button class="period-btn active" data-rank-time="day" onclick="setRankTime('day',this)">Día</button>
-                <button class="period-btn" data-rank-time="week" onclick="setRankTime('week',this)">Semana</button>
-                <button class="period-btn" data-rank-time="month" onclick="setRankTime('month',this)">Mes</button>
-              </div>
-              <div class="chart-toolbar">
-                <button class="period-btn active" data-mode="cols" onclick="setRankModeAdmins('cols',this)">Columnas</button>
-                <button class="period-btn" data-mode="circ" onclick="setRankModeAdmins('circ',this)">Circular</button>
-              </div>
-              <div class="chart-toolbar">
-                <button class="btn-ghost btn-chart-ctrl" onclick="refreshSingleChart('rankingAdmins')">🔄 Refrescar</button>
-                <button class="btn-ghost btn-chart-ctrl res-ctrl" id="reset-rankingAdmins" onclick="resetSingleChart('rankingAdmins')" style="display:none">🗑️ Reiniciar</button>
-              </div>
-            </div>
-            <div class="chart-container" id="rank-admins-box"><div class="chart-empty">Cargando ranking…</div></div>
-          </div>
-        </div>
-
-        <!-- NIVEL 3: GRÁFICOS PRINCIPALES -->
-        <div class="card chart-card" id="evo-chart-card">
-          <div class="chart-head">
-            <h3>📈 Evolución general del equipo</h3>
-            <div class="chart-toolbar">
-              <button class="period-btn active" data-time="7" onclick="setEvoTime('7',this)">Día</button>
-              <button class="period-btn" data-time="14" onclick="setEvoTime('14',this)">Semana</button>
-              <button class="period-btn" data-time="30" onclick="setEvoTime('30',this)">Mes</button>
-            </div>
-            <div class="chart-toolbar">
-              <button class="period-btn active" data-mode="line" onclick="setRankModeEvo('line',this)">Lineal</button>
-              <button class="period-btn" data-mode="cols" onclick="setRankModeEvo('cols',this)">Columnas</button>
-            </div>
-            <div class="chart-toolbar">
-              <button class="btn-ghost btn-chart-ctrl" onclick="refreshSingleChart('evolutionPts')">🔄 Refrescar</button>
-              <button class="btn-ghost btn-chart-ctrl res-ctrl" id="reset-evolutionPts" onclick="resetSingleChart('evolutionPts')" style="display:none">🗑️ Reiniciar</button>
-            </div>
-            <span class="chart-note-inline">Puntos reconstruidos a partir de los registros recientes</span>
-          </div>
-          <div class="chart-container" id="evo-pts-chart"><div class="chart-empty">Cargando evolución…</div></div>
-          <div class="chart-legend" id="evo-pts-legend"></div>
-        </div>
-
-
-
-        <!-- ACTIVIDAD DE USUARIOS -->
-        <div class="card chart-card" id="activity-admins-card">
-          <div class="chart-head">
-            <h3>🕐 Actividad de Usuarios</h3>
-            <div class="chart-toolbar" id="chart-toolbar">
-              <button class="period-btn active" data-period="day" onclick="setChartPeriod('day',this)">Día</button>
-              <button class="period-btn" data-period="week" onclick="setChartPeriod('week',this)">Semana</button>
-              <button class="period-btn" data-period="month" onclick="setChartPeriod('month',this)">Mes</button>
-            </div>
-            <div class="chart-toolbar">
-              <button class="period-btn active" data-mode="line" onclick="setAdminChartMode('line',this)">Lineal</button>
-              <button class="period-btn" data-mode="cols" onclick="setAdminChartMode('cols',this)">Columnas</button>
-              <button class="period-btn" data-mode="circ" onclick="setAdminChartMode('circ',this)">Circular</button>
-            </div>
-            <div class="chart-toolbar">
-              <button class="btn-ghost btn-chart-ctrl" onclick="refreshSingleChart('activityChart')">🔄 Refrescar</button>
-              <button class="btn-ghost btn-chart-ctrl res-ctrl" id="reset-activityChart" onclick="resetSingleChart('activityChart')" style="display:none">🗑️ Reiniciar</button>
-            </div>
-          </div>
-          <div class="chart-container" id="activity-chart"><div class="chart-empty">Cargando actividad…</div></div>
-          <div class="chart-legend" id="chart-legend"></div>
-        </div>
-
-        <!-- ACTIVIDAD DE INSPECTORES -->
-        <div class="card chart-card" id="activity-inspectors-card">
-          <div class="chart-head">
-            <h3>📊 Actividad de Inspectores</h3>
-            <div class="chart-toolbar">
-              <button class="btn-ghost btn-chart-ctrl" onclick="refreshSingleChart('inspectorActivity')">🔄 Refrescar</button>
-              <button class="btn-ghost btn-chart-ctrl res-ctrl" id="reset-inspectorActivity" onclick="resetSingleChart('inspectorActivity')" style="display:none">🗑️ Reiniciar</button>
-            </div>
-          </div>
-          <div class="chart-note-inline" style="margin-bottom:8px;display:block">Últimos 20 movimientos de inspectores</div>
-          <div id="inspector-activity-chart">
-            <table>
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Inspector</th>
-                  <th>Acción</th>
-                  <th>Objetivo</th>
-                  <th>Motivo</th>
-                  <th>Hace</th>
-                </tr>
-              </thead>
-              <tbody id="inspector-activity-body">
-                <tr><td colspan="6" class="t-empty">Cargando…</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── LOGS ── -->
-      <section id="logs-tab" class="tab-content" style="display:none">
-        <h2>Logs</h2>
-        <div class="card">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
-            <p style="color:#9ba8d6;margin:0">Accesos y cambios de puntos. Visible solo para inspectores y admins.</p>
-            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-              <button class="btn-ghost" id="logs-export-btn" style="display:none" onclick="exportLogsJow()">📥 Exportar</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-            <div style="display:flex;flex-direction:column;gap:4px">
-              <label style="font-size:11px;color:var(--muted)">Tipo</label>
-              <select onchange="setLogTypeFilterJow(this.value)" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none;min-width:120px">
-                <option value="">Todos</option>
-                <option value="login">Logins</option>
-                <option value="points">Cambios de puntos</option>
-              </select>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px">
-              <label style="font-size:11px;color:var(--muted)">Usuario</label>
-              <select id="log-filter-user" onchange="setLogFilterUser(this.value)" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none;min-width:150px">
-                <option value="">Todos</option>
-              </select>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px">
-              <label style="font-size:11px;color:var(--muted)">Rol</label>
-              <select id="log-filter-role" onchange="setLogFilterRole(this.value)" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none;min-width:120px">
-                <option value="">Todos</option>
-                <option value="admin">Admin</option>
-                <option value="inspector">Inspector</option>
-                <option value="user">Usuario</option>
-              </select>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px">
-              <label style="font-size:11px;color:var(--muted)">Rango</label>
-              <select id="log-filter-rango" onchange="setLogFilterRango(this.value)" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none;min-width:120px">
-                <option value="">Todos</option>
-                <option value="centinela">Centinela</option>
-                <option value="vigia">Vigia</option>
-              </select>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px">
-              <label style="font-size:11px;color:var(--muted)">Cargo</label>
-              <select id="log-filter-cargo" onchange="setLogFilterCargo(this.value)" style="background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none;min-width:120px">
-                <option value="">Todos</option>
-                <option value="Inspector">Inspector</option>
-                <option value="Moderador">Moderador</option>
-                <option value="Editor">Editor</option>
-                <option value="MC Team">MC Team</option>
-                <option value="Dev">Dev</option>
-                <option value="Marketing">Marketing</option>
-              </select>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;flex:1">
-              <label style="font-size:11px;color:var(--muted)">Buscar</label>
-              <input type="text" placeholder="Buscar…" oninput="setLogSearchJow(this.value)" style="min-width:180px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e9eeff;font-size:13px;padding:10px 12px;outline:none"/>
-            </div>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Fecha y hora</th>
-                <th>Inspector/Admin</th>
-                <th>Usuario afectado</th>
-                <th>Cambio</th>
-                <th>Motivo</th>
-                <th id="logs-actions-th-jow">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="logs-jow-body">
-              <tr><td colspan="6" class="t-empty">Cargando…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- ── GUÍA ── -->
-      <section id="guide-tab" class="tab-content" style="display:none">
-        <h2>Guía General</h2>
-        <div class="card">
-          <h3>Guías de MC Team</h3>
-          <div class="guide-block">
-            <h4>Guía 1:</h4>
-            <a class="guide-link" href="https://app.milanote.com/1WXWLa1W9vOHbR?p=VgupnNwI1ro" target="_blank" rel="noopener">https://app.milanote.com/1WXWLa1W9vOHbR?p=VgupnNwI1ro</a>
-          </div>
-        </div>
-        <div class="card">
-          <h3>Panel de puntos</h3>
-          <ul>
-            <li>Sirve para ver tus puntos y los de los demás.</li>
-            <li>Acceso: <a class="guide-link" href="https://jowiland-2.web.app/" target="_blank" rel="noopener">https://jowiland-2.web.app/</a></li>
-            <li>Los puntos bajan <strong>1 cada 24 horas</strong>.</li>
-            <li>Los puntos también bajan por incumplimiento de las reglas.</li>
-            <li>Sin actividad durante <strong>7 días</strong> y con 0 puntos, posiblemente se expulsa al miembro de <strong>MC Team</strong>.</li>
-            <li>Si no puedes realizar un trabajo durante cierto periodo, no se te bajarán puntos.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3>Nueva estructura de rangos</h3>
-          <table>
-            <thead><tr><th>Rango</th><th>Descripción</th></tr></thead>
-            <tbody>
-              <tr><td>《🪬》 Overlord</td><td>Máxima autoridad (Solo lo tiene Jow).</td></tr>
-              <tr><td>《🧿》 Owner</td><td>Dirige proyectos, coordina equipos y administra el desarrollo general.</td></tr>
-              <tr><td>《💎》 Admin</td><td>Administración del servidor y sanciones avanzadas. Gestiona el equipo y los puntos.</td></tr>
-              <tr><td>《💠》 Centinela</td><td>Miembro de confianza con permisos intermedios.</td></tr>
-              <tr><td>《🔹》 Vigia</td><td>Nuevo rango de apoyo y vigilancia. Supervisa el cumplimiento de normas y reporta incidencias.</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="card">
-          <h3>¿Qué es el MC Team?</h3>
-          <p>En este sistema, <strong>MC Team es un CARGO</strong>, no un rango. Para saber quién es trabajador del MC Team se comprueba el <strong>cargo asignado al usuario</strong> (campo <code>cargos</code>).</p>
-          <ul>
-            <li>Las estadísticas y rankings del MC Team usan únicamente esa condición.</li>
-            <li>Los administradores e inspectores quedan separados de las estadísticas de trabajadores.</li>
-            <li>Los rangos superiores (Admin, Owner, Overlord) no se cuentan como trabajadores candidatos.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3>Guías de Admins</h3>
-          <div class="guide-block">
-            <h4>Sistema de Ascensos y Descensos de Rangos</h4>
-            <p style="color:var(--muted);line-height:1.6">
-              <b>Ascensos por desempeño:</b> Cada semana se evaluará al trabajador destacado del MC Team. Si un miembro obtiene el reconocimiento de "Chambeador de la semana" consistentemente durante 4 semanas, será ascendido de rango.<br><br>
-              <b>Descensos por inactividad:</b> Cuando un miembro llega a 0 puntos, se le quitará un rango automáticamente. Este proceso continúa hasta que el miembro queda en el último rango disponible. Si sigue en 0 puntos en el último rango, será expulsado del equipo.<br><br>
-              <b>Jerarquía de rangos:</b> El sistema funciona en orden ascendente: Vigia → Centinela → Admin. Los ascensos se basan en desempeño constante y los descensos en falta de actividad.
-            </p>
-          </div>
-        </div>
-        <div class="card ascenso-card">
-          <h3>🏆 Ascenso del mejor trabajador del mes</h3>
-          <p>Cada mes se reconoce al mejor trabajador del MC Team según su rendimiento durante el período. Ese trabajador recibe el reconocimiento correspondiente y puede ascender de <b>《💠》 Centinela</b> a <b>《💎》 Admin</b>.</p>
-          <ul>
-            <li><strong>Reconocimiento por rendimiento del mes:</strong> actividad, puntos y compromiso registrados en el período.</li>
-            <li>Solo se consideran trabajadores con el <strong>cargo MC Team</strong>.</li>
-            <li>El ascenso <b>《💠》 Centinela → 《💎》 Admin</b> es un reconocimiento al destacado del mes y <strong>no significa que todos los miembros del MC Team suban de rango automáticamente</strong>.</li>
-            <li>Quienes ya tienen un rango superior (Admin, Owner, Overlord) no son candidatos al ascenso de la misma manera que un Centinela: ellos administran y evalúan.</li>
-            <li>La decisión final del ascenso corresponde a la administración (Owner/Overlord/Admin).</li>
-          </ul>
-        </div>
-      </section>
-
-      <!-- ── RANGOS Y CARGOS ── -->
-      <section id="rangos-tab" class="tab-content" style="display:none">
-        <h2>Rangos y Cargos</h2>
-        <div class="card">
-          <h3>Rangos</h3>
-          <table>
-            <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
-            <tbody>
-              <tr><td>《🪬》 Overlord</td><td>Máxima autoridad (Solo lo tiene Jow).</td></tr>
-              <tr><td>《🧿》 Owner</td><td>Dirige proyectos, coordina equipos y administra el desarrollo general.</td></tr>
-              <tr><td>《💎》 Admin</td><td>Administración del servidor y sanciones avanzadas. Gestiona el equipo y los puntos.</td></tr>
-              <tr><td>《💠》 Centinela</td><td>Miembro de confianza con permisos intermedios.</td></tr>
-              <tr><td>《🔹》 Vigia</td><td>Nuevo rango de apoyo y vigilancia. Supervisa el cumplimiento de normas y reporta incidencias.</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="card">
-          <h3>Cargos</h3>
-          <table>
-            <thead><tr><th>Nombre</th><th>Descripción</th></tr></thead>
-            <tbody>
-              <tr><td>💻 Dev</td><td>Desarrolla y mantiene proyectos y sistemas.</td></tr>
-              <tr><td>📋 Inspector</td><td>Evalúa al staff y administra los puntos.</td></tr>
-              <tr><td>🛡️ Mod</td><td>Mantiene el orden y hace cumplir las normas.</td></tr>
-              <tr><td>🎬 Editor</td><td>Edita contenido audiovisual.</td></tr>
-              <tr><td>📢 Marketing</td><td>Promociona la comunidad.</td></tr>
-              <tr><td>🤝 Colaborador</td><td>Apoya en distintas tareas.</td></tr>
-              <tr><td>💎 MC Team</td><td>Diseña, desarrolla y organiza contenido de Minecraft.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- ── NORMAS ── -->
-      <section id="rules-tab" class="tab-content" style="display:none">
-        <h2>Normas</h2>
-        <div class="card">
-          <h3>Normas de MC Team</h3>
-          <ol class="normas-list">
-            <li>Toda tarea asignada debe cumplirse.</li>
-            <li>Toda ausencia debe ser informada.</li>
-            <li>Todo trabajo realizado debe ser reportado.</li>
-            <li>Todo evento o proyecto debe coordinarse antes de comenzar.</li>
-            <li>Ningún cambio importante se realiza sin autorización.</li>
-            <li>Toda tarea debe realizarse según las instrucciones recibidas.</li>
-            <li>Todo problema que impida avanzar debe ser comunicado.</li>
-            <li>Ningún miembro debe interferir en el trabajo de otro sin coordinación.</li>
-            <li>Discord es el medio oficial de coordinación del MC Team.</li>
-            <li>La actividad y el cumplimiento determinan la permanencia en el equipo.</li>
-            <li>No ignorar llamados de atención.</li>
-            <li>No realizar tareas no asignadas sin permiso.</li>
-            <li>No responder por otros usuarios a menos de que se indique.</li>
-            <li>No ingresar a cuentas de otros usuarios.</li>
-            <li>No compartir tareas o información privada.</li>
-          </ol>
-        </div>
-        <div class="card">
-          <h3>Normas de todos los admins</h3>
-          <p style="color:var(--muted)">No hay normas establecidas actualmente.</p>
-        </div>
-      </section>
-
-      <!-- ── NOVEDADES ── -->
-      <section id="novedades-tab" class="tab-content" style="display:none">
-        <h2>Novedades</h2>
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-            <div style="color:#9ba8d6;font-size:13px">
-              🔔 <b>Avisos importantes del equipo</b>. Aquí solo aparecerán eventos relevantes: ingresos de nuevos miembros, alertas de desempeño bajo, recuperaciones y reconocimientos destacados. <b style="color:#c7d2ff">No es un log de cada cambio de puntos</b>.
-            </div>
-            <button class="logout-btn" id="reset-novedades-btn" style="display:none" onclick="resetNovedades()">🗑️ Borrar todas</button>
-          </div>
-          <div id="novedades-list">
-            <div class="t-empty">Cargando novedades…</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ── VISTA USUARIO ── -->
-      <section id="user-view" class="tab-content" style="display:none">
-        <div class="user-pts-card">
-          <div class="upc-who" id="my-pts-who"></div>
-          <div class="upc-label">Tus puntos actuales</div>
-          <div class="upc-value" id="my-pts-value">—</div>
-          <div class="upc-bar-wrap">
-            <div class="upc-bar" id="my-pts-bar"></div>
-          </div>
-          <div class="upc-state" id="my-pts-state"></div>
-        </div>
-        <div class="card" style="margin-top:20px">
-          <h3>¿Qué significan tus puntos?</h3>
-          <table>
-            <thead><tr><th>Estado</th><th>Puntos</th><th>Qué significa</th></tr></thead>
-            <tbody>
-              <tr><td><span class="circle points-7"></span>Óptimo</td><td>6 – 7</td><td>Todo en orden 👍</td></tr>
-              <tr><td><span class="circle points-6"></span>Estable</td><td>4 – 5.9</td><td>Vas bien, mantené el ritmo</td></tr>
-              <tr><td><span class="circle points-4"></span>Seguimiento</td><td>2.1 – 3.9</td><td>Aumentá la actividad</td></tr>
-              <tr><td><span class="circle points-2"></span>Riesgo alto</td><td>0.1 – 2</td><td>⚠️ Actividad urgente</td></tr>
-              <tr><td><span class="circle points-0"></span>Crítico</td><td>0</td><td>🚨 Apelación abierta</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="card">
-          <h3>¿Cómo subir puntos?</h3>
-          <ul>
-            <li>Participar activamente en el servidor.</li>
-            <li>Cumplir tus funciones asignadas.</li>
-            <li>Un inspector puede sumar puntos por buen desempeño.</li>
-          </ul>
-        </div>
-      </section>
-
-    </main>
-  </div>
-</div>
-
-<div class="notification" id="toast" style="display:none"></div>
-
-<!-- Handler global para botones de login -->
-<script>
-// Funciones globales que el módulo sobrescribirá cuando cargue
-window.switchLogin = function(method) {
-  const pinF = document.getElementById("form-pin");
-  const emF  = document.getElementById("form-email");
-  if (pinF) pinF.style.display = method === "pin" ? "block" : "none";
-  if (emF)  emF.style.display  = method === "email" ? "block" : "none";
-  const err = document.getElementById("login-err");
-  if (err) err.style.display = "none";
-  document.querySelectorAll("#login-toggle .ltab").forEach(b => {
-    b.classList.toggle("active", b.getAttribute("data-login") === method);
-  });
-};
-
-window.loginWithPin = async function() {
-  console.log('El módulo aún no ha cargado. Espera un momento...');
-};
-
-window.loginWithEmail = async function() {
-  console.log('El módulo aún no ha cargado. Espera un momento...');
-};
-
-window.doLogout = async function() {
-  console.log('El módulo aún no ha cargado. Espera un momento...');
-};
-</script>
-
-<script type="module">
+﻿
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import {
   getAuth,
@@ -729,7 +39,7 @@ const app  = getApps().length ? getApp() : initializeApp(cfg);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
-// ── Delegado global de clicks (captura todos los onclick= sin necesidad de funciones globales antes del parseo) ──
+// â”€â”€ Delegado global de clicks (captura todos los onclick= sin necesidad de funciones globales antes del parseo) â”€â”€
 (function installClickDelegate() {
   function parseArgs(str) {
     try {
@@ -760,7 +70,7 @@ const db   = getFirestore(app);
   }, { capture: true });
 })();
 
-// Configuración de persistencia y manejo de errores de red
+// ConfiguraciÃ³n de persistencia y manejo de errores de red
 auth.useDeviceLanguage && auth.useDeviceLanguage();
 
 // Manejo robusto de errores de Firestore
@@ -819,7 +129,7 @@ async function loadPointsConfig() {
 const PTS_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const PTS_COOLDOWN_PREFIX = "jowiland:ptcd:";
 
-// Sistema de reducción automática de puntos
+// Sistema de reducciÃ³n automÃ¡tica de puntos
 let pointDecrementTimer = null;
 let pointDecrementBusy = false;
 
@@ -863,14 +173,14 @@ function stopPointDecrementScheduler() {
 }
 
 function startPointDecrementScheduler() {
-  // Eliminar la verificación de rol - debe funcionar sin depender de admin conectado
+  // Eliminar la verificaciÃ³n de rol - debe funcionar sin depender de admin conectado
   stopPointDecrementScheduler();
   pointDecrementTimer = setInterval(applyPointDecrementTick, 60 * 1000);
   applyPointDecrementTick();
 }
 
 async function applyPointDecrementTick() {
-  // Eliminar la verificación de rol - debe funcionar sin admin conectado
+  // Eliminar la verificaciÃ³n de rol - debe funcionar sin admin conectado
   if (pointDecrementBusy) return;
   pointDecrementBusy = true;
   try {
@@ -888,12 +198,12 @@ async function applyPointDecrementTick() {
       return;
     }
 
-    // Calcular cuántos intervalos completos han pasado
+    // Calcular cuÃ¡ntos intervalos completos han pasado
     const elapsedMs = now - last;
     const fullIntervals = Math.floor(elapsedMs / totalMs);
     if (fullIntervals <= 0) return;
 
-    // Calcular la reducción gradual: 1 punto por intervalo completo, pero aplicado gradualmente
+    // Calcular la reducciÃ³n gradual: 1 punto por intervalo completo, pero aplicado gradualmente
     // Ejemplo: si configuraron 24h, cada 24h se reduce 1 punto total
     // Se aplica gradualmente durante el intervalo actual
     const partialMs = elapsedMs % totalMs;
@@ -908,7 +218,7 @@ async function applyPointDecrementTick() {
       if (!u || u.role === "admin") continue;
       const oldP = Number(u.points || 0);
       if (!Number.isFinite(oldP)) continue;
-      // Aplicar reducción calculada
+      // Aplicar reducciÃ³n calculada
       const newP = clampPts(oldP - decrement);
       if (newP === oldP) continue;
       try {
@@ -916,16 +226,16 @@ async function applyPointDecrementTick() {
         u.points = newP;
         changed++;
 
-        // REGISTRAR LA REDUCCIÓN AUTOMÁTICA EN LOS LOGS
+        // REGISTRAR LA REDUCCIÃ“N AUTOMÃTICA EN LOS LOGS
         await writeLog({
           type: "points",
           actorUid: "system",
           actorRole: "system",
-          actorName: "Sistema Automático",
+          actorName: "Sistema AutomÃ¡tico",
           targetUid: u.uid,
           targetName: u.name || "",
           delta: -decrement,
-          reason: `Reducción automática (${cfgToMs(cfg) / (1000 * 60 * 60)}h)`,
+          reason: `ReducciÃ³n automÃ¡tica (${cfgToMs(cfg) / (1000 * 60 * 60)}h)`,
           newPoints: newP
         });
       } catch {}
@@ -1095,7 +405,7 @@ function fmtWait(ms) {
   return `${m} min`;
 }
 
-// ── AUTH STATE ────────────────────────────────────────────────
+// â”€â”€ AUTH STATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 onAuthStateChanged(auth, async fbUser => {
   if (fbUser) {
     try {
@@ -1124,7 +434,7 @@ onAuthStateChanged(auth, async fbUser => {
       }
       if (!snap.exists()) { await signOut(auth); return; }
       const data = snap.data();
-      if (data.status === "inactive") { showErr("Tu cuenta está inactiva."); await signOut(auth); return; }
+      if (data.status === "inactive") { showErr("Tu cuenta estÃ¡ inactiva."); await signOut(auth); return; }
       const role = String(data.role || "user").toLowerCase();
       currentUser = { uid, ...data, role };
       if (localStorage.getItem(PIN_SESSION_KEY) !== uid) {
@@ -1135,7 +445,7 @@ onAuthStateChanged(auth, async fbUser => {
     } catch(e) { 
       console.error("Auth state error:", e);
       if (e.code === "unavailable" || e.code === "network-request-failed") {
-        showErr("Error de conexión. Verificá tu internet e intentá de nuevo.");
+        showErr("Error de conexiÃ³n. VerificÃ¡ tu internet e intentÃ¡ de nuevo.");
       } else {
         showErr("Error al cargar tu perfil: " + e.message);
       }
@@ -1145,7 +455,7 @@ onAuthStateChanged(auth, async fbUser => {
   }
 });
 
-// ── LOGIN SWITCH (PIN / Email) ─────────────────────────────────
+// â”€â”€ LOGIN SWITCH (PIN / Email) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 window.switchLogin = (type) => {
   const pinF = document.getElementById("form-pin");
   const emF  = document.getElementById("form-email");
@@ -1158,30 +468,30 @@ window.switchLogin = (type) => {
   });
 };
 
-// ── LOGIN PIN ──────────────────────────────────────────────────
+// â”€â”€ LOGIN PIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 window.loginWithPin = async () => {
   const nameRaw = document.getElementById("pin-name").value.trim();
   const pin     = document.getElementById("pin-code").value.trim();
   const btn     = document.getElementById("btn-pin");
 
-  if (!nameRaw || !pin) return showErr("Ingresá tu nombre y PIN.");
-  if (pin.length !== 4 || isNaN(pin)) return showErr("El PIN debe ser de 4 dígitos.");
+  if (!nameRaw || !pin) return showErr("IngresÃ¡ tu nombre y PIN.");
+  if (pin.length !== 4 || isNaN(pin)) return showErr("El PIN debe ser de 4 dÃ­gitos.");
 
   const chk = rlCheck("pin");
-  if (!chk.ok) return showErr(`Demasiados intentos. Esperá ${fmtWait(chk.waitMs)} y probá de nuevo.`);
+  if (!chk.ok) return showErr(`Demasiados intentos. EsperÃ¡ ${fmtWait(chk.waitMs)} y probÃ¡ de nuevo.`);
 
   btn.disabled = true;
-  btn.textContent = "Verificando…";
+  btn.textContent = "Verificandoâ€¦";
 
   try {
     const normName = normLoginName(nameRaw);
     if (!normName) throw new Error("name-invalid");
 
-    // Buscar credenciales con varios métodos de respaldo:
-    // 1) publicLoginUsers (diseño original; requiere regla de lectura pública)
-    // 2) users por nameLower (rápido, con índice)
+    // Buscar credenciales con varios mÃ©todos de respaldo:
+    // 1) publicLoginUsers (diseÃ±o original; requiere regla de lectura pÃºblica)
+    // 2) users por nameLower (rÃ¡pido, con Ã­ndice)
     // 3) barrido client-side sobre users: cubre cuentas legacy que no
-    //    tienen nameLower o que usan una normalización distinta del nombre
+    //    tienen nameLower o que usan una normalizaciÃ³n distinta del nombre
     const findLoginDoc = async () => {
       try {
         const q1 = await getDocs(query(
@@ -1236,7 +546,7 @@ window.loginWithPin = async () => {
     const status = String(loginData.status || "active").toLowerCase();
     if (status === "inactive" || status === "inactivo") {
       rlFail("pin");
-      showErr("Esta cuenta está inactiva.");
+      showErr("Esta cuenta estÃ¡ inactiva.");
       btn.disabled = false;
       btn.textContent = "Entrar";
       return;
@@ -1281,7 +591,7 @@ window.loginWithPin = async () => {
   } catch (e) {
     const fail = rlFail("pin");
     if (fail.locked) {
-      showErr(`Demasiados intentos. Esperá ${fmtWait(fail.waitMs)} y probá de nuevo.`);
+      showErr(`Demasiados intentos. EsperÃ¡ ${fmtWait(fail.waitMs)} y probÃ¡ de nuevo.`);
     } else {
       showErr("Nombre o PIN incorrecto.");
     }
@@ -1291,17 +601,17 @@ window.loginWithPin = async () => {
 };
 try { document.getElementById("pin-code").addEventListener("keydown", e => { if(e.key==="Enter") window.loginWithPin(); }); } catch {}
 
-// ── LOGIN EMAIL / CONTRASEÑA ──────────────────────────────────
+// â”€â”€ LOGIN EMAIL / CONTRASEÃ‘A â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 window.loginWithEmail = async () => {
   const email = document.getElementById("l-email")?.value.trim() || "";
   const pass  = document.getElementById("l-pass")?.value || "";
   const btn   = document.getElementById("btn-email");
 
-  if (!email || !pass) return showErr("Completá email y contraseña.");
+  if (!email || !pass) return showErr("CompletÃ¡ email y contraseÃ±a.");
   const chk = rlCheck("email");
-  if (!chk.ok) return showErr(`Demasiados intentos. Esperá ${fmtWait(chk.waitMs)} y probá de nuevo.`);
+  if (!chk.ok) return showErr(`Demasiados intentos. EsperÃ¡ ${fmtWait(chk.waitMs)} y probÃ¡ de nuevo.`);
 
-  if (btn) { btn.disabled = true; btn.textContent = "Verificando…"; }
+  if (btn) { btn.disabled = true; btn.textContent = "Verificandoâ€¦"; }
 
   try {
     await signInWithEmailAndPassword(auth, email, pass);
@@ -1311,7 +621,7 @@ window.loginWithEmail = async () => {
     const extra = e.code === "auth/too-many-requests" ? 10 * 60 * 1000 : 0;
     const fail  = rlFail("email", extra);
     showErr(fail.locked
-      ? `Demasiados intentos. Esperá ${fmtWait(fail.waitMs)} y probá de nuevo.`
+      ? `Demasiados intentos. EsperÃ¡ ${fmtWait(fail.waitMs)} y probÃ¡ de nuevo.`
       : friendlyErr(e.code));
     if (btn) { btn.disabled = false; btn.textContent = "Ingresar"; }
   }
@@ -1322,7 +632,7 @@ try {
   if (lp) lp.addEventListener("keydown", e => { if(e.key==="Enter") window.loginWithEmail(); });
 } catch {}
 
-// ── LOGOUT ─────────────────────────────────────────────────────
+// â”€â”€ LOGOUT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 window.doLogout = async () => {
   try {
     localStorage.removeItem(PIN_SESSION_KEY);
@@ -1338,12 +648,12 @@ window.doLogout = async () => {
   if (window.switchLogin) switchLogin("pin");
 };
 
-// ── BOOT ───────────────────────────────────────────────────────
+// â”€â”€ BOOT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function bootApp() {
   document.getElementById("login-screen").style.display = "none";
   document.getElementById("app").style.display = "block";
 
-  const name = currentUser.name || "—";
+  const name = currentUser.name || "â€”";
   const role = currentUser.role || "user";
 
   // Mostrar panel superior del usuario actual (para todos los roles)
@@ -1356,10 +666,10 @@ async function bootApp() {
     document.getElementById("uc-avatar").className = "user-avatar av-" + role;
     
     const rangoTxt = fmtRango(currentUser.rango);
-    document.getElementById("uc-rango").textContent = rangoTxt || "—";
+    document.getElementById("uc-rango").textContent = rangoTxt || "â€”";
     
     const cargos = currentUser.cargos || [];
-    document.getElementById("uc-cargos").textContent = Array.isArray(cargos) ? cargos.join(", ") : String(cargos || "—");
+    document.getElementById("uc-cargos").textContent = Array.isArray(cargos) ? cargos.join(", ") : String(cargos || "â€”");
     
     const pts = Number(currentUser.points || 0);
     document.getElementById("uc-pts").textContent = pts.toFixed(decimalsCfgJow());
@@ -1369,18 +679,18 @@ async function bootApp() {
   await loadNovedades();
   await loadMembers();
 
-  // Todos ven el panel completo (tabla de puntos, staff, guía, rangos, normas y
-  // novedades); los controles y pestañas administrativas se ocultan según rol.
+  // Todos ven el panel completo (tabla de puntos, staff, guÃ­a, rangos, normas y
+  // novedades); los controles y pestaÃ±as administrativas se ocultan segÃºn rol.
   setupStaffView();
   setupLogsTab();
   if (role === "user") {
     renderUserProfileCard();
   }
 
-  // Iniciar el scheduler de reducción automática de puntos (independientemente del rol)
+  // Iniciar el scheduler de reducciÃ³n automÃ¡tica de puntos (independientemente del rol)
   startPointDecrementScheduler();
 
-  // Render inmediato de la pestaña inicial (Puntos) luego de que los datos están cargados
+  // Render inmediato de la pestaÃ±a inicial (Puntos) luego de que los datos estÃ¡n cargados
   if (typeof renderPointsTable === "function") renderPointsTable();
   if (typeof renderStats === "function") renderStats();
   if (typeof renderDestacados === "function") renderDestacados();
@@ -1432,7 +742,7 @@ window.setLogFilterRole = (v) => { logFilterRole = v; renderLogsJow(); };
 window.setLogFilterRango = (v) => { logFilterRango = v; renderLogsJow(); };
 window.setLogFilterCargo = (v) => { logFilterCargo = v; renderLogsJow(); };
 
-// ── CHART CONTROLS ─────────────────────────────────────────────
+// â”€â”€ CHART CONTROLS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // refreshCharts y resetChartData ya no se usan. Ahora usamos refreshSingleChart y resetSingleChart.
 function dayKey(dt) {
   const y = dt.getFullYear();
@@ -1450,7 +760,7 @@ function tsToDate(ts) {
 
 function fmtDateTime(ts) {
   const d = tsToDate(ts);
-  return d ? d.toLocaleString("es-CO") : "—";
+  return d ? d.toLocaleString("es-CO") : "â€”";
 }
 
 function fmtSince(ms) {
@@ -1620,12 +930,12 @@ function renderLogsJow() {
   body.innerHTML = list.map(l => {
     const isPoints = l.type === "points";
     const dt = fmtDateTime(l.createdAt);
-    const actor = esc(l.actorName || "—");
-    const target = esc(l.targetName || (l.type === "login" ? (l.actorName || "—") : "—"));
+    const actor = esc(l.actorName || "â€”");
+    const target = esc(l.targetName || (l.type === "login" ? (l.actorName || "â€”") : "â€”"));
     const delta = isPoints ? (typeof l.delta === "number" ? l.delta : 0) : null;
-    const deltaTxt = isPoints ? `${delta > 0 ? "+" : ""}${delta}` : "—";
-    const motivo = esc(l.reason || (l.type === "login" ? "Inicio de sesión" : "Sin motivo"));
-    const delBtn = isAdmin ? `<button class="logout-btn" style="position:static" onclick="deleteLogJow('${l.id}')">🗑️</button>` : "";
+    const deltaTxt = isPoints ? `${delta > 0 ? "+" : ""}${delta}` : "â€”";
+    const motivo = esc(l.reason || (l.type === "login" ? "Inicio de sesiÃ³n" : "Sin motivo"));
+    const delBtn = isAdmin ? `<button class="logout-btn" style="position:static" onclick="deleteLogJow('${l.id}')">ðŸ—‘ï¸</button>` : "";
     return `
       <tr>
         <td>${dt}</td>
@@ -1640,7 +950,7 @@ function renderLogsJow() {
 
 window.deleteLogJow = async (id) => {
   if (currentUser?.role !== "admin") return;
-  const ok = confirm("¿Borrar este registro? No se puede deshacer.");
+  const ok = confirm("Â¿Borrar este registro? No se puede deshacer.");
   if (!ok) return;
   try {
     await deleteDoc(doc(db, "logs", id));
@@ -1696,10 +1006,10 @@ function renderInspectorActivityJow() {
   }
 
   const start = periodStartMs(inspPeriodState);
-  const periodTxt = inspPeriodState === "day" ? "hoy" : inspPeriodState === "week" ? "7 días" : "30 días";
+  const periodTxt = inspPeriodState === "day" ? "hoy" : inspPeriodState === "week" ? "7 dÃ­as" : "30 dÃ­as";
 
   const rows = inspectors.map(insp => {
-    let pts = 0, actions = 0, lastAt = null, lastTxt = "—";
+    let pts = 0, actions = 0, lastAt = null, lastTxt = "â€”";
     for (const l of logs) {
       if (!l || l.type !== "points" || l.actorUid !== insp.uid) continue;
       if (String(l.actorRole || "").toLowerCase() !== "inspector") continue;
@@ -1711,11 +1021,11 @@ function renderInspectorActivityJow() {
       const d = tsToDate(l.createdAt);
       if (d && (!lastAt || d > lastAt)) {
         lastAt = d;
-        const tgt = l.targetName ? ` → ${l.targetName}` : "";
+        const tgt = l.targetName ? ` â†’ ${l.targetName}` : "";
         lastTxt = `${delta > 0 ? "+" : ""}${delta}${tgt}`;
       }
     }
-    return { uid: insp.uid, name: insp.name || "—", pts, actions, lastAt, lastTxt };
+    return { uid: insp.uid, name: insp.name || "â€”", pts, actions, lastAt, lastTxt };
   }).filter(r => r.actions > 0 || Number(inspectors.find(x => x.uid === r.uid)?.points || 0) > 0).sort((a, b) => {
     if (b.actions !== a.actions) return b.actions - a.actions;
     if (b.pts !== a.pts) return b.pts - a.pts;
@@ -1725,27 +1035,27 @@ function renderInspectorActivityJow() {
   });
 
   if (!rows.length) {
-    tb.innerHTML = `<tr><td colspan="6" class="t-empty">Sin actividad de inspectores en el período (${periodTxt}).</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="6" class="t-empty">Sin actividad de inspectores en el perÃ­odo (${periodTxt}).</td></tr>`;
     return;
   }
 
   tb.innerHTML = rows.map(r => {
     const now = Date.now();
     const lastMs = r.lastAt ? (now - r.lastAt.getTime()) : Infinity;
-    const state = lastMs <= 15 * 60 * 1000 ? "🟢 Activo" : lastMs <= 60 * 60 * 1000 ? "🟡 Poco activo" : "🔴 Inactivo";
+    const state = lastMs <= 15 * 60 * 1000 ? "ðŸŸ¢ Activo" : lastMs <= 60 * 60 * 1000 ? "ðŸŸ¡ Poco activo" : "ðŸ”´ Inactivo";
     return `
       <tr>
         <td><b>${esc(r.name)}</b></td>
         <td><b style="color:#ffd166">${r.pts.toFixed(decimalsCfgJow())}</b></td>
         <td>${r.actions}</td>
         <td>${esc(r.lastTxt)}</td>
-        <td>${r.lastAt ? fmtSince(lastMs) : "—"}</td>
+        <td>${r.lastAt ? fmtSince(lastMs) : "â€”"}</td>
         <td>${state}</td>
       </tr>`;
   }).join("");
 }
 
-// ── CARGAR MIEMBROS ────────────────────────────────────────────
+// â”€â”€ CARGAR MIEMBROS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadMembers() {
   try {
     const snap = await getDocs(query(collection(db, "users"), orderBy("points", "desc")));
@@ -1755,13 +1065,13 @@ async function loadMembers() {
   } catch(e) { console.error("Error cargando miembros:", e); }
 }
 
-// ── CARGAR NOVEDADES ───────────────────────────────────────────
+// â”€â”€ CARGAR NOVEDADES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadNovedades() {
   try {
     const snap = await getDocs(query(collection(db, "novedades"), orderBy("fecha", "desc"), limit(20)));
     novedades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch(e) {
-    // Si la colección no existe aún, no es error
+    // Si la colecciÃ³n no existe aÃºn, no es error
     novedades = [];
   }
 }
@@ -1780,7 +1090,7 @@ async function cleanupNovedadesIfAdmin() {
   }
 }
 
-// ── REGISTRAR NOVEDAD (interno) ────────────────────────────────
+// â”€â”€ REGISTRAR NOVEDAD (interno) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function logNovedad(texto) {
   try {
     await addDoc(collection(db, "novedades"), {
@@ -1794,15 +1104,15 @@ async function logNovedad(texto) {
   } catch(e) { console.error("Error al registrar novedad:", e); }
 }
 
-// ══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // VISTA USUARIO
-// ══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function renderUserProfileCard() {
   const uv = document.getElementById("user-view");
   if (!uv) return;
   const pts = Number(currentUser.points || 0);
   const whoEl = document.getElementById("my-pts-who");
-  if (whoEl) whoEl.innerHTML = `👋 Bienvenido/a, <b>${esc(currentUser.name || "—")}</b>`;
+  if (whoEl) whoEl.innerHTML = `ðŸ‘‹ Bienvenido/a, <b>${esc(currentUser.name || "â€”")}</b>`;
   const valEl = document.getElementById("my-pts-value");
   if (valEl) valEl.textContent = pts.toFixed(decimalsCfgJow());
   const barEl = document.getElementById("my-pts-bar");
@@ -1815,7 +1125,7 @@ function renderUserProfileCard() {
   const ucPts = document.getElementById("uc-pts");
   if (ucPts) {
     ucPts.style.display = "block";
-    ucPts.textContent   = `⭐ ${pts.toFixed(decimalsCfgJow())} puntos`;
+    ucPts.textContent   = `â­ ${pts.toFixed(decimalsCfgJow())} puntos`;
   }
 }
 
@@ -1824,9 +1134,9 @@ function setupUserView() {
   renderUserProfileCard();
 }
 
-// ══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // VISTA STAFF
-// ══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function setupStaffView() {
   const role     = currentUser?.role;
   const isStaff  = role === "admin" || role === "inspector";
@@ -1853,11 +1163,11 @@ function setupStaffView() {
   const logsBtn = document.getElementById("logs-tab-btn");
   if (logsBtn) logsBtn.style.display = isStaff ? "" : "none";
 
-  // Punto 8: Usuarios pueden ver Gráficos (Ranking de Puntos y Evolución general)
+  // Punto 8: Usuarios pueden ver GrÃ¡ficos (Ranking de Puntos y EvoluciÃ³n general)
   const graficosBtn = document.getElementById("graficos-tab-btn");
   if (graficosBtn) graficosBtn.style.display = (role === "user" || isStaff) ? "" : "none";
 
-  // Para usuarios, ocultar gráficos de actividad (solo ver Ranking y Evolución)
+  // Para usuarios, ocultar grÃ¡ficos de actividad (solo ver Ranking y EvoluciÃ³n)
   if (role === "user") {
     const activityAdminsCard = document.getElementById("activity-admins-card");
     if (activityAdminsCard) activityAdminsCard.style.display = "none";
@@ -1882,12 +1192,12 @@ function setupStaffView() {
     renderEvolutionPts();
     renderInspectorActivityJow();
 
-    // Botones de "Reiniciar" por gráfico: visibles solo para admins.
+    // Botones de "Reiniciar" por grÃ¡fico: visibles solo para admins.
     document.querySelectorAll(".res-ctrl").forEach(b => {
       b.style.display = role === "admin" ? "" : "none";
     });
 
-    // Botón de reset novedades: visible solo para admins
+    // BotÃ³n de reset novedades: visible solo para admins
     const resetNovedadesBtn = document.getElementById("reset-novedades-btn");
     if (resetNovedadesBtn) {
       resetNovedadesBtn.style.display = role === "admin" ? "" : "none";
@@ -1902,7 +1212,7 @@ function setupStaffView() {
   renderNovedades();
 }
 
-// ── TRABAJADORES DESTACADOS: mostrar / ocultar ────────────────
+// â”€â”€ TRABAJADORES DESTACADOS: mostrar / ocultar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let destacadosOpen = false;
 let destacadosHistorialOpen = false;
 
@@ -1912,7 +1222,7 @@ window.toggleDestacados = () => {
   if (!destSec) return;
   destacadosOpen = !destacadosOpen;
   destSec.style.display = destacadosOpen ? "block" : "none";
-  if (btn) btn.textContent = destacadosOpen ? "🙈 Ocultar chambeadores destacados" : "👁️ Mostrar chambeadores destacados";
+  if (btn) btn.textContent = destacadosOpen ? "ðŸ™ˆ Ocultar chambeadores destacados" : "ðŸ‘ï¸ Mostrar chambeadores destacados";
   if (destacadosOpen && typeof renderDestacados === "function") renderDestacados();
 };
 
@@ -1942,11 +1252,11 @@ async function renderDestacadosHistorial() {
   if (userSelect && allMembers.length > 0) {
     const currentValue = userSelect.value;
     userSelect.innerHTML = '<option value="">Todos</option>' + 
-      allMembers.map(u => `<option value="${u.uid}">${esc(u.name || "—")}</option>`).join("");
+      allMembers.map(u => `<option value="${u.uid}">${esc(u.name || "â€”")}</option>`).join("");
     userSelect.value = currentValue;
   }
   
-  // Generar historial simulado (en una implementación real, esto vendría de Firestore)
+  // Generar historial simulado (en una implementaciÃ³n real, esto vendrÃ­a de Firestore)
   const now = Date.now();
   const historicalData = [];
   
@@ -1959,7 +1269,7 @@ async function renderDestacadosHistorial() {
       const target = allMembers.find(u => u.uid === l.targetUid);
       if (!target) continue;
       
-      // Determinar período
+      // Determinar perÃ­odo
       const hoursAgo = (now - t) / (1000 * 60 * 60);
       let period = "day";
       if (hoursAgo > 24 * 7) period = "month";
@@ -1996,7 +1306,7 @@ async function renderDestacadosHistorial() {
   }
   
   listEl.innerHTML = filtered.map(d => {
-    const periodLabel = d.periodType === "day" ? "Chambeador del día" : 
+    const periodLabel = d.periodType === "day" ? "Chambeador del dÃ­a" : 
                           d.periodType === "week" ? "Chambeador de la semana" : 
                           "Chambeador del mes";
     const dateStr = d.date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -2005,60 +1315,60 @@ async function renderDestacadosHistorial() {
       <div class="card" style="padding:16px;display:flex;align-items:center;gap:16px;">
         <div class="user-avatar av-${d.user.role}" style="width:48px;height:48px;font-size:18px;">${(d.user.name || "?").charAt(0).toUpperCase()}</div>
         <div style="flex:1">
-          <div style="font-weight:700;color:#fff">${esc(d.user.name || "—")}</div>
+          <div style="font-weight:700;color:#fff">${esc(d.user.name || "â€”")}</div>
           <div style="font-size:12px;color:var(--muted);margin-top:2px;">
             <span style="background:rgba(88,101,242,.12);color:var(--accent);padding:2px 6px;border-radius:4px;font-size:11px;">${periodLabel}</span>
             <span style="margin-left:8px;">${dateStr}</span>
           </div>
           <div style="font-size:12px;color:var(--muted);margin-top:4px;">
             Rol: <span style="color:#e9eeff">${String(d.user.role || "").toUpperCase()}</span>
-            ${d.user.points ? ` · Puntos: ${d.user.points.toFixed(1)}` : ''}
+            ${d.user.points ? ` Â· Puntos: ${d.user.points.toFixed(1)}` : ''}
           </div>
         </div>
       </div>`;
   }).join("");
 }
 
-// ══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // RANGOS (nueva estructura)
-// ══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const RANK_LABELS = {
-  overlord:  "《🪬》 Overlord",
-  owner:     "《🧿》 Owner",
-  admin:     "《💎》 Admin",
-  centinela: "《�》 Centinela",
-  vigia:     "《🔹》 Vigia"
+  overlord:  "ã€ŠðŸª¬ã€‹ Overlord",
+  owner:     "ã€ŠðŸ§¿ã€‹ Owner",
+  admin:     "ã€ŠðŸ’Žã€‹ Admin",
+  centinela: "ã€Šï¿½ã€‹ Centinela",
+  vigia:     "ã€ŠðŸ”¹ã€‹ Vigia"
 };
 const RANK_ORDER = ["vigia", "centinela", "admin", "owner", "overlord"];
 
 function normRango(r) {
   let s = String(r || "").trim().toLowerCase();
-  s = s.replace(/《.*?》/g, "").replace(/[^a-záéíóúñ ]/g, "").replace(/\s+/g, " ").trim();
+  s = s.replace(/ã€Š.*?ã€‹/g, "").replace(/[^a-zÃ¡Ã©Ã­Ã³ÃºÃ± ]/g, "").replace(/\s+/g, " ").trim();
   if (s.includes("overlord")) return "overlord";
   if (s.includes("owner"))    return "owner";
   if (s.includes("admin"))    return "admin";
   if (s.includes("centinela")) return "centinela";
   if (s.includes("vigia"))    return "vigia";
-  // Rangos antiguos seleccionados → se adaptan al nuevo rango base Vigia
+  // Rangos antiguos seleccionados â†’ se adaptan al nuevo rango base Vigia
   if (s.includes("vip") || s.includes("usuario") || s.includes("bot")) return "vigia";
   return null;
 }
 
 function fmtRango(r) {
   const k = normRango(r);
-  return k ? RANK_LABELS[k] : (r ? esc(String(r)) : "—");
+  return k ? RANK_LABELS[k] : (r ? esc(String(r)) : "â€”");
 }
 
 // Limpia un nombre: remueve etiquetas/emojis de rango que puedan venir pegadas al name.
 function cleanName(s) {
   let n = String(s || "").trim();
-  if (!n) return "—";
-  n = n.replace(/《.*?》/g, " ");
-  n = n.replace(/[（(][^）)]*(Vigia|Centinela|Admin|Owner|Overlord)[^）)]*[）)]/gi, " ");
-  n = n.replace(/《[^》]*》\s*(Vigia|Centinela|Admin|Owner|Overlord)/gi, " ");
+  if (!n) return "â€”";
+  n = n.replace(/ã€Š.*?ã€‹/g, " ");
+  n = n.replace(/[ï¼ˆ(][^ï¼‰)]*(Vigia|Centinela|Admin|Owner|Overlord)[^ï¼‰)]*[ï¼‰)]/gi, " ");
+  n = n.replace(/ã€Š[^ã€‹]*ã€‹\s*(Vigia|Centinela|Admin|Owner|Overlord)/gi, " ");
   n = n.replace(/(\s|^)(Vigia|Centinela|Admin|Owner|Overlord)(\s|$)/gi, " ");
   n = n.replace(/\s+/g, " ").trim();
-  return n || "—";
+  return n || "â€”";
 }
 
 function isInactiveStatus(s) {
@@ -2079,9 +1389,9 @@ function rangoIndex(k) {
   return i >= 0 ? i : -1;
 }
 
-// ══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // CARGO MC TEAM (MC Team es un CARGO)
-// ══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function getCargos(u) {
   if (!u) return [];
   if (Array.isArray(u.cargos)) return u.cargos.map(c => String(c)).filter(Boolean);
@@ -2099,7 +1409,7 @@ function isMCteam(u) {
 }
 
 // Trabajador del MC Team: cargo MC Team + NO admin + NO rango
-// superior a Admin/Owner/Overlord + activo. Los Inspectores SÍ cuentan
+// superior a Admin/Owner/Overlord + activo. Los Inspectores SÃ cuentan
 // como personal operativo (solo se excluye el rol Admin).
 function isMCteamWorker(u) {
   if (!u || !isMCteam(u)) return false;
@@ -2116,7 +1426,7 @@ function mcWorkers() {
   return allMembers.filter(isMCteamWorker);
 }
 
-// ── STATS GENERALES (staff operativo: MC Team + no admin) ─────
+// â”€â”€ STATS GENERALES (staff operativo: MC Team + no admin) â”€â”€â”€â”€â”€
 function renderStats() {
   const staff = mcWorkers();
   const total = staff.length;
@@ -2134,9 +1444,9 @@ function renderStats() {
   if (ar) ar.textContent = risk;
 
   const s1 = el("total-members-sub"), s2 = el("avg-points-sub"), s3 = el("staff-at-risk-sub");
-  if (s1) s1.textContent = `${insp} inspectores · ${users} usuarios`;
-  if (s2) s2.textContent = `Máximo: ${maxP.toFixed(decimalsCfgJow())} pts`;
-  if (s3) s3.textContent = total ? Math.round(risk / total * 100) + "% del staff (≤ 2 pts)" : "—";
+  if (s1) s1.textContent = `${insp} inspectores Â· ${users} usuarios`;
+  if (s2) s2.textContent = `MÃ¡ximo: ${maxP.toFixed(decimalsCfgJow())} pts`;
+  if (s3) s3.textContent = total ? Math.round(risk / total * 100) + "% del staff (â‰¤ 2 pts)" : "â€”";
 
   const b1 = el("total-members-bar"), b2 = el("avg-points-bar"), b3 = el("staff-at-risk-bar");
   if (b1) b1.style.width = Math.min(100, total * 12) + "%";
@@ -2144,7 +1454,7 @@ function renderStats() {
   if (b3) b3.style.width = Math.min(100, total ? (risk / total) * 100 : 0) + "%";
 }
 
-// ── UTILIDADES DE TIEMPO / LOGS ────────────────────────────────
+// â”€â”€ UTILIDADES DE TIEMPO / LOGS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let chartPeriod = "day";
 
 function logTime(l) {
@@ -2187,8 +1497,8 @@ window.setChartPeriod = (p, btn) => {
   renderActivityChart();
 };
 
-// ── GRÁFICO: ACTIVIDAD DE USUARIOS ─────────────────────────────
-// Estadística de Usuarios, Admins e Inspectores; separada de las del resto del equipo.
+// â”€â”€ GRÃFICO: ACTIVIDAD DE USUARIOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// EstadÃ­stica de Usuarios, Admins e Inspectores; separada de las del resto del equipo.
 // Respeta solo el filtro de Rol; ignora Usuario individual, Rango y Cargo.
 function renderActivityChart() {
   const el = document.getElementById("activity-chart");
@@ -2198,7 +1508,7 @@ function renderActivityChart() {
   if (role !== "admin" && role !== "inspector") return;
 
   if (!logs.length) {
-    el.innerHTML = '<div class="chart-empty">Sin datos de actividad todavía. Los movimientos de los usuarios aparecerán acá.</div>';
+    el.innerHTML = '<div class="chart-empty">Sin datos de actividad todavÃ­a. Los movimientos de los usuarios aparecerÃ¡n acÃ¡.</div>';
     if (legendEl) legendEl.innerHTML = "";
     return;
   }
@@ -2223,7 +1533,7 @@ function renderActivityChart() {
       
       let includeActor = (actorRole === "admin" || actorRole === "inspector" || actorRole === "user");
       
-      // Filtro de rol: SÍ afecta
+      // Filtro de rol: SÃ afecta
       if (filterState.rol && actorRole !== filterState.rol) includeActor = false;
       
       // Filtro de usuario individual: NO afecta (se ignora)
@@ -2236,7 +1546,7 @@ function renderActivityChart() {
         
         const bucketIndex = buckets.indexOf(b);
         if (bucketIndex >= 0) {
-          // Lógica específica por rol
+          // LÃ³gica especÃ­fica por rol
           if (actorRole === "user") {
             // Usuario: promedio entre ingresos y puntos
             const loginCount = logs.filter(log => 
@@ -2289,14 +1599,14 @@ function renderActivityChart() {
   }
 
   const mode = modeStates.admin || "line";
-  const periodTxt = chartPeriod === "day" ? "últimas 24 horas" : chartPeriod === "week" ? "últimos 7 días" : "últimos 30 días";
+  const periodTxt = chartPeriod === "day" ? "Ãºltimas 24 horas" : chartPeriod === "week" ? "Ãºltimos 7 dÃ­as" : "Ãºltimos 30 dÃ­as";
   const PALETTE_ROLES = {
     user: "#ff6b6b",
     admin: "#7f8cff", 
     inspector: "#3ecf8e"
   };
 
-  // ── Modo lineal: evolución de la actividad de todos los roles
+  // â”€â”€ Modo lineal: evoluciÃ³n de la actividad de todos los roles
   if (mode === "line") {
     const W = 900, H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
@@ -2340,7 +1650,7 @@ function renderActivityChart() {
         ${xl}
         ${series}
       </svg>
-      <div class="chart-note">Evolución de la actividad de Usuarios · ${periodTxt} · ${logs.length} registros cargados</div>`;
+      <div class="chart-note">EvoluciÃ³n de la actividad de Usuarios Â· ${periodTxt} Â· ${logs.length} registros cargados</div>`;
 
     if (legendEl) {
       legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
@@ -2348,7 +1658,7 @@ function renderActivityChart() {
     return;
   }
 
-  // ── Modo columnas: mostrar actividad de todos los roles
+  // â”€â”€ Modo columnas: mostrar actividad de todos los roles
   if (mode === "cols") {
     const W = 900, H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
@@ -2396,7 +1706,7 @@ function renderActivityChart() {
         ${xl}
         ${bars}
       </svg>
-      <div class="chart-note">Actividad de Usuarios · ${periodTxt} · ${logs.length} registros cargados</div>`;
+      <div class="chart-note">Actividad de Usuarios Â· ${periodTxt} Â· ${logs.length} registros cargados</div>`;
 
     if (legendEl) {
       legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
@@ -2404,14 +1714,14 @@ function renderActivityChart() {
     return;
   }
 
-  // ── Modo circular: UN SOLO CÍRCULO dividido en sectores proporcionales.
-  // Distribución de la actividad de los usuarios dentro del período, por rol.
+  // â”€â”€ Modo circular: UN SOLO CÃRCULO dividido en sectores proporcionales.
+  // DistribuciÃ³n de la actividad de los usuarios dentro del perÃ­odo, por rol.
   const totalActivity = roleActivity.user.reduce((a, b) => a + b, 0) + 
                         roleActivity.admin.reduce((a, b) => a + b, 0) + 
                         roleActivity.inspector.reduce((a, b) => a + b, 0);
 
   if (!totalActivity) {
-    el.innerHTML = '<div class="chart-empty">Sin datos de actividad de Usuarios para el período seleccionado.</div>';
+    el.innerHTML = '<div class="chart-empty">Sin datos de actividad de Usuarios para el perÃ­odo seleccionado.</div>';
     if (legendEl) legendEl.innerHTML = "";
     return;
   }
@@ -2431,7 +1741,7 @@ function renderActivityChart() {
     const rot = -90 + acc * 360;
     arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${it.color}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
     acc += frac;
-    legend += `<span class="legend-item"><span class="legend-dot" style="background:${it.color}"></span>${it.name} · ${(frac * 100).toFixed(1)}%</span>`;
+    legend += `<span class="legend-item"><span class="legend-dot" style="background:${it.color}"></span>${it.name} Â· ${(frac * 100).toFixed(1)}%</span>`;
   }
 
   el.innerHTML = `
@@ -2440,7 +1750,7 @@ function renderActivityChart() {
       <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${Math.round(totalActivity)}</text>
     </svg>
     <div class="chart-legend">${legend}</div>
-    <div class="chart-note">Actividad de Usuarios · ${periodTxt}</div>`;
+    <div class="chart-note">Actividad de Usuarios Â· ${periodTxt}</div>`;
 
   if (legendEl) {
     legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
@@ -2451,7 +1761,7 @@ function renderActivityChart() {
       <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${totalAct}</text>
     </svg>
     <div class="chart-legend">${legend}</div>
-    <div class="chart-note">Distribución de la actividad de admins · ${periodTxt} · ${logs.length} registros cargados</div>`;
+    <div class="chart-note">DistribuciÃ³n de la actividad de admins Â· ${periodTxt} Â· ${logs.length} registros cargados</div>`;
 
   if (legendEl) legendEl.innerHTML = "";
 }
@@ -2460,8 +1770,8 @@ function countByActor(list, filterFn) {
   const mp = new Map();
   for (const l of list) {
     if (filterFn && !filterFn(l)) continue;
-    const key = l.actorUid || "—";
-    const prev = mp.get(key) || { uid: key, name: l.actorName || "—", count: 0 };
+    const key = l.actorUid || "â€”";
+    const prev = mp.get(key) || { uid: key, name: l.actorName || "â€”", count: 0 };
     prev.count++;
     mp.set(key, prev);
   }
@@ -2477,12 +1787,12 @@ function fillRank(id, idSub, winner, label) {
   const vEl = document.getElementById(id);
   const sEl = document.getElementById(idSub);
   if (!vEl) return;
-  if (!winner) { vEl.textContent = "—"; if (sEl) sEl.textContent = "Sin datos por ahora"; return; }
+  if (!winner) { vEl.textContent = "â€”"; if (sEl) sEl.textContent = "Sin datos por ahora"; return; }
   vEl.textContent = esc(winner.name);
   if (sEl) sEl.textContent = `${winner.count} ${label}`;
 }
 
-// ── RANKINGS SECUNDARIOS (menú desplegable, NIVEL 4) ───────────
+// â”€â”€ RANKINGS SECUNDARIOS (menÃº desplegable, NIVEL 4) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderRankings() {
   const role = currentUser?.role;
   if (role !== "admin" && role !== "inspector") return;
@@ -2494,15 +1804,15 @@ function renderRankings() {
     bestActor(logs.filter(l => l.type === "points"), null), "cambios de puntos");
 
   fillRank("rank-login-leader", "rank-login-leader-sub",
-    bestActor(logs.filter(l => l.type === "login"), null), "ingresos a la página");
+    bestActor(logs.filter(l => l.type === "login"), null), "ingresos a la pÃ¡gina");
 
   fillRank("rank-inspector", "rank-inspector-sub",
     bestActor(logs, l => String(l.actorRole || "").toLowerCase() === "inspector" && l.type === "points"), "acciones de puntos");
 }
 
-// ══════════════════════════════════════════
-// TRABAJADORES DESTACADOS (Día / Semana / Mes)
-// ══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// TRABAJADORES DESTACADOS (DÃ­a / Semana / Mes)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function workerActivityInRange(u, startMs) {
   const uid = u.uid;
   let count = 0, deltaPts = 0;
@@ -2544,14 +1854,14 @@ function periodWorkers(mode) {
 
 function renderDestacados() {
   const role = currentUser?.role;
-  // Todos los usuarios pueden ver los destacados (según especificaciones)
+  // Todos los usuarios pueden ver los destacados (segÃºn especificaciones)
 
   const now = Date.now();
   const oneDayMs = 24 * 60 * 60 * 1000;
   const oneWeekMs = 7 * oneDayMs;
   const oneMonthMs = 30 * oneDayMs;
 
-  // Calcular el inicio del sistema (primer log o timestamp más antiguo)
+  // Calcular el inicio del sistema (primer log o timestamp mÃ¡s antiguo)
   let systemStart = now;
   if (logs.length > 0) {
     const oldestLog = logs.reduce((min, l) => {
@@ -2571,10 +1881,10 @@ function renderDestacados() {
     const el = document.getElementById(def.id);
     if (!el) continue;
 
-    // Solo mostrar si ha pasado el tiempo mínimo requerido
+    // Solo mostrar si ha pasado el tiempo mÃ­nimo requerido
     if (def.elapsed < def.minRequired) {
       const remaining = Math.ceil((def.minRequired - def.elapsed) / oneDayMs);
-      el.innerHTML = `<div class="dc-empty">Requiere ${remaining} día(s) más de datos</div>`;
+      el.innerHTML = `<div class="dc-empty">Requiere ${remaining} dÃ­a(s) mÃ¡s de datos</div>`;
       continue;
     }
 
@@ -2584,19 +1894,19 @@ function renderDestacados() {
     const u = winner.u;
     const pts = Number(u.points) || 0;
     el.innerHTML = `
-      <div class="dc-name">${esc(u.name || "—")}</div>
-      <div class="dc-pts">⭐ ${pts.toFixed(decimalsCfgJow())} puntos</div>
+      <div class="dc-name">${esc(u.name || "â€”")}</div>
+      <div class="dc-pts">â­ ${pts.toFixed(decimalsCfgJow())} puntos</div>
       <div class="dc-meta">
-        <span>🎯 ${winner.count} acciones</span>
-        <span>${winner.deltaPts > 0 ? "➕" : winner.deltaPts < 0 ? "➖" : "·"} ${Math.abs(winner.deltaPts).toFixed(decimalsCfgJow())} pts</span>
+        <span>ðŸŽ¯ ${winner.count} acciones</span>
+        <span>${winner.deltaPts > 0 ? "âž•" : winner.deltaPts < 0 ? "âž–" : "Â·"} ${Math.abs(winner.deltaPts).toFixed(decimalsCfgJow())} pts</span>
         <span>#${winner.place} de ${rows.length}</span>
       </div>`;
   }
 }
 
-// ══════════════════════════════════════════
-// GRÁFICOS DEL MC TEAM (pestaña Gráficos)
-// ══════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// GRÃFICOS DEL MC TEAM (pestaÃ±a GrÃ¡ficos)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const PALETTE = ["#5865f2", "#3ecf8e", "#ffd166", "#ff9f43", "#ff5c75", "#4cc9f0", "#a78bfa", "#57cc99"];
 
 const modeStates = { evo: "line", admin: "line", admins: "cols" };
@@ -2610,9 +1920,9 @@ function periodStartMs(p) {
   return Date.now() - m * 24 * 60 * 60 * 1000;
 }
 
-// Puntos ganados por el usuario en un período (a partir de los registros).
+// Puntos ganados por el usuario en un perÃ­odo (a partir de los registros).
 function periodPointsForUser(u, period) {
-  if (period === "day") return Number(u.points || 0); // Día → puntos actuales
+  if (period === "day") return Number(u.points || 0); // DÃ­a â†’ puntos actuales
   const start = periodStartMs(period);
   const cutoff = inactiveCutoffMs(u);
   let pts = 0;
@@ -2623,8 +1933,8 @@ function periodPointsForUser(u, period) {
     const d = typeof l.delta === "number" ? l.delta : 0;
     if (d > 0) pts += d;
   }
-  // Para semana/mes, mostrar puntos ganados en el período
-  // Si no hay actividad, mostrar 0 pero el usuario seguirá en el ranking si tiene puntos actuales
+  // Para semana/mes, mostrar puntos ganados en el perÃ­odo
+  // Si no hay actividad, mostrar 0 pero el usuario seguirÃ¡ en el ranking si tiene puntos actuales
   return pts;
 }
 
@@ -2663,15 +1973,15 @@ window.setInspPeriod = (p, btn) => {
   renderInspectorActivityJow();
 };
 
-// ── FILTROS ─────────────────────────────────────────────────────
+// â”€â”€ FILTROS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 window.applyFilters = () => {
   filterState.user  = document.getElementById("filter-user")?.value || "";
   filterState.rol   = document.getElementById("filter-rol")?.value || "";
   filterState.rango = document.getElementById("filter-rango")?.value || "";
   filterState.cargo = document.getElementById("filter-cargo")?.value || "";
 
-  // Re-render todos los gráficos filtrables con los nuevos filtros.
-  // La "Actividad de Admins" NO se filtra por diseño (funciona de forma independiente).
+  // Re-render todos los grÃ¡ficos filtrables con los nuevos filtros.
+  // La "Actividad de Admins" NO se filtra por diseÃ±o (funciona de forma independiente).
   renderRankingAdmins();
   renderEvolutionPts();
   renderInspectorActivityJow();
@@ -2701,13 +2011,13 @@ function populateUserFilter() {
   if (!userSelect) return;
 
   userSelect.innerHTML = '<option value="">Todos</option>';
-  // Punto 3: TODOS los usuarios (user / admin / inspector) — no solo staff
+  // Punto 3: TODOS los usuarios (user / admin / inspector) â€” no solo staff
   const team = allMembers.filter(u => ["admin","inspector","user"].includes(u.role));
   team.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   team.forEach(u => {
     const option = document.createElement("option");
     option.value = u.uid;
-    option.textContent = u.name || "—";
+    option.textContent = u.name || "â€”";
     userSelect.appendChild(option);
   });
 }
@@ -2722,7 +2032,7 @@ function populateLogUserFilter() {
   team.forEach(u => {
     const option = document.createElement("option");
     option.value = u.uid;
-    option.textContent = u.name || "—";
+    option.textContent = u.name || "â€”";
     userSelect.appendChild(option);
   });
 }
@@ -2738,7 +2048,7 @@ function svgDonut(items, centerLabel) {
     const rot = -90 + acc * 360;
     arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${it.color}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
     acc += frac;
-    legend += `<span class="legend-item"><span class="legend-dot" style="background:${it.color}"></span>${esc(it.label)} · ${(frac * 100).toFixed(1)}%</span>`;
+    legend += `<span class="legend-item"><span class="legend-dot" style="background:${it.color}"></span>${esc(it.label)} Â· ${(frac * 100).toFixed(1)}%</span>`;
   }
   return `
     <svg class="chart-svg" viewBox="0 0 180 180" role="img">
@@ -2837,12 +2147,12 @@ function barChartSVG(labels, series, h) {
     </svg>`;
 }
 
-// Evolución de puntos: reconstruye el valor diario de cada trabajador
+// EvoluciÃ³n de puntos: reconstruye el valor diario de cada trabajador
 // del equipo a partir de los registros (delta) y los puntos actuales.
-// ── RANKING DE PUNTOS ─────────────────────────────────────────
+// â”€â”€ RANKING DE PUNTOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Ranking general que incluye TODOS los roles (Usuario, Admin, Inspector),
 // respeta los filtros de Usuario + Rol + Rango + Cargo y funciona por
-// Día / Semana / Mes.
+// DÃ­a / Semana / Mes.
 function renderRankingAdmins() {
   const box = document.getElementById("rank-admins-box");
   if (!box) return;
@@ -2864,14 +2174,14 @@ function renderRankingAdmins() {
     .slice(0, 8);
 
   if (!members.length) {
-    box.innerHTML = '<div class="chart-empty">Sin datos para el ranking en el período seleccionado.</div>';
+    box.innerHTML = '<div class="chart-empty">Sin datos para el ranking en el perÃ­odo seleccionado.</div>';
     return;
   }
 
   const periodTxt = rankTimeState === "day" ? "hoy" : rankTimeState === "week" ? "esta semana" : "este mes";
 
   if (modeStates.admins === "circ") {
-    // UN SOLO CÍRCULO dividido en sectores proporcionales.
+    // UN SOLO CÃRCULO dividido en sectores proporcionales.
     const total = members.reduce((s, r) => s + r.pts, 0);
     const cx = 90, cy = 90, R = 62, C = 2 * Math.PI * R;
     let acc = 0, arcs = "", legend = "";
@@ -2881,7 +2191,7 @@ function renderRankingAdmins() {
       const rot = -90 + acc * 360;
       arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${PALETTE[i % PALETTE.length]}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
       acc += frac;
-      legend += `<span class="legend-item"><span class="legend-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>${esc(cleanName(r.u.name))} · ${(frac * 100).toFixed(1)}%</span>`;
+      legend += `<span class="legend-item"><span class="legend-dot" style="background:${PALETTE[i % PALETTE.length]}"></span>${esc(cleanName(r.u.name))} Â· ${(frac * 100).toFixed(1)}%</span>`;
     });
     box.innerHTML = `
       <svg class="chart-svg" viewBox="0 0 180 180" role="img">
@@ -2889,11 +2199,11 @@ function renderRankingAdmins() {
         <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${total.toFixed(decimalsCfgJow())}</text>
       </svg>
       <div class="chart-legend">${legend}</div>
-      <div class="chart-note">Ranking de puntos · ${periodTxt}</div>`;
+      <div class="chart-note">Ranking de puntos Â· ${periodTxt}</div>`;
     return;
   }
 
-  // Modo columnas: gráfico real de columnas verticales.
+  // Modo columnas: grÃ¡fico real de columnas verticales.
   const maxP = Math.max(1, ...members.map(r => r.pts));
   const W = 600, H = 300, pl = 40, pr = 16, pt = 32, pb = 46;
   const iw = W - pl - pr, ih = H - pt - pb;
@@ -2934,10 +2244,10 @@ function renderRankingAdmins() {
       ${bars}
     </svg>
     <div class="chart-legend">${leg}</div>
-    <div class="chart-note">Ranking de puntos · ${periodTxt}</div>`;
+    <div class="chart-note">Ranking de puntos Â· ${periodTxt}</div>`;
 }
 
-// Funciones para refrescar y reiniciar gráficos individuales (mismos nombres que Dashboard)
+// Funciones para refrescar y reiniciar grÃ¡ficos individuales (mismos nombres que Dashboard)
 window.refreshSingleChart = (chartName) => {
   switch(chartName) {
     case 'rankingAdmins':
@@ -2953,7 +2263,7 @@ window.refreshSingleChart = (chartName) => {
       if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
       break;
   }
-  showToast("Gráfico actualizado", "ok");
+  showToast("GrÃ¡fico actualizado", "ok");
 };
 
 window.resetSingleChart = async (chartName) => {
@@ -2963,10 +2273,10 @@ window.resetSingleChart = async (chartName) => {
     return;
   }
 
-  const ok = confirm("¿Estás seguro de que querés reiniciar los datos de este gráfico? Se borrarán los registros históricos correspondientes y no se puede deshacer.");
+  const ok = confirm("Â¿EstÃ¡s seguro de que querÃ©s reiniciar los datos de este grÃ¡fico? Se borrarÃ¡n los registros histÃ³ricos correspondientes y no se puede deshacer.");
   if (!ok) return;
 
-  // Determinar qué registros corresponden a este gráfico.
+  // Determinar quÃ© registros corresponden a este grÃ¡fico.
   let targets = [];
   if (chartName === "activityChart") {
     targets = logs.filter(l => String(l.actorRole || "").toLowerCase() === "admin");
@@ -2993,7 +2303,7 @@ window.resetSingleChart = async (chartName) => {
 
   showToast(`Reinicio completado: ${deleted} registro(s) borrado(s).`, deleted > 0 ? "ok" : "err");
 
-  // Refrescar el gráfico después del reinicio (el snapshot recargará los logs).
+  // Refrescar el grÃ¡fico despuÃ©s del reinicio (el snapshot recargarÃ¡ los logs).
   if (typeof refreshSingleChart === "function") refreshSingleChart(chartName);
 };
 
@@ -3002,10 +2312,10 @@ function renderEvolutionPts() {
   const legendEl = document.getElementById("evo-pts-legend");
   if (!el) return;
   const role = currentUser?.role;
-  // Permitir que usuarios admin, inspector y user vean el gráfico
+  // Permitir que usuarios admin, inspector y user vean el grÃ¡fico
   if (role !== "admin" && role !== "inspector" && role !== "user") return;
 
-  // Incluir inspector y user por defecto (sin admin para la evolución general)
+  // Incluir inspector y user por defecto (sin admin para la evoluciÃ³n general)
   let team = allMembers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
 
   // Apply filters
@@ -3029,7 +2339,7 @@ function renderEvolutionPts() {
 
   const now = Date.now();
   const isDayView = evoTimeState === "7";
-  const step = isDayView ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000; // 1 hora para día, 1 día para otros
+  const step = isDayView ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000; // 1 hora para dÃ­a, 1 dÃ­a para otros
   const count = isDayView ? 24 : (evoTimeState === "14" ? 7 : 30);
   
   const periods = [];
@@ -3079,7 +2389,7 @@ function renderEvolutionPts() {
   if (modeStates.evo === "line") {
     el.innerHTML = multiLineChartSVG(periods.map(d => d.label), series);
   } else {
-    // Modo columnas: mostrar una barra por usuario por período
+    // Modo columnas: mostrar una barra por usuario por perÃ­odo
     // Compactar barras si hay muchos usuarios
     const n = team.length;
     const H = 340, W = 760, pl = 44, pr = 16, pt = 22, pb = 40;
@@ -3129,7 +2439,7 @@ function renderEvolutionPts() {
   }
   
   if (legendEl) {
-    // Leyenda sin nombres de usuario, solo círculos de color
+    // Leyenda sin nombres de usuario, solo cÃ­rculos de color
     legendEl.innerHTML = series.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span></span>`).join("");
   }
 }
@@ -3146,7 +2456,7 @@ function renderAll() {
   if (typeof renderEvolutionPts === "function") renderEvolutionPts();
 }
 
-// ── TABLA PUNTOS (con controles para Admins e Inspectores) ───────────────────
+// â”€â”€ TABLA PUNTOS (con controles para Admins e Inspectores) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderPointsTable() {
   const tb = document.getElementById("pts-full-body");
   const theadRow = document.getElementById("pts-thead-row");
@@ -3187,13 +2497,13 @@ function renderPointsTable() {
       <td>
         <div class="pts-actions">
           ${isAdmin ? `
-            <button class="pts-btn pts-add" onclick="adjustPoints('${u.uid}', 1)" title="Sumar +1">➕</button>
-            <button class="pts-btn pts-sub" onclick="adjustPoints('${u.uid}', -1)" title="Restar -1">➖</button>
+            <button class="pts-btn pts-add" onclick="adjustPoints('${u.uid}', 1)" title="Sumar +1">âž•</button>
+            <button class="pts-btn pts-sub" onclick="adjustPoints('${u.uid}', -1)" title="Restar -1">âž–</button>
             <input type="number" class="pts-input" id="pts-input-${u.uid}" min="0" max="${maxVal}" step="${stepVal}" placeholder="${placeholderVal}" style="width: 60px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(141,153,255,.25); background: rgba(15,20,40,.8); color: #e9eeff; font-size: 12px; outline: none;" value="" onkeydown="if(event.key==='Enter') setPoints('${u.uid}')">
-            <button class="pts-btn pts-set" onclick="setPoints('${u.uid}')" title="Establecer valor (Enter)">⚙️</button>
+            <button class="pts-btn pts-set" onclick="setPoints('${u.uid}')" title="Establecer valor (Enter)">âš™ï¸</button>
           ` : `
-            <button class="pts-btn pts-add" onclick="adjustPoints('${u.uid}', 1)" title="Sumar +1">➕</button>
-            <button class="pts-btn pts-sub" onclick="adjustPoints('${u.uid}', -1)" title="Restar -1">➖</button>
+            <button class="pts-btn pts-add" onclick="adjustPoints('${u.uid}', 1)" title="Sumar +1">âž•</button>
+            <button class="pts-btn pts-sub" onclick="adjustPoints('${u.uid}', -1)" title="Restar -1">âž–</button>
           `}
         </div>
       </td>` : '<td></td>';
@@ -3203,8 +2513,8 @@ function renderPointsTable() {
         <td class="rank-col">${i+1}</td>
         <td>
           <span class="member-av av-${u.role}">${(u.name||"?").charAt(0).toUpperCase()}</span>
-          <b>${esc(u.name||"—")}</b>
-          ${isMe ? '<span class="you-tag">tú</span>' : ""}
+          <b>${esc(u.name||"â€”")}</b>
+          ${isMe ? '<span class="you-tag">tÃº</span>' : ""}
         </td>
         <td>
           <span class="pts-number" id="pn-${u.uid}" style="color:${ptColor(pts)}">${pts.toFixed(decimalsCfgJow())}</span>
@@ -3218,20 +2528,20 @@ function renderPointsTable() {
   }).join("");
 }
 
-// ── AJUSTAR PUNTOS ─────────────────────────────────────────────
+// â”€â”€ AJUSTAR PUNTOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Inspectores: solo +/- 1 exacto, motivo OBLIGATORIO
-// Admins: +/- 1 o más, motivo OPCIONAL
+// Admins: +/- 1 o mÃ¡s, motivo OPCIONAL
 window.adjustPoints = async (uid, delta) => {
   const role = currentUser?.role;
   if (role !== 'admin' && role !== 'inspector') return;
-  if (uid === currentUser.uid) { showToast('No podés modificar tus propios puntos!', 'err'); return; }
+  if (uid === currentUser.uid) { showToast('No podÃ©s modificar tus propios puntos!', 'err'); return; }
   const member = allMembers.find(u => u.uid === uid);
   if (!member) return;
 
   if (role === 'inspector') {
     const cd = checkInspectorCooldown(uid);
-    if (!cd.ok) { showToast(`Cooldown activo. Podés volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, 'err'); return; }
-    // Punto 4: Inspector solo 1 punto por acción, NUNCA se pide cantidad personalizada
+    if (!cd.ok) { showToast(`Cooldown activo. PodÃ©s volver a puntuar a esta persona en ${fmtSince(cd.waitMs)}.`, 'err'); return; }
+    // Punto 4: Inspector solo 1 punto por acciÃ³n, NUNCA se pide cantidad personalizada
     delta = delta > 0 ? 1 : -1;
   }
 
@@ -3240,21 +2550,21 @@ window.adjustPoints = async (uid, delta) => {
   if (role === 'inspector') {
     // Inspector: motivo OBLIGATORIO
     while (true) {
-      const r = prompt(`Motivo de la modificación (${delta > 0 ? '+' : ''}${delta} pts a ${member.name}):\n\nCampo OBLIGATORIO para inspectores.`);
+      const r = prompt(`Motivo de la modificaciÃ³n (${delta > 0 ? '+' : ''}${delta} pts a ${member.name}):\n\nCampo OBLIGATORIO para inspectores.`);
       if (r === null) return; // Cancelar
       reason = r.trim();
       if (reason.length === 0) {
-        showToast('Tenés que escribir un motivo obligatorio.', 'err');
+        showToast('TenÃ©s que escribir un motivo obligatorio.', 'err');
         continue;
       }
       break;
     }
   } else {
     // Admin: motivo OPCIONAL
-    const r = prompt(`Motivo (opcional) de la modificación (${delta > 0 ? '+' : ''}${delta} pts a ${member.name}):`);
+    const r = prompt(`Motivo (opcional) de la modificaciÃ³n (${delta > 0 ? '+' : ''}${delta} pts a ${member.name}):`);
     if (r === null) return;
     reason = r.trim();
-    if (!reason) reason = `Modificación manual (${delta > 0 ? '+' : ''}${delta})`;
+    if (!reason) reason = `ModificaciÃ³n manual (${delta > 0 ? '+' : ''}${delta})`;
   }
 
   const oldVal = member.points || 0;
@@ -3280,12 +2590,12 @@ window.adjustPoints = async (uid, delta) => {
   } catch (e) { member.points = oldVal; updatePointCells(uid, oldVal); showToast('Error al guardar: '+e.message,'err'); }
 };
 
-// ── ESTABLECER VALOR DE PUNTOS ─────────────────────────────────────
+// â”€â”€ ESTABLECER VALOR DE PUNTOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Valor exacto (solo para Admins) con motivo opcional
 window.setPoints = async (uid) => {
   const role = currentUser?.role;
   if (role !== 'admin') return;
-  if (uid === currentUser.uid) { showToast('No podés modificar tus propios puntos!', 'err'); return; }
+  if (uid === currentUser.uid) { showToast('No podÃ©s modificar tus propios puntos!', 'err'); return; }
   const member = allMembers.find(u => u.uid === uid);
   if (!member) return;
 
@@ -3293,7 +2603,7 @@ window.setPoints = async (uid) => {
   const inputValue = inputEl ? parseFloat(inputEl.value) : NaN;
   
   if (!Number.isFinite(inputValue) || inputValue < 0) {
-    showToast('Ingresá un valor válido (mayor o igual a 0).', 'err');
+    showToast('IngresÃ¡ un valor vÃ¡lido (mayor o igual a 0).', 'err');
     return;
   }
 
@@ -3326,34 +2636,34 @@ async function maybeEmitThresholdNovedad(member, oldVal, newVal, delta, role) {
   const MAX = maxPtsCfg();
   const name = member.name || 'un miembro';
 
-  // Umbral 1: cruzó de 0 a >0 (recuperó puntos / volvió de expulsión)
+  // Umbral 1: cruzÃ³ de 0 a >0 (recuperÃ³ puntos / volviÃ³ de expulsiÃ³n)
   if (oldVal === 0 && newVal > 0) {
-    await logNovedad(`✅ ${name} volvió a tener actividad (${newVal.toFixed(decimalsCfgJow())} pts) y salió del estado crítico.`);
+    await logNovedad(`âœ… ${name} volviÃ³ a tener actividad (${newVal.toFixed(decimalsCfgJow())} pts) y saliÃ³ del estado crÃ­tico.`);
     return;
   }
-  // Umbral 2: bajó a 0 (cerca de expulsión)
+  // Umbral 2: bajÃ³ a 0 (cerca de expulsiÃ³n)
   if (oldVal > 0 && newVal === 0) {
-    await logNovedad(`🚨 ${name} llegó a 0 puntos · Estado crítico · Requiere apelación o acción inmediata.`);
+    await logNovedad(`ðŸš¨ ${name} llegÃ³ a 0 puntos Â· Estado crÃ­tico Â· Requiere apelaciÃ³n o acciÃ³n inmediata.`);
     return;
   }
-  // Umbral 3: entró en "Riesgo alto" (<=2) viniendo de arriba
+  // Umbral 3: entrÃ³ en "Riesgo alto" (<=2) viniendo de arriba
   if (oldVal > 2 && newVal > 0 && newVal <= 2) {
-    await logNovedad(`⚠️ ${name} está en riesgo alto (${newVal.toFixed(decimalsCfgJow())} pts) · Entró en seguimiento por bajo desempeño.`);
+    await logNovedad(`âš ï¸ ${name} estÃ¡ en riesgo alto (${newVal.toFixed(decimalsCfgJow())} pts) Â· EntrÃ³ en seguimiento por bajo desempeÃ±o.`);
     return;
   }
-  // Umbral 4: salió de riesgo / entró en "Estable"
+  // Umbral 4: saliÃ³ de riesgo / entrÃ³ en "Estable"
   if (oldVal <= 2 && newVal > 4) {
-    await logNovedad(`💪 ${name} recuperó puntos (${newVal.toFixed(decimalsCfgJow())}) y salió del estado de seguimiento. Buen desempeño!`);
+    await logNovedad(`ðŸ’ª ${name} recuperÃ³ puntos (${newVal.toFixed(decimalsCfgJow())}) y saliÃ³ del estado de seguimiento. Buen desempeÃ±o!`);
     return;
   }
-  // Umbral 5: alto desempeño (>=6 y delta >=2 de una)
+  // Umbral 5: alto desempeÃ±o (>=6 y delta >=2 de una)
   if (newVal >= 6 && delta >= 2) {
-    await logNovedad(`🔥 ${name} tuvo un desempeño excelente! Subió ${delta} pts y quedó en ${newVal.toFixed(decimalsCfgJow())}.`);
+    await logNovedad(`ðŸ”¥ ${name} tuvo un desempeÃ±o excelente! SubiÃ³ ${delta} pts y quedÃ³ en ${newVal.toFixed(decimalsCfgJow())}.`);
     return;
   }
   // Umbral 6: nuevo ingreso / primer punto registrado (member.status o oldVal === undefined-ish)
   if ((oldVal === 0 || !Number.isFinite(oldVal)) && newVal === MAX && delta === MAX) {
-    await logNovedad(`✨ ${name} ingresó al staff con ${newVal.toFixed(decimalsCfgJow())} pts iniciales. Bienvenido/a!`);
+    await logNovedad(`âœ¨ ${name} ingresÃ³ al staff con ${newVal.toFixed(decimalsCfgJow())} pts iniciales. Bienvenido/a!`);
     return;
   }
 }
@@ -3369,7 +2679,7 @@ function updatePointCells(uid, pts) {
   if (av) av.textContent = pts.toFixed(decimalsCfgJow());
 }
 
-// ── TABLA STAFF (con rango, cargos, estado) ─────────────────────
+// â”€â”€ TABLA STAFF (con rango, cargos, estado) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderStaffTable() {
   const tb = document.getElementById("staff-full-body");
   if (!allMembers.length) {
@@ -3379,21 +2689,21 @@ function renderStaffTable() {
   tb.innerHTML = allMembers.map(u => {
     const isMe = currentUser && u.uid === currentUser.uid;
     
-    // Cargos: campo libre en Firestore (array o string), o el rol de la página si no existe
+    // Cargos: campo libre en Firestore (array o string), o el rol de la pÃ¡gina si no existe
     const cargos = Array.isArray(u.cargos)
       ? u.cargos.map(c => `<span class="tag">${esc(c)}</span>`).join(" ")
       : u.cargos
         ? `<span class="tag">${esc(u.cargos)}</span>`
-        : `<span style="color:var(--muted)">—</span>`;
+        : `<span style="color:var(--muted)">â€”</span>`;
 
-    // Rango del servidor (campo separado del role de la página)
+    // Rango del servidor (campo separado del role de la pÃ¡gina)
     const rango = fmtRango(u.rango);
 
     return `
       <tr ${isMe ? 'class="my-row"' : ""}>
         <td>
-          <b>${esc(u.name||"—")}</b>
-          ${isMe ? '<span class="you-tag">tú</span>' : ""}
+          <b>${esc(u.name||"â€”")}</b>
+          ${isMe ? '<span class="you-tag">tÃº</span>' : ""}
         </td>
         <td><span class="rango-tag">${rango}</span></td>
         <td>${cargos}</td>
@@ -3402,7 +2712,7 @@ function renderStaffTable() {
   }).join("");
 }
 
-// ── NOVEDADES ───────────────────────────────────────────────────
+// â”€â”€ NOVEDADES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderNovedades() {
   const el = document.getElementById("novedades-list");
   if (!el) return;
@@ -3410,24 +2720,24 @@ function renderNovedades() {
   if (!novedades.length) {
     el.innerHTML = `
       <div class="novedad-empty">
-        <div style="font-size:32px;margin-bottom:8px">📋</div>
-        <div>No hay novedades registradas aún.</div>
-        <div style="font-size:12px;margin-top:4px;color:var(--muted)">Los cambios de puntos y movimientos del staff aparecerán acá.</div>
+        <div style="font-size:32px;margin-bottom:8px">ðŸ“‹</div>
+        <div>No hay novedades registradas aÃºn.</div>
+        <div style="font-size:12px;margin-top:4px;color:var(--muted)">Los cambios de puntos y movimientos del staff aparecerÃ¡n acÃ¡.</div>
       </div>`;
     return;
   }
 
   const isAdmin = currentUser?.role === "admin";
   el.innerHTML = novedades.map(n => {
-    const fecha = n.fecha?.toDate ? fmtFecha(n.fecha.toDate()) : "—";
+    const fecha = n.fecha?.toDate ? fmtFecha(n.fecha.toDate()) : "â€”";
     const icono = getNovedadIcon(n.texto||"");
-    const deleteBtn = isAdmin ? `<button class="logout-btn" style="position:static;font-size:12px;padding:4px 8px" onclick="deleteNovedad('${n.id}')">🗑️</button>` : "";
+    const deleteBtn = isAdmin ? `<button class="logout-btn" style="position:static;font-size:12px;padding:4px 8px" onclick="deleteNovedad('${n.id}')">ðŸ—‘ï¸</button>` : "";
     return `
       <div class="novedad-item">
         <div class="nov-icon">${icono}</div>
         <div class="nov-body">
           <div class="nov-texto">${esc(n.texto||"")}</div>
-          <div class="nov-meta">${fecha}${n.autor ? ` · por ${esc(n.autor)}` : ""}</div>
+          <div class="nov-meta">${fecha}${n.autor ? ` Â· por ${esc(n.autor)}` : ""}</div>
         </div>
         ${deleteBtn}
       </div>`;
@@ -3436,7 +2746,7 @@ function renderNovedades() {
 
 window.deleteNovedad = async (id) => {
   if (currentUser?.role !== "admin") return;
-  const ok = confirm("¿Borrar esta novedad? No se puede deshacer.");
+  const ok = confirm("Â¿Borrar esta novedad? No se puede deshacer.");
   if (!ok) return;
   try {
     await deleteDoc(doc(db, "novedades", id));
@@ -3452,7 +2762,7 @@ window.deleteNovedad = async (id) => {
 
 window.resetNovedades = async () => {
   if (currentUser?.role !== "admin") return;
-  const ok = confirm("¿Estás seguro de borrar TODAS las novedades? Esta acción no se puede deshacer.");
+  const ok = confirm("Â¿EstÃ¡s seguro de borrar TODAS las novedades? Esta acciÃ³n no se puede deshacer.");
   if (!ok) return;
   try {
     const snap = await getDocs(collection(db, "novedades"));
@@ -3468,14 +2778,14 @@ window.resetNovedades = async () => {
 
 function getNovedadIcon(texto) {
   const t = texto.toLowerCase();
-  if (t.includes("crítico") || t.includes("0 punto"))       return "🚨";
-  if (t.includes("riesgo") || t.includes("seguimiento"))   return "⚠️";
-  if (t.includes("recuperó") || t.includes("salió") || t.includes("excelente") || t.includes("desempeño")) return "💪";
-  if (t.includes("ingresó") || t.includes("bienvenido") || t.includes("nuevo")) return "✨";
-  if (t.includes("volvió") || t.includes("salvó"))         return "✅";
-  if (t.includes("expuls") || t.includes("apelación"))     return "📮";
-  if (t.includes("admin") || t.includes("ascenso"))        return "💎";
-  return "🔔";
+  if (t.includes("crÃ­tico") || t.includes("0 punto"))       return "ðŸš¨";
+  if (t.includes("riesgo") || t.includes("seguimiento"))   return "âš ï¸";
+  if (t.includes("recuperÃ³") || t.includes("saliÃ³") || t.includes("excelente") || t.includes("desempeÃ±o")) return "ðŸ’ª";
+  if (t.includes("ingresÃ³") || t.includes("bienvenido") || t.includes("nuevo")) return "âœ¨";
+  if (t.includes("volviÃ³") || t.includes("salvÃ³"))         return "âœ…";
+  if (t.includes("expuls") || t.includes("apelaciÃ³n"))     return "ðŸ“®";
+  if (t.includes("admin") || t.includes("ascenso"))        return "ðŸ’Ž";
+  return "ðŸ””";
 }
 
 function fmtFecha(date) {
@@ -3485,10 +2795,10 @@ function fmtFecha(date) {
   });
 }
 
-// ── TABS ────────────────────────────────────────────────────────
+// â”€â”€ TABS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 window.switchTab = (id, btn) => {
   try {
-    // Bloquear navegación a la pestaña Mi Perfil (eliminada)
+    // Bloquear navegaciÃ³n a la pestaÃ±a Mi Perfil (eliminada)
     if (id === "user-view") {
       id = "points-tab";
     }
@@ -3500,7 +2810,7 @@ window.switchTab = (id, btn) => {
     el.classList.add("active");
     if (btn && btn.classList) btn.classList.add("active");
 
-    // hooks por pestaña (siempre que existan)
+    // hooks por pestaÃ±a (siempre que existan)
     if (id === "points-tab") { if (typeof renderPointsTable === "function") renderPointsTable(); if (typeof renderStats === "function") renderStats(); if (typeof renderDestacados === "function") renderDestacados(); }
     if (id === "graficos-tab") {
       if (typeof renderRankingAdmins === "function") renderRankingAdmins();
@@ -3515,7 +2825,7 @@ window.switchTab = (id, btn) => {
   } catch (e) { console.error("switchTab error", e); }
 };
 
-// ── TOAST ───────────────────────────────────────────────────────
+// â”€â”€ TOAST â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let toastTimer;
 function showToast(msg, type="ok") {
   const t = document.getElementById("toast");
@@ -3529,7 +2839,7 @@ function showToast(msg, type="ok") {
   }, 2800);
 }
 
-// ── UTILS ───────────────────────────────────────────────────────
+// â”€â”€ UTILS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function showLoginScreen() {
   document.getElementById("login-screen").style.display = "flex";
   document.getElementById("app").style.display = "none";
@@ -3560,23 +2870,23 @@ function ptBarClass(p) {
 }
 
 function ptStateBadge(p) {
-  if (p === 0) return '<span class="pts-badge badge-0">Crítico</span>';
+  if (p === 0) return '<span class="pts-badge badge-0">CrÃ­tico</span>';
   if (p <= 2)  return '<span class="pts-badge badge-2">Riesgo alto</span>';
   if (p <= 4)  return '<span class="pts-badge badge-4">Seguimiento</span>';
   if (p <= 6)  return '<span class="pts-badge badge-6">Estable</span>';
-  return '<span class="pts-badge badge-7">Óptimo</span>';
+  return '<span class="pts-badge badge-7">Ã“ptimo</span>';
 }
 
 function ptStateFull(p) {
   const states = [
-    { max:0, cls:"pts-badge badge-0", icon:"🚨", label:"Crítico",     desc:"Apelación abierta" },
-    { max:2, cls:"pts-badge badge-2", icon:"⚠️",  label:"Riesgo alto", desc:"Aumentá tu actividad urgente" },
-    { max:4, cls:"pts-badge badge-4", icon:"👀",  label:"Seguimiento", desc:"Mantené el ritmo activo" },
-    { max:6, cls:"pts-badge badge-6", icon:"👍",  label:"Estable",     desc:"Vas bien" },
-    { max:7, cls:"pts-badge badge-7", icon:"🌟",  label:"Óptimo",      desc:"Excelente desempeño" },
+    { max:0, cls:"pts-badge badge-0", icon:"ðŸš¨", label:"CrÃ­tico",     desc:"ApelaciÃ³n abierta" },
+    { max:2, cls:"pts-badge badge-2", icon:"âš ï¸",  label:"Riesgo alto", desc:"AumentÃ¡ tu actividad urgente" },
+    { max:4, cls:"pts-badge badge-4", icon:"ðŸ‘€",  label:"Seguimiento", desc:"MantenÃ© el ritmo activo" },
+    { max:6, cls:"pts-badge badge-6", icon:"ðŸ‘",  label:"Estable",     desc:"Vas bien" },
+    { max:7, cls:"pts-badge badge-7", icon:"ðŸŒŸ",  label:"Ã“ptimo",      desc:"Excelente desempeÃ±o" },
   ];
   const s = states.find(x => p <= x.max) || states[states.length-1];
-  return `<span class="${s.cls}">${s.icon} ${s.label} — ${s.desc}</span>`;
+  return `<span class="${s.cls}">${s.icon} ${s.label} â€” ${s.desc}</span>`;
 }
 
 function roleName(r) {
@@ -3601,16 +2911,14 @@ function esc(s) {
 
 function friendlyErr(code) {
   const m = {
-    "auth/wrong-password":"Contraseña incorrecta.",
+    "auth/wrong-password":"ContraseÃ±a incorrecta.",
     "auth/user-not-found":"No existe cuenta con ese email.",
-    "auth/invalid-email":"Email inválido.",
-    "auth/invalid-credential":"Email o contraseña incorrectos.",
-    "auth/too-many-requests":"Demasiados intentos, esperá unos minutos.",
+    "auth/invalid-email":"Email invÃ¡lido.",
+    "auth/invalid-credential":"Email o contraseÃ±a incorrectos.",
+    "auth/too-many-requests":"Demasiados intentos, esperÃ¡ unos minutos.",
     "auth/network-request-failed":"Error de red.",
   };
-  return m[code] || "Error al iniciar sesión.";
+  return m[code] || "Error al iniciar sesiÃ³n.";
 }
 
-</script>
-</body>
-</html>
+
