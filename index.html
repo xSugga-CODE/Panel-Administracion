@@ -944,7 +944,8 @@ const db   = getFirestore(app);
     if (!el) return;
     const raw = el.getAttribute('onclick');
     if (!raw) return;
-    el.removeAttribute('onclick');
+    // NO eliminar el atributo onclick para permitir múltiples clics
+    // el.removeAttribute('onclick');
     const m = raw.match(/^\s*([\w\.]+)\s*\(([\s\S]*)\)\s*;?\s*$/);
     if (!m) return;
     const [, fnPath, argsStr] = m;
