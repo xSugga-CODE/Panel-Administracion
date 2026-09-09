@@ -263,12 +263,24 @@ th,td{padding:9px 10px;font-size:12px}
 #page-config .field > div{
 flex-direction:column;
 align-items:stretch;
+gap: 16px;
 }
 #page-config .field > div > div{
 width:100%;
 }
 #page-config .field input{
 width:100% !important;
+}
+#page-config .card{
+padding: 24px;
+gap: 20px;
+}
+#page-config .field{
+margin-bottom: 20px;
+}
+#page-config .field label{
+margin-bottom: 8px;
+display: block;
 }
 }
 </style>
@@ -362,11 +374,6 @@ width:100% !important;
 <div class="tcard">
 <div class="ttoolbar">
 <span class="ttoolbar-title">🏆 Top por puntos</span>
-<div class="chart-toolbar">
-<button class="period-btn active" data-rank-period="day" onclick="setRankPeriod('day',this)">Diario</button>
-<button class="period-btn" data-rank-period="week" onclick="setRankPeriod('week',this)">Semanal</button>
-<button class="period-btn" data-rank-period="month" onclick="setRankPeriod('month',this)">Mensual</button>
-</div>
 </div>
 <table>
 <thead><tr><th>#</th><th>Nombre</th><th>Rol</th><th>Puntos</th><th>Valor fijo</th><th>Ajustar</th></tr></thead>
@@ -482,11 +489,6 @@ width:100% !important;
   <div class="card chart-card">
     <div class="chart-head">
       <h3>🏆 Ranking de Puntos</h3>
-      <div class="chart-toolbar">
-        <button class="period-btn active" data-krank="day" onclick="setRankPeriod('day',this)">Día</button>
-        <button class="period-btn" data-krank="week" onclick="setRankPeriod('week',this)">Semana</button>
-        <button class="period-btn" data-krank="month" onclick="setRankPeriod('month',this)">Mes</button>
-      </div>
       <div class="chart-toolbar">
         <button class="period-btn active" data-mode="cols" onclick="setRankModeAdmins('cols',this)">Columnas</button>
         <button class="period-btn" data-mode="circ" onclick="setRankModeAdmins('circ',this)">Circular</button>
@@ -615,13 +617,8 @@ width:100% !important;
     <label>Duración visible</label>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
       <div style="display:flex;flex-direction:column;gap:4px;">
-        <label style="font-size:11px;color:var(--muted);">Horas</label>
-        <input type="number" id="chambeador-week-hours" min="0" max="168" value="72" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-      </div>
-      <span style="font-size:22px;font-weight:bold;color:var(--muted);">:</span>
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <label style="font-size:11px;color:var(--muted);">Minutos</label>
-        <input type="number" id="chambeador-week-minutes" min="0" max="59" value="0" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
+        <label style="font-size:11px;color:var(--muted);">Días</label>
+        <input type="number" id="chambeador-week-days" min="0" max="7" value="3" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
       </div>
     </div>
   </div>
@@ -638,13 +635,8 @@ width:100% !important;
     <label>Duración visible</label>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
       <div style="display:flex;flex-direction:column;gap:4px;">
-        <label style="font-size:11px;color:var(--muted);">Horas</label>
-        <input type="number" id="chambeador-month-hours" min="0" max="720" value="168" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-      </div>
-      <span style="font-size:22px;font-weight:bold;color:var(--muted);">:</span>
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <label style="font-size:11px;color:var(--muted);">Minutos</label>
-        <input type="number" id="chambeador-month-minutes" min="0" max="59" value="0" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
+        <label style="font-size:11px;color:var(--muted);">Días</label>
+        <input type="number" id="chambeador-month-days" min="0" max="30" value="7" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
       </div>
     </div>
   </div>
@@ -2346,31 +2338,12 @@ renderDestacados();
 
 // Calcular puntos según el período seleccionado para el ranking
 const now = Date.now();
-const periodStart = rankPeriod === "day" ? now - 24 * 60 * 60 * 1000 :
-                    rankPeriod === "week" ? now - 7 * 24 * 60 * 60 * 1000 :
-                    now - 30 * 24 * 60 * 60 * 1000;
-
-// Para cada usuario, calcular puntos ganados en el período
+// Mostrar todas las cuentas con sus puntos actuales
 const usersWithPeriodPoints = allUsers.map(u => {
-  let periodPoints = 0;
-  if (rankPeriod === "day") {
-    // Para diario, usar puntos actuales
-    periodPoints = Number(u.points || 0);
-  } else {
-    // Para semanal/mensual, calcular puntos ganados desde logs
-    for (const l of logs) {
-      if (l.type === "points" && l.targetUid === u.uid) {
-        const t = logTimeRaw(l);
-        if (t && t >= periodStart && typeof l.delta === "number" && l.delta > 0) {
-          periodPoints += l.delta;
-        }
-      }
-    }
-  }
-  return { ...u, periodPoints };
+  return { ...u, periodPoints: Number(u.points || 0) };
 });
 
-const top = [...usersWithPeriodPoints].sort((a,b) => (b.periodPoints||0)-(a.periodPoints||0)).slice(0, 8);
+const top = [...usersWithPeriodPoints].sort((a,b) => (b.periodPoints||0)-(a.periodPoints||0));
 const tb = document.getElementById("dash-tbody");
 const canEdit = myRole === "admin" || myRole === "inspector";
 if (!top.length) { tb.innerHTML='<tr><td colspan="6" class="empty">Sin datos aún.</td></tr>'; return; }
@@ -3384,7 +3357,7 @@ window.renderEvolutionPts = () => {
     const start = end - stepMs;
     const d = new Date(end);
     const label = isDayView
-      ? `${d.getHours()}:00`
+      ? `${d.getHours() % 12 || 12}:00 ${d.getHours() < 12 ? 'AM' : 'PM'}`
       : `${d.getDate()}/${d.getMonth() + 1}`;
     periods.push({ start, end, label });
   }
@@ -3489,7 +3462,7 @@ window.renderEvolutionPts = () => {
         ${content}
       </svg>
     </div>
-    <div class="chart-legend">${series.map(s => `<span class="legend-item" title="${esc(s.name)}"><span class="legend-dot" style="background:${s.color}"></span></span>`).join("")}</div>
+    <div class="chart-legend">${series.map(s => `<span class="legend-item" title="${esc(s.name)}"><span class="legend-dot" style="background:${s.color}"></span>${esc(s.name)}</span>`).join("")}</div>
     <div class="chart-note">Evolución de puntos · ${isDayView ? "24 horas" : evoTimeState === "14" ? "7 días" : "30 días"} · ${series.length} usuarios · ${logs.length} registros cargados</div>`;
 };
 
@@ -3551,8 +3524,8 @@ window.renderActivityChart = () => {
       const actor = allUsers.find(u => u.uid === uid) || null;
       if (actor && isInactiveStatus(actor.status) && rec.t >= inactiveCutoffMs(actor)) continue;
       if (rec.role === "user") {
-        // Usuario: promedio entre entradas a la página y puntos actuales.
-        userV += Math.round(((rec.logins + Number(actor?.points || 0)) / 2) * 10) / 10;
+        // Usuario: promedio entre entradas a la página y puntos ganados en el período.
+        userV += Math.round(((rec.logins + rec.added) / 2) * 10) / 10;
       } else if (rec.role === "inspector") {
         // Inspector: puntos actuales + puntos que sube + entradas.
         inspV += Number(actor?.points || 0) + rec.added + rec.logins;

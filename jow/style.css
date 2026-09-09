@@ -24,6 +24,10 @@ body {
   min-height: 100vh;
 }
 
+/* Chart scroll wrap */
+.chart-scroll-wrap{display:block;width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+.chart-scroll-wrap .chart-svg{max-width:none;margin:0 auto;display:block}
+
 /* ══════════════════════════════════════════
    LOGIN
 ══════════════════════════════════════════ */

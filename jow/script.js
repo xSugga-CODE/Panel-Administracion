@@ -2390,8 +2390,9 @@ function renderEvolutionPts() {
   const periods = [];
   for (let i = count - 1; i >= 0; i--) {
     const end = now - i * step, start = end - step;
+    const d = new Date(end);
     const label = isDayView 
-      ? `${new Date(end).getHours()}:00` 
+      ? `${d.getHours() % 12 || 12}:00 ${d.getHours() < 12 ? 'AM' : 'PM'}` 
       : labelShortDay(new Date(end));
     periods.push({ start, end, label, vals: {} });
   }
