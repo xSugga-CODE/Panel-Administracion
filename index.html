@@ -1519,57 +1519,71 @@ pointDecrementBusy = false;
 
 // ── PÁGINAS ───────────────────────────────────────────────────
 window.goPage = id => {
-if (id === "config-points" && myRole !== "admin") {
-showToast("Solo un admin puede entrar a Configurar Puntos.", "err");
-id = "config";
-}
+  // Ocultar todas las páginas
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
 
-// Mostrar botón de reset novedades solo para admins
-const resetNovedadesBtn = document.getElementById("reset-novedades-btn");
-if (resetNovedadesBtn) {
-  resetNovedadesBtn.style.display = myRole === "admin" ? "" : "none";
-}
-
-// Para usuarios, ocultar la pestaña de gráficos en el dashboard
-if (myRole === "user" && id === "charts") {
-  // Permitir que los usuarios vean los gráficos, pero ocultar algunos
-  // Los usuarios solo ven Ranking de Puntos y Evolución general
-}
-
-// Para usuarios, ocultar el gráfico de evolución general
-const evoChartCard = document.getElementById("evo-chart-card");
-if (evoChartCard) {
-  evoChartCard.style.display = myRole === "user" ? "" : "";
-}
-
-// Para usuarios, ocultar gráficos de actividad (solo ver Ranking y Evolución)
-if (myRole === "user") {
-  const activityAdminsCard = document.getElementById("activity-admins-card");
-  if (activityAdminsCard) activityAdminsCard.style.display = "none";
-  
-  const activityInspectorsCard = document.getElementById("activity-inspectors-card");
-  if (activityInspectorsCard) activityInspectorsCard.style.display = "none";
-}
-document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-document.getElementById("page-" + id).classList.add("active");
-const ni = document.querySelector(`.nav-item[onclick="goPage('${id}')"]`);
-if (ni) ni.classList.add("active");
-
-// Inicializar gráficos si entramos a la pestaña charts
-if (id === "charts") {
-  if (myRole === "admin") {
-    // Mostrar botones de reset individuales para admins
-    const resetBtns = ["reset-ranking-admins-btn", "reset-evolution-pts-btn", "reset-activity-chart-btn"];
-    resetBtns.forEach(btnId => {
-      const btn = document.getElementById(btnId);
-      if (btn) btn.style.display = "";
-    });
+  // Mostrar la página solicitada
+  const pageEl = document.getElementById("page-" + id);
+  if (pageEl) {
+    pageEl.classList.add("active");
+  } else {
+    console.error("Página no encontrada: page-" + id);
+    return;
   }
-  if (typeof renderRankingAdmins === "function") renderRankingAdmins();
-  if (typeof renderEvolutionPts === "function") renderEvolutionPts();
-  if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
-}
+
+  // Actualizar navegación activa (método más robusto)
+  document.querySelectorAll(".nav-item").forEach(ni => {
+    const onclickAttr = ni.getAttribute("onclick");
+    if (onclickAttr && onclickAttr.includes("goPage('" + id + "')")) {
+      ni.classList.add("active");
+    }
+  });
+
+  // Mostrar botón de reset novedades solo para admins
+  const resetNovedadesBtn = document.getElementById("reset-novedades-btn");
+  if (resetNovedadesBtn) {
+    resetNovedadesBtn.style.display = myRole === "admin" ? "" : "none";
+  }
+
+  // Para usuarios, ocultar gráficos de actividad (solo ver Ranking y Evolución)
+  if (myRole === "user") {
+    const activityAdminsCard = document.getElementById("activity-admins-card");
+    if (activityAdminsCard) activityAdminsCard.style.display = "none";
+    
+    const activityInspectorsCard = document.getElementById("activity-inspectors-card");
+    if (activityInspectorsCard) activityInspectorsCard.style.display = "none";
+    
+    // Mostrar evolución general para usuarios
+    const evoChartCard = document.getElementById("evo-chart-card");
+    if (evoChartCard) evoChartCard.style.display = "";
+  }
+
+  // Inicializar gráficos si entramos a la pestaña charts
+  if (id === "charts") {
+    if (myRole === "admin") {
+      // Mostrar botones de reset individuales para admins
+      const resetBtns = ["reset-ranking-admins-btn", "reset-evolution-pts-btn", "reset-activity-chart-btn"];
+      resetBtns.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) btn.style.display = "";
+      });
+    }
+    if (typeof renderRankingAdmins === "function") renderRankingAdmins();
+    if (typeof renderEvolutionPts === "function") renderEvolutionPts();
+    if (typeof renderInspectorActivityJow === "function") renderInspectorActivityJow();
+  }
+
+  // Renderizar contenido específico de cada página (siempre renderizar al entrar)
+  if (id === "users" && typeof renderUsers === "function") {
+    renderUsers();
+  }
+  if (id === "points" && typeof renderPoints === "function") {
+    renderPoints();
+  }
+  if (id === "logs" && typeof renderLogs === "function") {
+    renderLogs();
+  }
 };
 
 window.setLogTypeFilter = v => { logTypeFilter = v; renderLogs(); };
