@@ -1609,7 +1609,7 @@ function renderActivityChart() {
               logTime(log) >= b.start && 
               logTime(log) < b.end
             ).length;
-            const userPoints = Number(actor.points || 0);
+            const userPoints = actor ? Number(actor.points || 0) : 0;
             roleActivity.user[bucketIndex] += (loginCount + userPoints) / 2;
           } else if (actorRole === "inspector") {
             // Inspector: puntos que tienen, puntos que suben y ingresos
@@ -2504,15 +2504,66 @@ function renderAll() {
 }
 
 // ── TABLA PUNTOS (con controles para Admins e Inspectores) ───────────────────
-function renderPointsTable() {
+async function renderPointsTable() {
   const tb = document.getElementById("pts-full-body");
   const theadRow = document.getElementById("pts-thead-row");
   const role = currentUser?.role;
   const isStaff = role === "admin" || role === "inspector";
 
+  // Cargar configuración de tabla de puntos
+  let tableConfig = null;
+  try {
+    const snap = await getDoc(doc(db, "settings", "pointsTableConfig"));
+    if (snap.exists()) {
+      tableConfig = snap.data();
+    }
+  } catch(e) {
+    console.error("Error cargando configuración de tabla:", e);
+  }
+
   // La tabla muestra trabajadores con cargo MC Team Y todos los admins
-  const mcTeam = mcWorkers();
-  const admins = allMembers.filter(u => String(u.role || "").toLowerCase() === "admin");
+  let mcTeam = mcWorkers();
+  let admins = allMembers.filter(u => String(u.role || "").toLowerCase() === "admin");
+  
+  // Aplicar filtros de configuración
+  if (tableConfig) {
+    // Filtrar por showUsers (solo estos)
+    if (tableConfig.showUsers && tableConfig.showUsers.length > 0) {
+      mcTeam = mcTeam.filter(u => tableConfig.showUsers.includes(u.uid));
+      admins = admins.filter(u => tableConfig.showUsers.includes(u.uid));
+    }
+    
+    // Filtrar por hideUsers
+    if (tableConfig.hideUsers && tableConfig.hideUsers.length > 0) {
+      mcTeam = mcTeam.filter(u => !tableConfig.hideUsers.includes(u.uid));
+      admins = admins.filter(u => !tableConfig.hideUsers.includes(u.uid));
+    }
+    
+    // Filtrar por roles
+    if (tableConfig.hideRoles && tableConfig.hideRoles.length > 0) {
+      mcTeam = mcTeam.filter(u => !tableConfig.hideRoles.includes(String(u.role || "").toLowerCase()));
+      admins = admins.filter(u => !tableConfig.hideRoles.includes(String(u.role || "").toLowerCase()));
+    }
+    
+    // Filtrar por rangos
+    if (tableConfig.hideRangos && tableConfig.hideRangos.length > 0) {
+      mcTeam = mcTeam.filter(u => !tableConfig.hideRangos.includes(normRango(u.rango)));
+      admins = admins.filter(u => !tableConfig.hideRangos.includes(normRango(u.rango)));
+    }
+    
+    // Filtrar por cargos
+    if (tableConfig.hideCargos && tableConfig.hideCargos.length > 0) {
+      mcTeam = mcTeam.filter(u => !tableConfig.hideCargos.some(c => hasCargo(u, c)));
+      admins = admins.filter(u => !tableConfig.hideCargos.some(c => hasCargo(u, c)));
+    }
+    
+    // Filtrar inactivos
+    if (tableConfig.hideInactive) {
+      mcTeam = mcTeam.filter(u => !isInactiveStatus(u.status));
+      admins = admins.filter(u => !isInactiveStatus(u.status));
+    }
+  }
+  
   const list = [...mcTeam, ...admins].sort((a,b) => (b.points||0)-(a.points||0));
 
   // Actualizar cabecera para mostrar/ocultar columna de acciones (sin rango)

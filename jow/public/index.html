@@ -108,9 +108,9 @@
     <!-- TABS -->
     <nav class="tabs-container" id="tabs-nav">
       <button class="tab active" onclick="switchTab('points-tab',this)">⭐ Puntos</button>
-      <button class="tab" id="graficos-tab-btn" style="display:none" onclick="switchTab('graficos-tab',this)">📊 Gráficos</button>
-      <button class="tab"        onclick="switchTab('staff-tab',this)">👥 Staff</button>
       <button class="tab"        onclick="switchTab('chambeadores-tab',this)">🌟 Chambeadores</button>
+      <button class="tab"        onclick="switchTab('staff-tab',this)">👥 Staff</button>
+      <button class="tab" id="graficos-tab-btn" style="display:none" onclick="switchTab('graficos-tab',this)">📊 Gráficos</button>
       <button class="tab"        onclick="switchTab('guide-tab',this)">📖 Guía</button>
       <button class="tab"        onclick="switchTab('rangos-tab',this)">🏅 Rangos y Cargos</button>
       <button class="tab"        onclick="switchTab('rules-tab',this)">📋 Normas</button>
@@ -124,8 +124,7 @@
       <!-- ── PUNTOS ── -->
       <section id="points-tab" class="tab-content active" style="display:none">
         <h2>Tabla de Puntos</h2>
-        <div class="card" style="padding:0;">
-          <div style="max-height:70vh;overflow-y:auto;">
+        <div style="max-height:70vh;overflow-y:auto;">
           <table>
             <thead>
               <tr id="pts-thead-row"><th>#</th><th>Nombre</th><th>Rango</th><th>Puntos</th><th>Estado</th></tr>
@@ -134,7 +133,6 @@
               <tr><td colspan="5" class="t-empty">Cargando…</td></tr>
             </tbody>
           </table>
-          </div>
         </div>
       </section>
 
@@ -464,17 +462,6 @@
             </p>
           </div>
         </div>
-        <div class="card ascenso-card">
-          <h3>🏆 Ascenso del mejor trabajador del mes</h3>
-          <p>Cada mes se reconoce al mejor trabajador del MC Team según su rendimiento durante el período. Ese trabajador recibe el reconocimiento correspondiente y puede ascender de <b>《💠》 Centinela</b> a <b>《💎》 Admin</b>.</p>
-          <ul>
-            <li><strong>Reconocimiento por rendimiento del mes:</strong> actividad, puntos y compromiso registrados en el período.</li>
-            <li>Solo se consideran trabajadores con el <strong>cargo MC Team</strong>.</li>
-            <li>El ascenso <b>《💠》 Centinela → 《💎》 Admin</b> es un reconocimiento al destacado del mes y <strong>no significa que todos los miembros del MC Team suban de rango automáticamente</strong>.</li>
-            <li>Quienes ya tienen un rango superior (Admin, Owner, Overlord) no son candidatos al ascenso de la misma manera que un Centinela: ellos administran y evalúan.</li>
-            <li>La decisión final del ascenso corresponde a la administración (Owner/Overlord/Admin).</li>
-          </ul>
-        </div>
       </section>
 
       <!-- ── RANGOS Y CARGOS ── -->
@@ -559,6 +546,20 @@
       <section id="chambeadores-tab" class="tab-content" style="display:none">
         <h2>Chambeadores Destacados</h2>
         <p style="color:var(--muted);margin-bottom:16px;">Reconocimiento por rendimiento. Solo se consideran trabajadores con el cargo <b>MC Team</b>.</p>
+        
+        <!-- Tarjeta de Ascenso -->
+        <div class="card ascenso-card" style="margin-bottom: 20px;">
+          <h3>🏆 Ascenso del mejor trabajador de la semana</h3>
+          <p>Cada semana se reconoce al mejor trabajador del MC Team según su rendimiento durante el período. Ese trabajador recibe el reconocimiento correspondiente y puede ascender de <b>《💠》 Centinela</b> a <b>《💎》 Admin</b>.</p>
+          <ul>
+            <li><strong>Reconocimiento por rendimiento de la semana:</strong> actividad, puntos y compromiso registrados en el período.</li>
+            <li>Solo se consideran trabajadores con el <strong>cargo MC Team</strong>.</li>
+            <li>El ascenso <b>《💠》 Centinela → 《💎》 Admin</b> es un reconocimiento al destacado de la semana y <strong>no significa que todos los miembros del MC Team suban de rango automáticamente</strong>.</li>
+            <li>Quienes ya tienen un rango superior (Admin, Owner, Overlord) no son candidatos al ascenso de la misma manera que un Centinela: ellos administran y evalúan.</li>
+            <li>La decisión final del ascenso corresponde a la administración (Owner/Overlord/Admin).</li>
+          </ul>
+        </div>
+        
         <div class="destacado-grid">
           <article class="destacado-card">
             <div class="dc-label">🌟 Chambeador del día</div>
