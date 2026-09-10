@@ -650,16 +650,13 @@ display: block;
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
           <div>
-            <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Día de revelación</label>
-            <select id="chambeador-month-day" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;font-size:14px;">
-              <option value="1">Día 1</option>
-              <option value="7">Día 7</option>
-              <option value="15">Día 15</option>
-            </select>
+            <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Día de revelación (1-31)</label>
+            <input type="number" id="chambeador-month-day" min="1" max="31" value="1" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;text-align:center;font-size:14px;"/>
+            <p style="font-size:11px;color:var(--muted);margin-top:4px;">Día del mes (1-31). El sistema lo ajustará automáticamente según el mes.</p>
           </div>
           <div>
             <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Duración visible (días)</label>
-            <input type="number" id="chambeador-month-days" min="0" max="30" value="7" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;text-align:center;font-size:14px;"/>
+            <input type="number" id="chambeador-month-days" min="0" max="31" value="7" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;text-align:center;font-size:14px;"/>
           </div>
         </div>
       </div>
@@ -1450,53 +1447,52 @@ function parsePeriodConfig(raw, key) {
 async function loadPointsTableConfig() {
   try {
     const snap = await getDoc(doc(db, "settings", "pointsTableConfig"));
-    if (snap.exists()) {
-      const config = snap.data() || {};
-      
-      // Poblar selects de usuarios
-      const hideUsersSelect = document.getElementById("pts-filter-hide-users");
-      const showUsersSelect = document.getElementById("pts-filter-show-users");
-      
-      if (hideUsersSelect && allUsers.length > 0) {
-        const currentHide = hideUsersSelect.value;
-        hideUsersSelect.innerHTML = '<option value="">Ninguno</option>' + 
-          allUsers.map(u => `<option value="${u.uid}">${esc(u.name || "—")}</option>`).join("");
-        config.hideUsers?.forEach(uid => {
-          const opt = hideUsersSelect.querySelector(`option[value="${uid}"]`);
-          if (opt) opt.selected = true;
-        });
-      }
-      
-      if (showUsersSelect && allUsers.length > 0) {
-        const currentShow = showUsersSelect.value;
-        showUsersSelect.innerHTML = '<option value="">Todos</option>' + 
-          allUsers.map(u => `<option value="${u.uid}">${esc(u.name || "—")}</option>`).join("");
-        config.showUsers?.forEach(uid => {
-          const opt = showUsersSelect.querySelector(`option[value="${uid}"]`);
-          if (opt) opt.selected = true;
-        });
-      }
-      
-      // Checkboxes de roles
-      document.getElementById("pts-hide-role-admin").checked = config.hideRoles?.includes("admin") || false;
-      document.getElementById("pts-hide-role-inspector").checked = config.hideRoles?.includes("inspector") || false;
-      document.getElementById("pts-hide-role-user").checked = config.hideRoles?.includes("user") || false;
-      
-      // Checkboxes de rangos
-      document.getElementById("pts-hide-rango-centinela").checked = config.hideRangos?.includes("centinela") || false;
-      document.getElementById("pts-hide-rango-vigia").checked = config.hideRangos?.includes("vigia") || false;
-      
-      // Checkboxes de cargos
-      document.getElementById("pts-hide-cargo-inspector").checked = config.hideCargos?.includes("Inspector") || false;
-      document.getElementById("pts-hide-cargo-moderador").checked = config.hideCargos?.includes("Moderador") || false;
-      document.getElementById("pts-hide-cargo-mc").checked = config.hideCargos?.includes("MC Team") || false;
-      document.getElementById("pts-hide-cargo-dev").checked = config.hideCargos?.includes("Dev") || false;
-      document.getElementById("pts-hide-cargo-editor").checked = config.hideCargos?.includes("Editor") || false;
-      document.getElementById("pts-hide-cargo-marketing").checked = config.hideCargos?.includes("Marketing") || false;
-      
-      // Checkbox de inactivos
-      document.getElementById("pts-hide-inactive").checked = config.hideInactive || false;
+    const config = snap.exists() ? snap.data() : {};
+    
+    // Poblar selects de usuarios
+    const hideUsersSelect = document.getElementById("pts-filter-hide-users");
+    const showUsersSelect = document.getElementById("pts-filter-show-users");
+    
+    // Filtrar solo usuarios con roles válidos
+    const validUsers = allUsers.filter(u => ["admin", "inspector", "user"].includes(String(u.role || "").toLowerCase()));
+    
+    if (hideUsersSelect && validUsers.length > 0) {
+      hideUsersSelect.innerHTML = '<option value="">Ninguno</option>' + 
+        validUsers.map(u => `<option value="${u.uid}">${esc(u.name || "—")} (${u.role || "Usuario"})</option>`).join("");
+      config.hideUsers?.forEach(uid => {
+        const opt = hideUsersSelect.querySelector(`option[value="${uid}"]`);
+        if (opt) opt.selected = true;
+      });
     }
+    
+    if (showUsersSelect && validUsers.length > 0) {
+      showUsersSelect.innerHTML = '<option value="">Todos</option>' + 
+        validUsers.map(u => `<option value="${u.uid}">${esc(u.name || "—")} (${u.role || "Usuario"})</option>`).join("");
+      config.showUsers?.forEach(uid => {
+        const opt = showUsersSelect.querySelector(`option[value="${uid}"]`);
+        if (opt) opt.selected = true;
+      });
+    }
+    
+    // Checkboxes de roles
+    document.getElementById("pts-hide-role-admin").checked = config.hideRoles?.includes("admin") || false;
+    document.getElementById("pts-hide-role-inspector").checked = config.hideRoles?.includes("inspector") || false;
+    document.getElementById("pts-hide-role-user").checked = config.hideRoles?.includes("user") || false;
+    
+    // Checkboxes de rangos
+    document.getElementById("pts-hide-rango-centinela").checked = config.hideRangos?.includes("centinela") || false;
+    document.getElementById("pts-hide-rango-vigia").checked = config.hideRangos?.includes("vigia") || false;
+    
+    // Checkboxes de cargos
+    document.getElementById("pts-hide-cargo-inspector").checked = config.hideCargos?.includes("Inspector") || false;
+    document.getElementById("pts-hide-cargo-moderador").checked = config.hideCargos?.includes("Moderador") || false;
+    document.getElementById("pts-hide-cargo-mc").checked = config.hideCargos?.includes("MC Team") || false;
+    document.getElementById("pts-hide-cargo-dev").checked = config.hideCargos?.includes("Dev") || false;
+    document.getElementById("pts-hide-cargo-editor").checked = config.hideCargos?.includes("Editor") || false;
+    document.getElementById("pts-hide-cargo-marketing").checked = config.hideCargos?.includes("Marketing") || false;
+    
+    // Checkbox de inactivos
+    document.getElementById("pts-hide-inactive").checked = config.hideInactive || false;
   } catch(e) {
     console.error("Error cargando configuración de tabla de puntos:", e);
   }
@@ -1511,9 +1507,14 @@ async function loadChambeadorConfig() {
       const elT = document.getElementById(def.inTime);
       const elH = document.getElementById(def.inHours);
       const elM = document.getElementById(def.inMinutes);
+      const elD = document.getElementById(def.inDay);
+      const elDays = document.getElementById(def.inDays);
+      
       if (elT) elT.value = cfg.revealTime;
       if (elH) elH.value = cfg.visibleHours;
       if (elM) elM.value = cfg.visibleMinutes;
+      if (elD) elD.value = cfg.revealDay || 1;
+      if (elDays) elDays.value = Math.floor(cfg.visibleHours / 24);
     }
   } catch(e) {
     console.error("Error cargando configuración de chambeadores:", e);
@@ -1548,8 +1549,11 @@ window.saveChambeadorConfig = async () => {
         // Para semana y mes, agregar el día de revelación
         const revealDay = parseInt(document.getElementById(def.inDay)?.value, 10);
         if (Number.isFinite(revealDay)) {
-          config[def.key].revealDay = revealDay;
+          config[def.key] = { revealTime, visibleHours: hours, visibleMinutes: minutes, revealDay };
+        } else {
+          config[def.key] = { revealTime, visibleHours: hours, visibleMinutes: minutes, revealDay: 1 };
         }
+        continue;
       }
       
       if (hours === 0 && minutes === 0) {
@@ -1865,6 +1869,11 @@ window.goPage = id => {
     // Mostrar evolución general para usuarios
     const evoChartCard = document.getElementById("evo-chart-card");
     if (evoChartCard) evoChartCard.style.display = "";
+  }
+
+  // Cargar configuración de puntos si entramos a la pestaña config
+  if (id === "config") {
+    if (typeof loadPointsTableConfig === "function") loadPointsTableConfig();
   }
 
   // Inicializar gráficos si entramos a la pestaña charts
