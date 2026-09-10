@@ -583,224 +583,236 @@ display: block;
 <div class="page" id="page-config">
 <div class="ph"><div class="ph-left"><h2>⚙️ Configuración</h2><p>Ajustes generales del sistema</p></div></div>
 
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:20px;margin-bottom:20px;">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:24px;">
+  
   <!-- Chambeadores Destacados -->
   <div class="card">
-    <h3>🌟 Chambeadores Destacados</h3>
-    <p style="color:var(--muted);font-size:12px;margin-bottom:16px;">Configuración de revelación y duración visible.</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h3 style="margin:0;">🌟 Chambeadores Destacados</h3>
+      <span style="font-size:11px;color:var(--muted);background:rgba(255,255,255,0.05);padding:4px 8px;border-radius:4px;">Automático</span>
+    </div>
     
-    <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border);">
-      <h4 style="margin:0 0 12px 0;font-size:14px;">🌟 Chambeador del día</h4>
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        <div>
-          <label style="display:block;margin-bottom:4px;font-size:12px;">Hora de revelación</label>
-          <input type="time" id="chambeador-day-reveal" value="12:00" style="width:140px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;"/>
+    <div style="display:flex;flex-direction:column;gap:20px;">
+      <!-- Chambeador del día -->
+      <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <span style="font-size:16px;">🌟</span>
+          <h4 style="margin:0;font-size:14px;">Chambeador del día</h4>
         </div>
-        <div>
-          <label style="display:block;margin-bottom:4px;font-size:12px;">Duración visible</label>
-          <div style="display:flex;gap:12px;align-items:center;">
-            <div style="display:flex;flex-direction:column;gap:4px;">
-              <label style="font-size:11px;color:var(--muted);">Horas</label>
-              <input type="number" id="chambeador-day-hours" min="0" max="72" value="2" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
+          <div>
+            <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Hora de revelación</label>
+            <input type="time" id="chambeador-day-reveal" value="12:00" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;font-size:14px;"/>
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Duración visible</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="number" id="chambeador-day-hours" min="0" max="72" value="2" placeholder="Horas" style="flex:1;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;text-align:center;font-size:14px;"/>
+              <span style="color:var(--muted);font-size:14px;">h</span>
+              <input type="number" id="chambeador-day-minutes" min="0" max="59" value="0" placeholder="Min" style="flex:1;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;text-align:center;font-size:14px;"/>
+              <span style="color:var(--muted);font-size:14px;">m</span>
             </div>
-            <span style="font-size:22px;font-weight:bold;color:var(--muted);">:</span>
-            <div style="display:flex;flex-direction:column;gap:4px;">
-              <label style="font-size:11px;color:var(--muted);">Minutos</label>
-              <input type="number" id="chambeador-day-minutes" min="0" max="59" value="0" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Chambeador de la semana -->
+      <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <span style="font-size:16px;">📅</span>
+          <h4 style="margin:0;font-size:14px;">Chambeador de la semana</h4>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
+          <div>
+            <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Día de revelación</label>
+            <select id="chambeador-week-day" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;font-size:14px;">
+              <option value="1">Lunes</option>
+              <option value="2">Martes</option>
+              <option value="3">Miércoles</option>
+              <option value="4">Jueves</option>
+              <option value="5">Viernes</option>
+              <option value="6">Sábado</option>
+              <option value="0">Domingo</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Duración visible (días)</label>
+            <input type="number" id="chambeador-week-days" min="0" max="7" value="3" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;text-align:center;font-size:14px;"/>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Chambeador del mes -->
+      <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <span style="font-size:16px;">🗓</span>
+          <h4 style="margin:0;font-size:14px;">Chambeador del mes</h4>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
+          <div>
+            <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Día de revelación</label>
+            <select id="chambeador-month-day" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;font-size:14px;">
+              <option value="1">Día 1</option>
+              <option value="7">Día 7</option>
+              <option value="15">Día 15</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Duración visible (días)</label>
+            <input type="number" id="chambeador-month-days" min="0" max="30" value="7" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;text-align:center;font-size:14px;"/>
           </div>
         </div>
       </div>
     </div>
     
-    <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border);">
-      <h4 style="margin:0 0 12px 0;font-size:14px;">📅 Chambeador de la semana</h4>
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        <div>
-          <label style="display:block;margin-bottom:4px;font-size:12px;">Día de revelación</label>
-          <select id="chambeador-week-day" style="width:140px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;">
-            <option value="1">Lunes</option>
-            <option value="2">Martes</option>
-            <option value="3">Miércoles</option>
-            <option value="4">Jueves</option>
-            <option value="5">Viernes</option>
-            <option value="6">Sábado</option>
-            <option value="0">Domingo</option>
-          </select>
-        </div>
-        <div>
-          <label style="display:block;margin-bottom:4px;font-size:12px;">Duración visible (días)</label>
-          <input type="number" id="chambeador-week-days" min="0" max="7" value="3" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-        </div>
-      </div>
-    </div>
-    
-    <div>
-      <h4 style="margin:0 0 12px 0;font-size:14px;">🗓 Chambeador del mes</h4>
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        <div>
-          <label style="display:block;margin-bottom:4px;font-size:12px;">Día de revelación</label>
-          <select id="chambeador-month-day" style="width:140px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;">
-            <option value="1">Día 1</option>
-            <option value="7">Día 7</option>
-            <option value="15">Día 15</option>
-          </select>
-        </div>
-        <div>
-          <label style="display:block;margin-bottom:4px;font-size:12px;">Duración visible (días)</label>
-          <input type="number" id="chambeador-month-days" min="0" max="30" value="7" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-        </div>
-      </div>
-    </div>
-    
-    <button class="btn btn-primary btn-auto" onclick="saveChambeadorConfig()" style="margin-top:16px;">💾 Guardar Configuración Chambeadores</button>
+    <button class="btn btn-primary btn-auto" onclick="saveChambeadorConfig()" style="margin-top:20px;">💾 Guardar Configuración Chambeadores</button>
   </div>
   
   <!-- Configuración de Puntos -->
   <div class="card">
-    <h3>⭐ Configuración de Puntos</h3>
-    <p style="color:var(--muted);font-size:12px;margin-bottom:16px;">Ajustá el tiempo para el decremento automático de puntos</p>
-    <table style="width:100%;border-collapse:collapse;">
-      <tr>
-        <td style="padding:12px;border-bottom:1px solid var(--border);">
-          <label style="display:block;margin-bottom:4px;">Tiempo para restar 1 punto (total)</label>
-          <div style="display:flex;gap:12px;align-items:center;">
-            <div style="display:flex;flex-direction:column;gap:4px;">
-              <label style="font-size:12px;color:var(--muted);">Horas</label>
-              <input type="number" id="config-hours" min="0" placeholder="0" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-            </div>
-            <span style="font-size:24px;font-weight:bold;color:var(--muted);">:</span>
-            <div style="display:flex;flex-direction:column;gap:4px;">
-              <label style="font-size:12px;color:var(--muted);">Minutos</label>
-              <input type="number" id="config-minutes" min="0" max="59" placeholder="0" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-            </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h3 style="margin:0;">⭐ Configuración de Puntos</h3>
+      <span style="font-size:11px;color:var(--muted);background:rgba(255,255,255,0.05);padding:4px 8px;border-radius:4px;">Decremento automático</span>
+    </div>
+    
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+        <label style="display:block;margin-bottom:12px;font-size:14px;">Tiempo para restar 1 punto</label>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div style="flex:1;">
+            <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Horas</label>
+            <input type="number" id="config-hours" min="0" placeholder="0" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;text-align:center;font-size:14px;"/>
           </div>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:12px;border-bottom:1px solid var(--border);">
-          <label style="display:block;margin-bottom:4px;">Máximo de puntos</label>
-          <input type="number" id="config-max" min="1" max="99" step="1" value="7" style="width:120px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-          <p class="field-hint" style="margin-top:4px;">Ningún trabajador podrá superar este valor (por defecto: 7).</p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:12px;border-bottom:1px solid var(--border);">
-          <label style="display:block;margin-bottom:4px;">Decimales</label>
-          <select id="config-decimals" style="width:auto;max-width:220px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;">
-            <option value="0">0 decimales (ej: 5)</option>
-            <option value="1" selected>1 decimal (ej: 1.5)</option>
-            <option value="2">2 decimales (ej: 1.35)</option>
-          </select>
-          <p class="field-hint" style="margin-top:4px;">Precisión usada al mostrar y guardar los puntos.</p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:12px;">
-          <label style="display:block;margin-bottom:4px;">Resumen</label>
-          <div style="padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
-            <p id="config-summary">Cada <strong>0h 0m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>0h 0m</strong>) · Máximo: <strong>7</strong> pts · Decimales: <strong>1</strong></p>
+          <span style="font-size:24px;font-weight:bold;color:var(--muted);margin-top:18px;">:</span>
+          <div style="flex:1;">
+            <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Minutos</label>
+            <input type="number" id="config-minutes" min="0" max="59" placeholder="0" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;text-align:center;font-size:14px;"/>
           </div>
-        </td>
-      </tr>
-    </table>
-    <button class="btn btn-primary" id="config-save" onclick="saveConfig()" style="width:100%;margin-top:16px;">💾 Guardar Configuración</button>
+        </div>
+      </div>
+      
+      <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+        <label style="display:block;margin-bottom:12px;font-size:14px;">Máximo de puntos</label>
+        <input type="number" id="config-max" min="1" max="99" step="1" value="7" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;text-align:center;font-size:14px;"/>
+        <p style="font-size:12px;color:var(--muted);margin-top:8px;">Ningún trabajador podrá superar este valor (por defecto: 7)</p>
+      </div>
+      
+      <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+        <label style="display:block;margin-bottom:12px;font-size:14px;">Decimales</label>
+        <select id="config-decimals" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;font-size:14px;">
+          <option value="0">0 decimales (ej: 5)</option>
+          <option value="1" selected>1 decimal (ej: 1.5)</option>
+          <option value="2">2 decimales (ej: 1.35)</option>
+        </select>
+        <p style="font-size:12px;color:var(--muted);margin-top:8px;">Precisión usada al mostrar y guardar los puntos</p>
+      </div>
+      
+      <div style="padding:16px;background:rgba(141,153,255,0.05);border-radius:12px;border:1px solid rgba(141,153,255,0.2);">
+        <label style="display:block;margin-bottom:12px;font-size:14px;color:#8d99ff;">Resumen de configuración</label>
+        <p id="config-summary" style="font-size:13px;color:#e9eeff;line-height:1.6;">Cada <strong>0h 0m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>0h 0m</strong>) · Máximo: <strong>7</strong> pts · Decimales: <strong>1</strong></p>
+      </div>
+    </div>
+    
+    <button class="btn btn-primary" id="config-save" onclick="saveConfig()" style="width:100%;margin-top:20px;">💾 Guardar Configuración</button>
   </div>
 </div>
 
 <!-- Configuración de Tabla de Puntos -->
-<div class="card" style="margin-top:20px;">
-  <h3>📋 Configuración de Tabla de Puntos</h3>
-  <p style="color:var(--muted);font-size:12px;margin-bottom:16px;">Controla qué aparece en la Tabla de Puntos del Panel de Puntos.</p>
+<div class="card" style="margin-top:24px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <h3 style="margin:0;">📋 Configuración de Tabla de Puntos</h3>
+    <span style="font-size:11px;color:var(--muted);background:rgba(255,255,255,0.05);padding:4px 8px;border-radius:4px;">Panel de Puntos</span>
+  </div>
+  <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">Controla qué aparece en la Tabla de Puntos del Panel de Puntos.</p>
   
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;">
-    <div>
-      <label style="display:block;margin-bottom:8px;font-weight:600;">Usuarios a ocultar</label>
-      <select id="pts-filter-hide-users" multiple style="width:100%;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;height:120px;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+    <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+      <label style="display:block;margin-bottom:10px;font-weight:600;font-size:14px;">Usuarios a ocultar</label>
+      <select id="pts-filter-hide-users" multiple style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;height:100px;font-size:13px;">
         <option value="">Ninguno</option>
       </select>
-      <p style="font-size:11px;color:var(--muted);margin-top:4px;">Selecciona usuarios para ocultar (Ctrl+clic para múltiples)</p>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px;">Ctrl+clic para múltiples</p>
     </div>
     
-    <div>
-      <label style="display:block;margin-bottom:8px;font-weight:600;">Usuarios a mostrar (solo estos)</label>
-      <select id="pts-filter-show-users" multiple style="width:100%;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;height:120px;">
+    <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+      <label style="display:block;margin-bottom:10px;font-weight:600;font-size:14px;">Usuarios a mostrar (solo estos)</label>
+      <select id="pts-filter-show-users" multiple style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;height:100px;font-size:13px;">
         <option value="">Todos</option>
       </select>
-      <p style="font-size:11px;color:var(--muted);margin-top:4px;">Si seleccionas, solo se mostrarán estos usuarios</p>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px;">Si seleccionas, solo estos</p>
     </div>
     
-    <div>
-      <label style="display:block;margin-bottom:8px;font-weight:600;">Roles a ocultar</label>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <label style="display:flex;align-items:center;gap:4px;">
+    <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+      <label style="display:block;margin-bottom:10px;font-weight:600;font-size:14px;">Roles a ocultar</label>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="pts-hide-role-admin" style="cursor:pointer;">
-          <span>Admin</span>
+          <span style="font-size:13px;">Admin</span>
         </label>
-        <label style="display:flex;align-items:center;gap:4px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="pts-hide-role-inspector" style="cursor:pointer;">
-          <span>Inspector</span>
+          <span style="font-size:13px;">Inspector</span>
         </label>
-        <label style="display:flex;align-items:center;gap:4px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="pts-hide-role-user" style="cursor:pointer;">
-          <span>Usuario</span>
+          <span style="font-size:13px;">Usuario</span>
         </label>
       </div>
     </div>
     
-    <div>
-      <label style="display:block;margin-bottom:8px;font-weight:600;">Rangos a ocultar</label>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <label style="display:flex;align-items:center;gap:4px;">
+    <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+      <label style="display:block;margin-bottom:10px;font-weight:600;font-size:14px;">Rangos a ocultar</label>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="pts-hide-rango-centinela" style="cursor:pointer;">
-          <span>Centinela</span>
+          <span style="font-size:13px;">Centinela</span>
         </label>
-        <label style="display:flex;align-items:center;gap:4px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="pts-hide-rango-vigia" style="cursor:pointer;">
-          <span>Vigia</span>
+          <span style="font-size:13px;">Vigia</span>
         </label>
       </div>
     </div>
     
-    <div>
-      <label style="display:block;margin-bottom:8px;font-weight:600;">Cargos a ocultar</label>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <label style="display:flex;align-items:center;gap:4px;">
+    <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+      <label style="display:block;margin-bottom:10px;font-weight:600;font-size:14px;">Cargos a ocultar</label>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="pts-hide-cargo-inspector" style="cursor:pointer;">
-          <span>Inspector</span>
+          <span style="font-size:13px;">Inspector</span>
         </label>
-        <label style="display:flex;align-items:center;gap:4px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="pts-hide-cargo-moderador" style="cursor:pointer;">
-          <span>Moderador</span>
+          <span style="font-size:13px;">Moderador</span>
         </label>
-        <label style="display:flex;align-items:center;gap:4px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="pts-hide-cargo-mc" style="cursor:pointer;">
-          <span>MC Team</span>
+          <span style="font-size:13px;">MC Team</span>
         </label>
-        <label style="display:flex;align-items:center;gap:4px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="pts-hide-cargo-dev" style="cursor:pointer;">
-          <span>Dev</span>
+          <span style="font-size:13px;">Dev</span>
         </label>
-        <label style="display:flex;align-items:center;gap:4px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="pts-hide-cargo-editor" style="cursor:pointer;">
-          <span>Editor</span>
+          <span style="font-size:13px;">Editor</span>
         </label>
-        <label style="display:flex;align-items:center;gap:4px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="pts-hide-cargo-marketing" style="cursor:pointer;">
-          <span>Marketing</span>
+          <span style="font-size:13px;">Marketing</span>
         </label>
       </div>
     </div>
     
-    <div>
-      <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
+    <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;cursor:pointer;">
         <input type="checkbox" id="pts-hide-inactive" style="cursor:pointer;">
         <span>Ocultar usuarios inactivos</span>
       </label>
     </div>
   </div>
   
-  <button class="btn btn-primary btn-auto" onclick="savePointsTableConfig()" style="margin-top:16px;">💾 Guardar Configuración de Tabla</button>
+  <button class="btn btn-primary btn-auto" onclick="savePointsTableConfig()" style="margin-top:20px;">💾 Guardar Configuración de Tabla</button>
 </div>
 
 
