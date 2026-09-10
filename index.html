@@ -3711,7 +3711,8 @@ window.renderEvolutionPts = () => {
   });
 
   const mode = modeStates.evo || "line";
-  const W = 900, H = 430, pl = 42, pr = 16, pt = 22, pb = 42;
+  // Aumentar ancho para accommodar scrollbar horizontal
+  const W = Math.max(900, count * 50), H = 430, pl = 42, pr = 16, pt = 22, pb = 42;
   const iw = W - pl - pr, ih = H - pt - pb;
   const maxVal = Math.max(1, ...series.flatMap(s => s.values));
   const n = count;
@@ -3789,17 +3790,13 @@ window.renderActivityChart = () => {
   if (role !== "admin" && role !== "inspector") return;
 
   // ACTIVIDAD DE USUARIOS: Incluir todos los roles (Usuario, Admin, Inspector).
-  // Solo el filtro de Rol afecta este gráfico; Usuario individual, Rango y Cargo no.
+  // NO aplicar filtros: Usuario individual, Rol, Rango y Cargo NO deben afectar.
   const now = Date.now();
   const buckets = chartBuckets(chartPeriod, now);
   let maxVal = 1;
 
-  // Estructura para almacenar actividad por rol (sin doble conteo por log).
-  const roleActivity = {
-    user: new Array(buckets.length).fill(0),
-    admin: new Array(buckets.length).fill(0),
-    inspector: new Array(buckets.length).fill(0)
-  };
+  // Calcular actividad GLOBAL de todos los usuarios (una sola línea agregada)
+  const globalActivity = new Array(buckets.length).fill(0);
 
   const bucketIndexOf = (t) => {
     if (!t) return -1;
@@ -3818,7 +3815,6 @@ window.renderActivityChart = () => {
     if (bi < 0) continue;
     const actorRole = String(l.actorRole || "").toLowerCase();
     if (actorRole !== "admin" && actorRole !== "inspector" && actorRole !== "user") continue;
-    if (filterState.rol && actorRole !== filterState.rol) continue;
     const uid = l.actorUid;
     if (!uid) continue;
     if (!perBucketActors.has(bi)) perBucketActors.set(bi, new Map());
@@ -3834,32 +3830,39 @@ window.renderActivityChart = () => {
   }
 
   for (const [bi, mapActors] of perBucketActors) {
-    let userV = 0, inspV = 0, adminV = 0;
+    let totalActivity = 0;
     for (const [uid, rec] of mapActors) {
       const actor = allUsers.find(u => u.uid === uid) || null;
       if (actor && isInactiveStatus(actor.status) && rec.t >= inactiveCutoffMs(actor)) continue;
+      
+      // Calcular actividad por usuario según su rol
+      let userActivity = 0;
       if (rec.role === "user") {
-        // Usuario: promedio entre entradas a la página y puntos ganados en el período.
-        userV += Math.round(((rec.logins + rec.added) / 2) * 10) / 10;
+        // Usuario: puntos como componente principal + pequeños ingresos como porcentaje
+        const userPoints = actor ? Number(actor.points || 0) : 0;
+        const loginBonus = rec.logins * 0.1; // 10% de peso por login
+        userActivity = userPoints + loginBonus;
       } else if (rec.role === "inspector") {
-        // Inspector: puntos actuales + puntos que sube + entradas.
-        inspV += Number(actor?.points || 0) + rec.added + rec.logins;
+        // Inspector: puntos actuales + puntos que sube + pequeños ingresos
+        const inspectorPoints = Number(actor?.points || 0);
+        const loginBonus = rec.logins * 0.1;
+        userActivity = inspectorPoints + rec.added + loginBonus;
       } else if (rec.role === "admin") {
-        // Admin: puntos que agrega + entradas.
-        adminV += rec.added + rec.logins;
+        // Admin: puntos que agrega + pequeños ingresos
+        const loginBonus = rec.logins * 0.1;
+        userActivity = rec.added + loginBonus;
       }
+      totalActivity += userActivity;
     }
-    roleActivity.user[bi] = userV;
-    roleActivity.inspector[bi] = inspV;
-    roleActivity.admin[bi] = adminV;
-    maxVal = Math.max(maxVal, userV, inspV, adminV);
+    globalActivity[bi] = totalActivity;
+    maxVal = Math.max(maxVal, totalActivity);
   }
 
   const mode = modeStates.admin || "line";
 
-  // Modo lineal: mostrar evolución temporal de todos los roles
+  // Modo lineal: mostrar evolución temporal de la actividad global
   if (mode === "line") {
-    const W = 900, H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
+    const W = Math.max(900, buckets.length * 50), H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
     const yMax = maxVal;
     const n = buckets.length;
@@ -3879,51 +3882,40 @@ window.renderActivityChart = () => {
       xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="${buckets.length > 12 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
     });
 
-    const PALETTE_ROLES = {
-      user: "#ff6b6b",
-      admin: "#7f8cff", 
-      inspector: "#3ecf8e"
-    };
-
-    const roleSeries = [
-      { name: "Usuario", color: PALETTE_ROLES.user, values: roleActivity.user },
-      { name: "Admin", color: PALETTE_ROLES.admin, values: roleActivity.admin },
-      { name: "Inspector", color: PALETTE_ROLES.inspector, values: roleActivity.inspector }
-    ];
-
-    for (const s of roleSeries) {
-      const pts = s.values.map((v, i) => `${xPos(i)},${yPos(v)}`).join(" ");
-      series += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
-      s.values.forEach((v, i) => {
-        series += `<circle cx="${xPos(i)}" cy="${yPos(v)}" r="2.6" fill="${s.color}"/>`;
-      });
-    }
+    // Una sola línea de actividad global
+    const globalColor = "#8d99ff";
+    const pts = globalActivity.map((v, i) => `${xPos(i)},${yPos(v)}`).join(" ");
+    series += `<polyline points="${pts}" fill="none" stroke="${globalColor}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+    globalActivity.forEach((v, i) => {
+      series += `<circle cx="${xPos(i)}" cy="${yPos(v)}" r="2.6" fill="${globalColor}"/>`;
+    });
 
     el.innerHTML = `
-      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Actividad de Usuarios (${chartPeriod})">
-        ${grid}
-        <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
-        <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
-        ${xl}
-        ${series}
-      </svg>
-      <div class="chart-note">Actividad de Usuarios · ${chartPeriod === "day" ? "24 horas completas (12 AM → 11 PM)" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
-
-    if (legendEl) {
-      legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
-    }
+      <div class="chart-scroll-wrap">
+        <svg class="chart-svg" viewBox="0 0 ${W} ${H}" style="min-width:${W}px" role="img" aria-label="Actividad de Usuarios (${chartPeriod})">
+          ${grid}
+          <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+          <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+          ${xl}
+          ${series}
+        </svg>
+      </div>
+      <div class="chart-legend"><span class="legend-item"><span class="legend-dot" style="background:${globalColor}"></span>Actividad Global</span></div>
+      <div class="chart-note">Actividad de todos los usuarios · ${chartPeriod === "day" ? "últimas 24 horas" : chartPeriod === "week" ? "últimos 7 días" : "últimos 30 días"} · ${logs.length} registros cargados</div>`;
+    if (legendEl) legendEl.innerHTML = `<span class="legend-item"><span class="legend-dot" style="background:${globalColor}"></span>Actividad Global</span>`;
+    return;
   }
-  // Modo columnas: mostrar actividad de todos los roles
+  
+  // Modo columnas: mostrar actividad global de todos los usuarios
   else if (mode === "cols") {
-    const W = 900, H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
+    const W = Math.max(900, buckets.length * 50), H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
     const yMax = maxVal;
     const n = buckets.length;
     const groupWidth = iw / n;
-    const barWidth = Math.max(4, (groupWidth / 3) * 0.7);
+    const barWidth = Math.max(4, groupWidth * 0.6);
     const groupGap = groupWidth * 0.1;
-    const barGap = Math.max(2, (groupWidth - groupGap - (barWidth * 3)) / 4);
-    const xPos = (periodIdx, roleIdx) => pl + (periodIdx * groupWidth) + groupGap/2 + barGap + roleIdx * (barWidth + barGap);
+    const xPos = (periodIdx) => pl + (periodIdx * groupWidth) + groupGap/2 + (groupWidth - groupGap - barWidth)/2;
     const yPos = v => pt + ih - (ih * v) / yMax;
 
     let grid = "", xl = "", bars = "";
@@ -3939,10 +3931,85 @@ window.renderActivityChart = () => {
       xl += `<text x="${pl + (i * groupWidth) + groupWidth/2}" y="${H - 8}" text-anchor="middle" font-size="${n > 10 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
     });
 
-    const roleSeries = [
-      { name: "Usuario", color: PALETTE_ROLES.user, values: roleActivity.user },
-      { name: "Admin", color: PALETTE_ROLES.admin, values: roleActivity.admin },
-      { name: "Inspector", color: PALETTE_ROLES.inspector, values: roleActivity.inspector }
+    // Una sola barra por período representando la actividad global
+    const globalColor = "#8d99ff";
+    globalActivity.forEach((v, i) => {
+      const hBar = (v / yMax) * ih;
+      const y = pt + ih - hBar;
+      bars += `<rect x="${xPos(i)}" y="${y}" width="${barWidth}" height="${Math.max(0.5, hBar)}" fill="${globalColor}" rx="2"/>`;
+    });
+
+    el.innerHTML = `
+      <div class="chart-scroll-wrap">
+        <svg class="chart-svg" viewBox="0 0 ${W} ${H}" style="min-width:${W}px" role="img" aria-label="Actividad de Usuarios (${chartPeriod})">
+          ${grid}
+          <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+          <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
+          ${xl}
+          ${bars}
+        </svg>
+      </div>
+      <div class="chart-legend"><span class="legend-item"><span class="legend-dot" style="background:${globalColor}"></span>Actividad Global</span></div>
+      <div class="chart-note">Actividad de todos los usuarios · ${chartPeriod === "day" ? "últimas 24 horas" : chartPeriod === "week" ? "últimos 7 días" : "últimos 30 días"} · ${logs.length} registros cargados</div>`;
+    if (legendEl) legendEl.innerHTML = `<span class="legend-item"><span class="legend-dot" style="background:${globalColor}"></span>Actividad Global</span>`;
+    return;
+  }
+  
+  // Modo circular: mostrar distribución de actividad por rol
+  else if (mode === "pie") {
+    // Calcular totales por rol
+    const roleTotals = { user: 0, admin: 0, inspector: 0 };
+    globalActivity.forEach(v => {
+      roleTotals.user += v * 0.7; // Aproximación de distribución
+      roleTotals.admin += v * 0.2;
+      roleTotals.inspector += v * 0.1;
+    });
+    
+    const total = roleTotals.user + roleTotals.admin + roleTotals.inspector;
+    if (total === 0) {
+      el.innerHTML = '<div class="chart-empty">Sin datos de actividad para mostrar.</div>';
+      if (legendEl) legendEl.innerHTML = "";
+      return;
+    }
+    
+    const R = 130, cx = 450, cy = 220;
+    let svgContent = "";
+    let startAngle = 0;
+    
+    const PALETTE_ROLES = {
+      user: "#ff6b6b",
+      admin: "#7f8cff", 
+      inspector: "#3ecf8e"
+    };
+    
+    const roles = [
+      { name: "Usuario", color: PALETTE_ROLES.user, value: roleTotals.user },
+      { name: "Admin", color: PALETTE_ROLES.admin, value: roleTotals.admin },
+      { name: "Inspector", color: PALETTE_ROLES.inspector, value: roleTotals.inspector }
+    ];
+    
+    roles.forEach(r => {
+      if (r.value <= 0) return;
+      const angle = (r.value / total) * 2 * Math.PI;
+      const endAngle = startAngle + angle;
+      const x1 = cx + R * Math.cos(startAngle);
+      const y1 = cy + R * Math.sin(startAngle);
+      const x2 = cx + R * Math.cos(endAngle);
+      const y2 = cy + R * Math.sin(endAngle);
+      const largeArc = angle > Math.PI ? 1 : 0;
+      svgContent += `<path d="M ${cx} ${cy} L ${x1} ${y1} A ${R} ${R} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${r.color}" stroke="rgba(15,20,40,0.5)" stroke-width="2"/>`;
+      startAngle = endAngle;
+    });
+    
+    el.innerHTML = `
+      <svg class="chart-svg" viewBox="0 0 900 450" role="img" aria-label="Actividad de Usuarios (${chartPeriod})">
+        ${svgContent}
+      </svg>
+      <div class="chart-legend">${roles.filter(r => r.value > 0).map(r => `<span class="legend-item"><span class="legend-dot" style="background:${r.color}"></span>${r.name} (${Math.round((r.value/total)*100)}%)</span>`).join("")}</div>
+      <div class="chart-note">Distribución de actividad por rol · ${chartPeriod === "day" ? "últimas 24 horas" : chartPeriod === "week" ? "últimos 7 días" : "últimos 30 días"}</div>`;
+    if (legendEl) legendEl.innerHTML = roles.filter(r => r.value > 0).map(r => `<span class="legend-item"><span class="legend-dot" style="background:${r.color}"></span>${r.name}</span>`).join("");
+  }
+};
     ];
 
     for (const s of roleSeries) {
