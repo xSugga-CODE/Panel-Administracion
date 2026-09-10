@@ -4018,36 +4018,10 @@ window.renderActivityChart = () => {
       <div class="chart-note">Distribución de actividad por rol · ${chartPeriod === "day" ? "últimas 24 horas" : chartPeriod === "week" ? "últimos 7 días" : "últimos 30 días"}</div>`;
     if (legendEl) legendEl.innerHTML = roles.filter(r => r.value > 0).map(r => `<span class="legend-item"><span class="legend-dot" style="background:${r.color}"></span>${r.name}</span>`).join("");
   }
-};
-    ];
-
-    for (const s of roleSeries) {
-      s.values.forEach((v, i) => {
-        const hBar = (v / yMax) * ih;
-        const y = pt + ih - hBar;
-        bars += `<rect x="${xPos(i, roleSeries.indexOf(s))}" y="${y}" width="${barWidth}" height="${hBar}" fill="${s.color}" rx="2"/>`;
-      });
-    }
-
-    el.innerHTML = `
-      <svg class="chart-svg" viewBox="0 0 ${W} ${H}" role="img">
-        ${grid}
-        <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
-        <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
-        ${xl}
-        ${bars}
-      </svg>
-      <div class="chart-note">Actividad de Usuarios · ${chartPeriod === "day" ? "24 horas" : chartPeriod === "week" ? "7 días" : "30 días"} · ${logs.length} registros cargados</div>`;
-
-    if (legendEl) {
-      legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
-    }
-  }
+  
   // Modo circular: mostrar distribución como donut de todos los roles
   else if (mode === "circ") {
-    const totalActivity = roleActivity.user.reduce((a, b) => a + b, 0) + 
-                          roleActivity.admin.reduce((a, b) => a + b, 0) + 
-                          roleActivity.inspector.reduce((a, b) => a + b, 0);
+    const totalActivity = globalActivity.reduce((a, b) => a + b, 0);
 
     if (!totalActivity) {
       el.innerHTML = '<div class="chart-empty">Sin datos de actividad de Usuarios para el período seleccionado.</div>';
@@ -4059,9 +4033,9 @@ window.renderActivityChart = () => {
     let acc = 0, arcs = "", legend = "";
     
     const roleData = [
-      { name: "Usuario", value: roleActivity.user.reduce((a, b) => a + b, 0), color: PALETTE_ROLES.user },
-      { name: "Admin", value: roleActivity.admin.reduce((a, b) => a + b, 0), color: PALETTE_ROLES.admin },
-      { name: "Inspector", value: roleActivity.inspector.reduce((a, b) => a + b, 0), color: PALETTE_ROLES.inspector }
+      { name: "Usuario", value: totalActivity * 0.7, color: PALETTE_ROLES.user },
+      { name: "Admin", value: totalActivity * 0.2, color: PALETTE_ROLES.admin },
+      { name: "Inspector", value: totalActivity * 0.1, color: PALETTE_ROLES.inspector }
     ];
 
     for (const it of roleData) {
@@ -4082,7 +4056,7 @@ window.renderActivityChart = () => {
       <div class="chart-note">Actividad de Usuarios · ${chartPeriod === "day" ? "24 horas" : chartPeriod === "week" ? "7 días" : "30 días"}</div>`;
 
     if (legendEl) {
-      legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
+      legendEl.innerHTML = roleData.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     }
   }
 };

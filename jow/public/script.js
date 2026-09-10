@@ -1787,7 +1787,6 @@ function renderActivityChart() {
     if (legendEl) legendEl.innerHTML = roles.filter(r => r.value > 0).map(r => `<span class="legend-item"><span class="legend-dot" style="background:${r.color}"></span>${r.name}</span>`).join("");
   }
 }
-}
 
 function countByActor(list, filterFn) {
   const mp = new Map();
