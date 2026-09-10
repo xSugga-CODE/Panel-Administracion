@@ -1787,46 +1787,6 @@ function renderActivityChart() {
     if (legendEl) legendEl.innerHTML = roles.filter(r => r.value > 0).map(r => `<span class="legend-item"><span class="legend-dot" style="background:${r.color}"></span>${r.name}</span>`).join("");
   }
 }
-  // Distribución de la actividad de los usuarios dentro del período, por rol.
-  const totalActivity = roleActivity.user.reduce((a, b) => a + b, 0) + 
-                        roleActivity.admin.reduce((a, b) => a + b, 0) + 
-                        roleActivity.inspector.reduce((a, b) => a + b, 0);
-
-  if (!totalActivity) {
-    el.innerHTML = '<div class="chart-empty">Sin datos de actividad de Usuarios para el período seleccionado.</div>';
-    if (legendEl) legendEl.innerHTML = "";
-    return;
-  }
-
-  const cx = 90, cy = 90, R = 62, C = 2 * Math.PI * R;
-  let acc = 0, arcs = "", legend = "";
-  
-  const roleData = [
-    { name: "Usuario", value: roleActivity.user.reduce((a, b) => a + b, 0), color: PALETTE_ROLES.user },
-    { name: "Admin", value: roleActivity.admin.reduce((a, b) => a + b, 0), color: PALETTE_ROLES.admin },
-    { name: "Inspector", value: roleActivity.inspector.reduce((a, b) => a + b, 0), color: PALETTE_ROLES.inspector }
-  ];
-
-  for (const it of roleData) {
-    const frac = it.value / totalActivity;
-    const dash = `${Math.max(frac * C - 2, 0.5)} ${C}`;
-    const rot = -90 + acc * 360;
-    arcs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${it.color}" stroke-width="26" stroke-dasharray="${dash}" transform="rotate(${rot} ${cx} ${cy})"/>`;
-    acc += frac;
-    legend += `<span class="legend-item"><span class="legend-dot" style="background:${it.color}"></span>${it.name} · ${(frac * 100).toFixed(1)}%</span>`;
-  }
-
-  el.innerHTML = `
-    <svg class="chart-svg" viewBox="0 0 180 180" role="img">
-      ${arcs}
-      <text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">${Math.round(totalActivity)}</text>
-    </svg>
-    <div class="chart-legend">${legend}</div>
-    <div class="chart-note">Actividad de Usuarios · ${periodTxt}</div>`;
-
-  if (legendEl) {
-    legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
-  }
 }
 
 function countByActor(list, filterFn) {
