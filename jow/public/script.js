@@ -62,6 +62,10 @@ const db   = getFirestore(app);
     if (typeof fn !== 'function') return;
     const args = parseArgs(argsStr);
     e.preventDefault();
+    // Evita que el atributo onclick nativo del elemento se ejecute por
+    // segunda vez (causaba modales/acciones duplicadas). El delegado ya
+    // ejecutó la función, así que detenemos la propagación aquí.
+    e.stopImmediatePropagation();
     try {
       fn.apply(el, args);
     } catch (err) {
@@ -206,12 +210,35 @@ async function applyPointDecrementTick() {
     const decrement = elapsedMs / totalMs;
     if (decrement <= 0) return;
 
+    // ── Configuración de Puntos (`settings/pointsConfig`): pausa + congelados ──
+    let pointsCfg = { paused: false, frozenUsers: [] };
+    try {
+      const pcSnap = await getDoc(doc(db, "settings", "pointsConfig"));
+      if (pcSnap.exists()) {
+        const pc = pcSnap.data() || {};
+        pointsCfg = {
+          paused: !!pc.paused,
+          frozenUsers: Array.isArray(pc.frozenUsers) ? pc.frozenUsers.filter(Boolean) : []
+        };
+      }
+    } catch (e) {
+      console.error("Error leyendo settings/pointsConfig:", e);
+    }
+    // Si está pausado, NO se descuentan puntos, pero sellamos "ahora" como último
+    // decremento para que al despausar no se descuente todo el tiempo acumulado.
+    if (pointsCfg.paused) {
+      await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: now, lastAppliedBy: "system" }, { merge: true });
+      return;
+    }
+
     let changed = 0;
     const usersSnap = await getDocs(collection(db, "users"));
     allMembers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
 
     for (const u of allMembers) {
       if (!u || u.role === "admin") continue;
+      // Usuarios congelados: conservan sus puntos mientras el sistema esté activo.
+      if (pointsCfg.frozenUsers && pointsCfg.frozenUsers.includes(u.uid)) continue;
       const oldP = Number(u.points || 0);
       if (!Number.isFinite(oldP)) continue;
       const newP = clampPts(oldP - decrement);
@@ -1464,7 +1491,8 @@ function isMCteamWorker(u) {
   const role = String(u.role || "").toLowerCase();
   if (role === "admin") return false;
   const rk = normRango(u.rango);
-  if (rk && rangoIndex(rk) >= rangoIndex("admin")) return false;
+  // Ya no excluimos rangos admin, owner, overlord por defecto
+  // Solo se excluyen si están configurados en hideRangos
   const st = String(u.status || "active").toLowerCase();
   if (st === "inactive" || st === "inactivo") return false;
   return true;
@@ -1532,8 +1560,8 @@ function chartBuckets(period, now) {
       return `${h12} ${h < 12 ? "AM" : "PM"}`;
     };
     
-    // Alinear al inicio del día (12 AM)
-    const today = new Date(now);
+    // Alinear al inicio del día (12 AM) - usar fecha local
+    const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dayStart = today.getTime();
     
@@ -1548,8 +1576,8 @@ function chartBuckets(period, now) {
       return `${days[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
     };
     
-    // Alinear al inicio de la semana (Domingo)
-    const today = new Date(now);
+    // Alinear al inicio de la semana (Domingo) - usar fecha local
+    const today = new Date();
     const dayOfWeek = today.getDay();
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - dayOfWeek);
@@ -1563,14 +1591,14 @@ function chartBuckets(period, now) {
     }
   } else {
     // Mes: mostrar todos los días del mes actual (del día 1 al último día)
-    const today = new Date(now);
+    const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     step = 24 * 60 * 60 * 1000; count = daysInMonth; 
     lab = (d) => `${d.getDate()}/${d.getMonth() + 1}`;
     
-    // Alinear al inicio del mes (día 1)
+    // Alinear al inicio del mes (día 1) - usar fecha local
     const monthStart = new Date(year, month, 1);
     monthStart.setHours(0, 0, 0, 0);
     const monthStartTime = monthStart.getTime();

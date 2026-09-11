@@ -676,7 +676,7 @@ display: block;
       </div>
     </div>
     
-    <button class="btn btn-primary btn-auto" onclick="saveChambeadorConfig()" style="margin-top:20px;">💾 Guardar Configuración Chambeadores</button>
+    <button class="btn btn-primary" onclick="saveChambeadorConfig()" style="width:100%;margin-top:20px;">💾 Guardar Configuración Chambeadores</button>
   </div>
   
   <!-- Configuración de Puntos -->
@@ -722,6 +722,27 @@ display: block;
         <label style="display:block;margin-bottom:12px;font-size:14px;color:#8d99ff;">Resumen de configuración</label>
         <p id="config-summary" style="font-size:13px;color:#e9eeff;line-height:1.6;">Cada <strong>0h 0m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>0h 0m</strong>) · Máximo: <strong>7</strong> pts · Decimales: <strong>1</strong></p>
       </div>
+
+      <div style="padding:16px;background:rgba(255,92,117,0.04);border:1px solid rgba(255,92,117,0.22);border-radius:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <label style="font-weight:700;font-size:14px;">⏸ Pausar decremento automático</label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <span style="font-size:12px;color:var(--muted);">Pausado</span>
+            <input type="checkbox" id="config-paused" style="width:20px;height:20px;cursor:pointer;accent-color:#ff5c75;"/>
+          </label>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 14px;">Mientras esté pausado, ningún usuario pierde puntos automáticamente. Al despausar, se retoma desde donde se detuvo.</p>
+
+        <label style="display:block;margin-bottom:6px;font-size:13px;font-weight:600;">🚫 Congelar usuarios (no pierden puntos)</label>
+        <select id="config-frozen-users" multiple style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;height:120px;font-size:13px;"></select>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="toggleSelectAll('config-frozen-users', true)" style="font-size:11px;padding:4px 10px;">✅ Seleccionar todos</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="toggleSelectAll('config-frozen-users', false)" style="font-size:11px;padding:4px 10px;">🗑️ Limpiar</button>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin:10px 0 0;line-height:1.5;">Mantené Ctrl + clic para seleccionar varios usuarios. Los congelados conservan sus puntos mientras el sistema esté activo.</p>
+      </div>
+
+      <button class="btn btn-success" onclick="savePointsConfigAdvanced()" style="width:100%;">💾 Guardar Configuración de Puntos</button>
     </div>
     
     <button class="btn btn-primary" id="config-save" onclick="saveConfig()" style="width:100%;margin-top:20px;">💾 Guardar Configuración</button>
@@ -843,7 +864,7 @@ display: block;
     </div>
   </div>
   
-  <button class="btn btn-primary btn-auto" onclick="savePointsTableConfig()" style="margin-top:20px;">💾 Guardar Configuración de Tabla</button>
+  <button class="btn btn-primary" onclick="savePointsTableConfig()" style="width:100%;margin-top:20px;">💾 Guardar Configuración de Tabla</button>
 </div>
 </div>
 
@@ -1106,6 +1127,10 @@ const db   = getFirestore(app);
     if (typeof fn !== 'function') return;
     const args = parseArgs(argsStr);
     e.preventDefault();
+    // Evita que el atributo onclick nativo del elemento se ejecute por
+    // segunda vez (causaba modales/acciones duplicadas). El delegado ya
+    // ejecutó la función, así que detenemos la propagación aquí.
+    e.stopImmediatePropagation();
     try {
       fn.apply(el, args);
     } catch (err) {
@@ -1124,6 +1149,7 @@ let filterText   = "";
 let filterRoleV  = "";
 let filterPText  = "";
 let currentConfig = { hours: 24, minutes: 0, maxPoints: 7, decimals: 1 }; // Valor por defecto
+let pointsConfig = { paused: false, frozenUsers: [] }; // pausa + usuarios congelados (settings/pointsConfig)
 let pointDecrementTimer = null;
 let pointDecrementBusy = false;
 let logs         = [];
@@ -1345,10 +1371,77 @@ document.getElementById("config-minutes").value = currentConfig.minutes;
 document.getElementById("config-max").value = currentConfig.maxPoints;
 document.getElementById("config-decimals").value = String(currentConfig.decimals);
 }
+
+// ── Configuración de Puntos (`settings/pointsConfig`): pausa + congelados ──
+try {
+const pcSnap = await getDoc(doc(db, "settings", "pointsConfig"));
+if (pcSnap.exists()) {
+const pc = pcSnap.data() || {};
+pointsConfig = {
+paused: !!pc.paused,
+frozenUsers: Array.isArray(pc.frozenUsers) ? pc.frozenUsers.filter(Boolean) : []
+};
+}
+const pausedEl = document.getElementById("config-paused");
+if (pausedEl) pausedEl.checked = !!pointsConfig.paused;
+} catch (e2) {
+console.error("Error cargando settings/pointsConfig:", e2);
+}
+if (typeof populateFrozenUsersSelect === "function") populateFrozenUsersSelect();
+
 updateConfigSummary();
 } catch (e) {
 console.error("Error loading config:", e);
 }
+}
+
+// Pobla el multi-select de usuarios congelados conservando la selección guardada.
+function populateFrozenUsersSelect() {
+const sel = document.getElementById("config-frozen-users");
+if (!sel) return;
+const frozen = new Set(pointsConfig.frozenUsers || []);
+const prev = sel.value;
+sel.innerHTML = "";
+const list = allUsers.slice().sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+list.forEach(u => {
+const opt = document.createElement("option");
+opt.value = u.uid;
+opt.textContent = `${u.name || "—"} (${String(u.role || "")})`;
+opt.selected = frozen.has(u.uid);
+sel.appendChild(opt);
+});
+if (prev) sel.value = prev;
+}
+
+// Guarda pausa + usuarios congelados en `settings/pointsConfig`.
+window.savePointsConfigAdvanced = async () => {
+if (myRole !== "admin") {
+showToast("Solo un admin puede guardar esta configuración.", "err");
+return;
+}
+const pausedEl = document.getElementById("config-paused");
+const frozenSel = document.getElementById("config-frozen-users");
+pointsConfig = {
+paused: pausedEl ? pausedEl.checked : false,
+frozenUsers: frozenSel ? Array.from(frozenSel.selectedOptions).map(o => o.value) : []
+};
+try {
+await setDoc(doc(db, "settings", "pointsConfig"), { ...pointsConfig, updatedAt: serverTimestamp() }, { merge: true });
+showToast("✅ Configuración de Puntos guardada!", "ok");
+applyLastAppliedNowIfPaused();
+} catch (e) {
+console.error("Error saving pointsConfig:", e);
+showToast("Error al guardar: " + e.message, "err");
+}
+};
+
+// Al pausar, sellamos "ahora" como último decremento para que al despausar no se
+// descuente el tiempo que estuvo pausado de golpe.
+async function applyLastAppliedNowIfPaused() {
+if (!pointsConfig.paused) return;
+try {
+await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: Date.now(), lastAppliedBy: "system" }, { merge: true });
+} catch (e) { console.error("Error actualizando lastAppliedClientTs:", e); }
 }
 
 function updateConfigSummary() {
@@ -1780,12 +1873,34 @@ const elapsedMs = now - last;
 if (elapsedMs <= 0) return;
 const decrement = elapsedMs / totalMs;
 
+// ── Configuración de Puntos: pausa + usuarios congelados ──
+try {
+const pcSnap = await getDoc(doc(db, "settings", "pointsConfig"));
+if (pcSnap.exists()) {
+const pc = pcSnap.data() || {};
+pointsConfig = {
+paused: !!pc.paused,
+frozenUsers: Array.isArray(pc.frozenUsers) ? pc.frozenUsers.filter(Boolean) : []
+};
+}
+} catch (e) {
+console.error("Error leyendo settings/pointsConfig:", e);
+}
+// Si está pausado, NO se descuentan puntos, pero sellamos "ahora" como último
+// decremento para que al despausar no se descuente todo el tiempo acumulado.
+if (pointsConfig.paused) {
+await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: now, lastAppliedBy: "system" }, { merge: true });
+return;
+}
+
 let changed = 0;
 const usersSnap = await getDocs(collection(db, "users"));
 allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
 
 for (const u of allUsers) {
 if (!u || u.role === "admin") continue;
+// Usuarios congelados: conservan sus puntos mientras el sistema esté activo.
+if (pointsConfig.frozenUsers && pointsConfig.frozenUsers.includes(u.uid)) continue;
 const oldP = Number(u.points || 0);
 if (!Number.isFinite(oldP)) continue;
 if (oldP <= 0) continue;
@@ -2604,6 +2719,7 @@ allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
 // Poblar filtro de usuarios con TODOS los usuarios
 if (typeof populateUserFilter === "function") populateUserFilter();
 if (typeof populateLogUserFilter === "function") populateLogUserFilter();
+if (typeof populateFrozenUsersSelect === "function") populateFrozenUsersSelect();
 renderAll();
 } catch(e) {
 console.error(e);
@@ -4121,8 +4237,8 @@ function chartBuckets(period, now) {
       return `${h12} ${h < 12 ? "AM" : "PM"}`;
     };
     
-    // Alinear al inicio del día (12 AM)
-    const today = new Date(now);
+    // Alinear al inicio del día (12 AM) - usar fecha local
+    const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dayStart = today.getTime();
     
@@ -4137,8 +4253,8 @@ function chartBuckets(period, now) {
       return `${days[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
     };
     
-    // Alinear al inicio de la semana (Domingo)
-    const today = new Date(now);
+    // Alinear al inicio de la semana (Domingo) - usar fecha local
+    const today = new Date();
     const dayOfWeek = today.getDay();
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - dayOfWeek);
@@ -4152,14 +4268,14 @@ function chartBuckets(period, now) {
     }
   } else {
     // Mes: mostrar todos los días del mes actual (del día 1 al último día)
-    const today = new Date(now);
+    const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     step = 24 * 60 * 60 * 1000; count = daysInMonth; 
     lab = (d) => `${d.getDate()}/${d.getMonth() + 1}`;
     
-    // Alinear al inicio del mes (día 1)
+    // Alinear al inicio del mes (día 1) - usar fecha local
     const monthStart = new Date(year, month, 1);
     monthStart.setHours(0, 0, 0, 0);
     const monthStartTime = monthStart.getTime();
