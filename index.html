@@ -617,12 +617,12 @@ display: block;
       </div>
       
       <!-- Chambeador de la semana -->
-      <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-          <span style="font-size:16px;">📅</span>
+      <div style="padding:18px;background:rgba(255,255,255,0.02);border-radius:14px;border:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+          <span style="font-size:18px;">📅</span>
           <h4 style="margin:0;font-size:14px;">Chambeador de la semana</h4>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;">
           <div>
             <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Día de revelación</label>
             <select id="chambeador-week-day" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;font-size:14px;">
@@ -636,6 +636,10 @@ display: block;
             </select>
           </div>
           <div>
+            <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Hora de revelación</label>
+            <input type="time" id="chambeador-week-reveal" value="18:00" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;font-size:14px;"/>
+          </div>
+          <div>
             <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Duración visible (días)</label>
             <input type="number" id="chambeador-week-days" min="0" max="7" value="3" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;text-align:center;font-size:14px;"/>
           </div>
@@ -643,16 +647,20 @@ display: block;
       </div>
       
       <!-- Chambeador del mes -->
-      <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-          <span style="font-size:16px;">🗓</span>
+      <div style="padding:18px;background:rgba(255,255,255,0.02);border-radius:14px;border:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+          <span style="font-size:18px;">🗓</span>
           <h4 style="margin:0;font-size:14px;">Chambeador del mes</h4>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;">
           <div>
             <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Día de revelación (1-31)</label>
             <input type="number" id="chambeador-month-day" min="1" max="31" value="1" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;text-align:center;font-size:14px;"/>
-            <p style="font-size:11px;color:var(--muted);margin-top:4px;">Día del mes (1-31). El sistema lo ajustará automáticamente según el mes.</p>
+            <p style="font-size:11px;color:var(--muted);margin-top:4px;">Día del mes (1-31). El sistema lo ajusta automáticamente si el mes tiene menos días.</p>
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Hora de revelación</label>
+            <input type="time" id="chambeador-month-reveal" value="20:00" style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;font-size:14px;"/>
           </div>
           <div>
             <label style="display:block;margin-bottom:6px;font-size:12px;color:var(--muted);">Duración visible (días)</label>
@@ -722,21 +730,29 @@ display: block;
   </div>
   <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">Controla qué aparece en la Tabla de Puntos del Panel de Puntos.</p>
   
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
-    <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
-      <label style="display:block;margin-bottom:10px;font-weight:600;font-size:14px;">Usuarios a ocultar</label>
-      <select id="pts-filter-hide-users" multiple style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;height:100px;font-size:13px;">
-        <option value="">Ninguno</option>
-      </select>
-      <p style="font-size:11px;color:var(--muted);margin-top:8px;">Ctrl+clic para múltiples</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;">
+    <div style="padding:18px;background:rgba(255,255,255,0.02);border-radius:14px;border:1px solid rgba(255,255,255,0.06);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <label style="font-weight:600;font-size:14px;margin:0;">Usuarios a ocultar</label>
+      </div>
+      <select id="pts-filter-hide-users" multiple style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;height:130px;font-size:13px;margin-bottom:10px;"></select>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="toggleSelectAll('pts-filter-hide-users', true)" style="font-size:11px;padding:4px 10px;">✅ Seleccionar todos</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="toggleSelectAll('pts-filter-hide-users', false)" style="font-size:11px;padding:4px 10px;">🗑️ Limpiar</button>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5;">Mantén Ctrl + clic para seleccionar varios usuarios. Estos usuarios no aparecerán en listas/tablas, pero sus datos se conservan.</p>
     </div>
     
-    <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
-      <label style="display:block;margin-bottom:10px;font-weight:600;font-size:14px;">Usuarios a mostrar (solo estos)</label>
-      <select id="pts-filter-show-users" multiple style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;height:100px;font-size:13px;">
-        <option value="">Todos</option>
-      </select>
-      <p style="font-size:11px;color:var(--muted);margin-top:8px;">Si seleccionas, solo estos</p>
+    <div style="padding:18px;background:rgba(255,255,255,0.02);border-radius:14px;border:1px solid rgba(255,255,255,0.06);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <label style="font-weight:600;font-size:14px;margin:0;">Usuarios a mostrar (solo estos)</label>
+      </div>
+      <select id="pts-filter-show-users" multiple style="width:100%;padding:10px;background:#0f1428;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#e9eeff;height:130px;font-size:13px;margin-bottom:10px;"></select>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="toggleSelectAll('pts-filter-show-users', true)" style="font-size:11px;padding:4px 10px;">✅ Seleccionar todos</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="toggleSelectAll('pts-filter-show-users', false)" style="font-size:11px;padding:4px 10px;">🗑️ Limpiar</button>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5;">Si seleccionas usuarios aquí, solo estos aparecerán. Déjalo vacío para mostrar todos.</p>
     </div>
     
     <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
@@ -810,57 +826,6 @@ display: block;
   </div>
   
   <button class="btn btn-primary btn-auto" onclick="savePointsTableConfig()" style="margin-top:20px;">💾 Guardar Configuración de Tabla</button>
-</div>
-
-
-<div class="card">
-  <h3>Configuración de Puntos</h3>
-  <p style="color:var(--muted);margin-bottom:16px;">Ajustá el tiempo para el decremento automático de puntos</p>
-  <table style="width:100%;border-collapse:collapse;">
-    <tr>
-      <td style="padding:12px;border-bottom:1px solid var(--border);">
-        <label style="display:block;margin-bottom:4px;">Tiempo para restar 1 punto (total)</label>
-        <div style="display:flex;gap:12px;align-items:center;">
-          <div style="display:flex;flex-direction:column;gap:4px;">
-            <label style="font-size:12px;color:var(--muted);">Horas</label>
-            <input type="number" id="config-hours" min="0" placeholder="0" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-          </div>
-          <span style="font-size:24px;font-weight:bold;color:var(--muted);">:</span>
-          <div style="display:flex;flex-direction:column;gap:4px;">
-            <label style="font-size:12px;color:var(--muted);">Minutos</label>
-            <input type="number" id="config-minutes" min="0" max="59" placeholder="0" style="width:100px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-          </div>
-        </div>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding:12px;border-bottom:1px solid var(--border);">
-        <label style="display:block;margin-bottom:4px;">Máximo de puntos</label>
-        <input type="number" id="config-max" min="1" max="99" step="1" value="7" style="width:120px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;text-align:center;"/>
-        <p class="field-hint" style="margin-top:4px;">Ningún trabajador podrá superar este valor (por defecto: 7).</p>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding:12px;border-bottom:1px solid var(--border);">
-        <label style="display:block;margin-bottom:4px;">Decimales</label>
-        <select id="config-decimals" style="width:auto;max-width:220px;padding:8px;background:#0f1428;border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#e9eeff;">
-          <option value="0">0 decimales (ej: 5)</option>
-          <option value="1" selected>1 decimal (ej: 1.5)</option>
-          <option value="2">2 decimales (ej: 1.35)</option>
-        </select>
-        <p class="field-hint" style="margin-top:4px;">Precisión usada al mostrar y guardar los puntos.</p>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding:12px;">
-        <label style="display:block;margin-bottom:4px;">Resumen</label>
-        <div style="padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
-          <p id="config-summary">Cada <strong>0h 0m</strong> se restará <strong>1 punto</strong> (0.1 puntos cada <strong>0h 0m</strong>) · Máximo: <strong>7</strong> pts · Decimales: <strong>1</strong></p>
-        </div>
-      </td>
-    </tr>
-  </table>
-  <button class="btn btn-primary" id="config-save" onclick="saveConfig()" style="width:100%;margin-top:16px;">💾 Guardar Configuración</button>
 </div>
 </div>
 
@@ -1440,34 +1405,44 @@ function parsePeriodConfig(raw, key) {
       ? String(d.revealTime)
       : (dflt.revealTime || "12:00"),
     visibleHours: Number.isFinite(Number(d.visibleHours)) ? Number(d.visibleHours) : dflt.visibleHours,
-    visibleMinutes: Number.isFinite(Number(d.visibleMinutes)) ? Number(d.visibleMinutes) : dflt.visibleMinutes
+    visibleMinutes: Number.isFinite(Number(d.visibleMinutes)) ? Number(d.visibleMinutes) : dflt.visibleMinutes,
+    revealDay: key !== "day" && Number.isFinite(Number(d.revealDay))
+      ? Math.max(0, Math.min(31, Number(d.revealDay)))
+      : (Number.isFinite(Number(dflt.revealDay)) ? Number(dflt.revealDay) : 1)
   };
 }
+
+window.toggleSelectAll = (selectId, selectAll) => {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  for (let i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value) sel.options[i].selected = !!selectAll;
+  }
+};
 
 async function loadPointsTableConfig() {
   try {
     const snap = await getDoc(doc(db, "settings", "pointsTableConfig"));
     const config = snap.exists() ? snap.data() : {};
     
-    // Poblar selects de usuarios
     const hideUsersSelect = document.getElementById("pts-filter-hide-users");
     const showUsersSelect = document.getElementById("pts-filter-show-users");
     
-    // Filtrar solo usuarios con roles válidos
-    const validUsers = allUsers.filter(u => ["admin", "inspector", "user"].includes(String(u.role || "").toLowerCase()));
+    const validUsers = allUsers.filter(u => ["admin", "inspector", "user"].includes(String(u.role || "").toLowerCase()))
+      .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
     
-    if (hideUsersSelect && validUsers.length > 0) {
-      hideUsersSelect.innerHTML = '<option value="">Ninguno</option>' + 
-        validUsers.map(u => `<option value="${u.uid}">${esc(u.name || "—")} (${u.role || "Usuario"})</option>`).join("");
+    const userOptions = validUsers.map(u => `<option value="${u.uid}">${esc(u.name || "—")} (${String(u.role || "Usuario").charAt(0).toUpperCase() + String(u.role || "Usuario").slice(1)})</option>`).join("");
+    
+    if (hideUsersSelect) {
+      hideUsersSelect.innerHTML = userOptions;
       config.hideUsers?.forEach(uid => {
         const opt = hideUsersSelect.querySelector(`option[value="${uid}"]`);
         if (opt) opt.selected = true;
       });
     }
     
-    if (showUsersSelect && validUsers.length > 0) {
-      showUsersSelect.innerHTML = '<option value="">Todos</option>' + 
-        validUsers.map(u => `<option value="${u.uid}">${esc(u.name || "—")} (${u.role || "Usuario"})</option>`).join("");
+    if (showUsersSelect) {
+      showUsersSelect.innerHTML = userOptions;
       config.showUsers?.forEach(uid => {
         const opt = showUsersSelect.querySelector(`option[value="${uid}"]`);
         if (opt) opt.selected = true;
@@ -1756,7 +1731,6 @@ applyPointDecrementTick();
 }
 
 async function applyPointDecrementTick() {
-// Eliminar la verificación de rol - debe funcionar sin admin conectado
 if (pointDecrementBusy) return;
 pointDecrementBusy = true;
 try {
@@ -1774,17 +1748,13 @@ await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: now, 
 return;
 }
 
-// Calcular cuántos intervalos completos han pasado
+// Bajada PROGRESIVA: calcular cuánto decremento corresponde desde la última vez
+// totalMs = tiempo para restar 1 punto completo
+// decrement = elapsedMs / totalMs (fracción de punto que debe restarse ahora)
+// Ej: si pasaron 12h de 24h configuradas, se resta 0.5 puntos.
 const elapsedMs = now - last;
-const fullIntervals = Math.floor(elapsedMs / totalMs);
-if (fullIntervals <= 0) return;
-
-// Calcular la reducción gradual: 1 punto por intervalo completo, pero aplicado gradualmente
-// Ejemplo: si configuraron 24h, cada 24h se reduce 1 punto total
-// Se aplica gradualmente durante el intervalo actual
-const partialMs = elapsedMs % totalMs;
-const partialRatio = partialMs / totalMs; // 0 a 1, representa progreso del intervalo actual
-const decrement = fullIntervals + partialRatio; // Intervalos completos + progreso parcial
+if (elapsedMs <= 0) return;
+const decrement = elapsedMs / totalMs;
 
 let changed = 0;
 const usersSnap = await getDocs(collection(db, "users"));
@@ -1794,7 +1764,7 @@ for (const u of allUsers) {
 if (!u || u.role === "admin") continue;
 const oldP = Number(u.points || 0);
 if (!Number.isFinite(oldP)) continue;
-// Aplicar reducción calculada
+if (oldP <= 0) continue;
 const newP = clampPts(oldP - decrement);
 if (newP === oldP) continue;
 try {
@@ -1802,7 +1772,6 @@ await updateDoc(doc(db, "users", u.uid), { points: newP });
 u.points = newP;
 changed++;
 
-// REGISTRAR LA REDUCCIÓN AUTOMÁTICA EN LOS LOGS
 await writeLog({
 type: "points",
 actorUid: "system",
@@ -1818,9 +1787,8 @@ await writePointSnapshot(u.uid, newP, `Reducción automática (${cfgToMs(cfg) / 
 } catch {}
 }
 
-// Avanzar el timestamp al inicio del siguiente intervalo completo
-const newLast = last + (fullIntervals * totalMs);
-await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: newLast, lastAppliedBy: "system" }, { merge: true });
+// Actualizar lastAppliedClientTs a AHORA para el siguiente decremento progresivo
+await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: now, lastAppliedBy: "system" }, { merge: true });
 if (changed) renderAll();
 } catch (e) {
 console.error("Error aplicando decremento:", e);
@@ -3570,8 +3538,7 @@ window.renderRankingAdmins = () => {
   members = members
     .map(u => ({ u, pts: periodPointsForUserDash(u, rankPeriod) }))
     .filter(r => r.pts > 0)
-    .sort((a, b) => (b.pts - a.pts) || ((b.u.points || 0) - (a.u.points || 0)))
-    .slice(0, 8);
+    .sort((a, b) => (b.pts - a.pts) || ((b.u.points || 0) - (a.u.points || 0)));
 
   if (!members.length) {
     box.innerHTML = '<div class="chart-empty">Sin datos para el ranking en el período seleccionado.</div>';
@@ -3720,8 +3687,9 @@ window.renderEvolutionPts = () => {
   });
 
   const mode = modeStates.evo || "line";
-  // Aumentar ancho para accommodar scrollbar horizontal
-  const W = Math.max(900, count * 50), H = 430, pl = 42, pr = 16, pt = 22, pb = 42;
+  // Scrollbar horizontal OBLIGATORIO: ancho suficiente para TODOS los labels sin superponer
+  const slotWidth = isDayView ? 65 : (evoTimeState === "14" ? 100 : 55);
+  const W = Math.max(1100, count * slotWidth), H = 430, pl = 48, pr = 20, pt = 26, pb = 52;
   const iw = W - pl - pr, ih = H - pt - pb;
   const maxVal = Math.max(1, ...series.flatMap(s => s.values));
   const n = count;
@@ -3739,7 +3707,6 @@ window.renderEvolutionPts = () => {
 
   let svgMinWidth = null;
   if (mode === "line") {
-    // Líneas: cada usuario con exactamente el color de su círculo en la leyenda.
     series.forEach((s) => {
       const pts = s.values.map((v, i) => `${xPos(i)},${yPos(v)}`).join(" ");
       content += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"/>`;
@@ -3748,35 +3715,34 @@ window.renderEvolutionPts = () => {
       });
     });
   } else {
-    // Columnas: UNA barra por cada usuario en cada período, sin omitir a nadie.
     const userCount = team.length;
     const groupWidth = iw / n;
-    const barWidth = Math.max(3, (groupWidth / userCount) * 0.62);
-    const groupGap = groupWidth * 0.1;
-    const barGap = Math.max(0.5, (groupWidth - groupGap - (barWidth * userCount)) / (userCount + 1));
+    const barWidth = Math.max(4, Math.min(18, (groupWidth / Math.max(1, userCount)) * 0.55));
+    const groupGap = Math.max(2, groupWidth * 0.12);
+    const barGap = Math.max(1, (groupWidth - groupGap - (barWidth * userCount)) / Math.max(1, userCount + 1));
     const bsX = (pi, ui) => pl + (pi * groupWidth) + groupGap / 2 + barGap + ui * (barWidth + barGap);
     series.forEach((s, si) => {
       s.values.forEach((v, i) => {
         const hBar = (v / maxVal) * ih;
         const y = pt + ih - hBar;
-        content += `<rect x="${bsX(i, si)}" y="${y}" width="${barWidth}" height="${Math.max(0.5, hBar)}" fill="${s.color}" rx="1.5"/>`;
+        content += `<rect x="${bsX(i, si)}" y="${y}" width="${barWidth}" height="${Math.max(0.5, hBar)}" fill="${s.color}" rx="2"/>`;
       });
     });
-    // Con muchos usuarios se fuerza scroll horizontal (no se aplastan las barras).
-    svgMinWidth = Math.max(W, Math.ceil(n * (barWidth * userCount + barGap * (userCount + 1) + groupGap)));
+    svgMinWidth = Math.max(W + 40, Math.ceil(n * (groupWidth + groupGap) + pl + pr));
   }
 
-  if (n > 12) {
-    for (let i = 0; i < n; i += 2) {
-      xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="#7c86ad">${periods[i].label}</text>`;
-    }
-  } else {
-    periods.forEach((p, i) => {
-      xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#7c86ad">${p.label}</text>`;
-    });
-  }
+  // MOSTRAR TODOS los labels, sin saltos. Con scrollbar no hay problema de espacio.
+  const labelFontSize = n > 20 ? 8 : (n > 12 ? 8 : 9);
+  const labelRotate = isDayView ? -35 : (n > 20 ? -25 : 0);
+  periods.forEach((p, i) => {
+    const anchor = labelRotate !== 0 ? "end" : "middle";
+    const dx = labelRotate !== 0 ? -3 : 0;
+    const dy = labelRotate !== 0 ? 0 : 0;
+    xl += `<text x="${xPos(i) + dx}" y="${H - 10 + dy}" text-anchor="${anchor}" font-size="${labelFontSize}" fill="#7c86ad" transform="${labelRotate !== 0 ? `rotate(${labelRotate} ${xPos(i)} ${H - 10})` : ''}">${p.label}</text>`;
+  });
 
-  const svgStyle = svgMinWidth ? ` style="min-width:${Math.round(svgMinWidth)}px"` : "";
+  const finalMinWidth = svgMinWidth ? svgMinWidth : Math.max(W + 40, 1100);
+  const svgStyle = ` style="min-width:${Math.round(finalMinWidth)}px"`;
   el.innerHTML = `
     <div class="chart-scroll-wrap">
       <svg class="chart-svg" viewBox="0 0 ${W} ${H}"${svgStyle} role="img">
@@ -3788,7 +3754,7 @@ window.renderEvolutionPts = () => {
       </svg>
     </div>
     <div class="chart-legend">${series.map(s => `<span class="legend-item" title="${esc(s.name)}"><span class="legend-dot" style="background:${s.color}"></span>${esc(s.name)}</span>`).join("")}</div>
-    <div class="chart-note">Evolución de puntos · ${isDayView ? "24 horas" : evoTimeState === "14" ? "7 días" : "30 días"} · ${series.length} usuarios · ${logs.length} registros cargados</div>`;
+    <div class="chart-note">Evolución de puntos · ${isDayView ? "24 horas (formato 12h)" : evoTimeState === "14" ? "7 días (Lun-Dom + fecha)" : `${new Date().getDate() !== 0 ? new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() : 30} días del mes`} · ${series.length} usuarios · ${logs.length} registros cargados</div>`;
 };
 
 window.renderActivityChart = () => {
@@ -3898,11 +3864,14 @@ window.renderActivityChart = () => {
     inspector: "#3ecf8e"
   };
 
+  const isDayActivity = chartPeriod === "day";
+  const slotW = isDayActivity ? 65 : (chartPeriod === "week" ? 100 : 55);
+
   // ── Modo lineal: evolución de la actividad de cada rol
   if (mode === "line") {
-    const W = Math.max(900, buckets.length * 50), H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
+    const W = Math.max(1100, buckets.length * slotW), H = 460, pl = 48, pr = 20, pt = 26, pb = 54;
     const iw = W - pl - pr, ih = H - pt - pb;
-    const yMax = maxVal;
+    const yMax = Math.max(1, maxVal);
     const n = buckets.length;
     const xPos = i => (n > 1 ? pl + (iw * i) / (n - 1) : pl + iw / 2);
     const yPos = v => pt + ih - (ih * v) / yMax;
@@ -3915,9 +3884,13 @@ window.renderActivityChart = () => {
       grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
       grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
     }
+
+    // MOSTRAR TODOS los labels sin saltos
+    const lfs = n > 20 ? 8 : (n > 12 ? 8 : 9);
+    const lrot = isDayActivity ? -35 : (n > 20 ? -25 : 0);
     buckets.forEach((b, i) => {
-      if (buckets.length > 12 && i % 2 === 1) return;
-      xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="${buckets.length > 12 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
+      const anchor = lrot !== 0 ? "end" : "middle";
+      xl += `<text x="${xPos(i)}" y="${H - 10}" text-anchor="${anchor}" font-size="${lfs}" fill="#7c86ad" transform="${lrot !== 0 ? `rotate(${lrot} ${xPos(i)} ${H - 10})` : ''}">${b.label}</text>`;
     });
 
     const roleSeries = [
@@ -3934,9 +3907,10 @@ window.renderActivityChart = () => {
       });
     }
 
+    const minW = Math.max(W + 60, 1100);
     el.innerHTML = `
       <div class="chart-scroll-wrap">
-        <svg class="chart-svg" viewBox="0 0 ${W} ${H}" style="min-width:${W}px" role="img" aria-label="Actividad de Usuarios (${chartPeriod})">
+        <svg class="chart-svg" viewBox="0 0 ${W} ${H}" style="min-width:${minW}px" role="img" aria-label="Actividad de Usuarios (${chartPeriod})">
           ${grid}
           <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
           <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
@@ -3945,22 +3919,22 @@ window.renderActivityChart = () => {
         </svg>
       </div>
       <div class="chart-legend">${roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("")}</div>
-      <div class="chart-note">Actividad por rol · ${periodTxt} · ${logs.length} registros cargados</div>`;
+      <div class="chart-note">Actividad por rol · ${periodTxt} · Cálculo separado: Admin(puntosSub+puntosBaj+ingresos)/3 · Inspector(puntosActuales+puntosSub+puntosBaj+ingresos)/4 · Usuario(puntosActuales+ingresos)/2 · ${logs.length} registros</div>`;
     if (legendEl) legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     return;
   }
   
   // Modo columnas: mostrar actividad por rol
   else if (mode === "cols") {
-    const W = Math.max(900, buckets.length * 50), H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
+    const W = Math.max(1100, buckets.length * slotW), H = 460, pl = 48, pr = 20, pt = 26, pb = 54;
     const iw = W - pl - pr, ih = H - pt - pb;
-    const yMax = maxVal;
+    const yMax = Math.max(1, maxVal);
     const n = buckets.length;
     const groupWidth = iw / n;
     const rolesCount = 3;
-    const barWidth = Math.max(4, (groupWidth * 0.7) / rolesCount);
+    const barWidth = Math.max(5, Math.min(22, (groupWidth * 0.68) / rolesCount));
     const barGap = Math.max(2, barWidth * 0.3);
-    const groupGap = groupWidth * 0.15;
+    const groupGap = Math.max(3, groupWidth * 0.18);
     const xPos = (periodIdx, roleIdx) => pl + (periodIdx * groupWidth) + groupGap/2 + roleIdx * (barWidth + barGap);
     const yPos = v => pt + ih - (ih * v) / yMax;
 
@@ -3972,9 +3946,14 @@ window.renderActivityChart = () => {
       grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
       grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
     }
+
+    // MOSTRAR TODOS los labels sin saltos
+    const lfs = n > 20 ? 8 : (n > 10 ? 8 : 9);
+    const lrot = isDayActivity ? -35 : (n > 20 ? -25 : 0);
     buckets.forEach((b, i) => {
-      if (n > 10 && i % 2 === 1) return;
-      xl += `<text x="${pl + (i * groupWidth) + groupWidth/2}" y="${H - 8}" text-anchor="middle" font-size="${n > 10 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
+      const anchor = lrot !== 0 ? "end" : "middle";
+      const xc = pl + (i * groupWidth) + groupWidth/2;
+      xl += `<text x="${xc}" y="${H - 10}" text-anchor="${anchor}" font-size="${lfs}" fill="#7c86ad" transform="${lrot !== 0 ? `rotate(${lrot} ${xc} ${H - 10})` : ''}">${b.label}</text>`;
     });
 
     const roleSeries = [
@@ -3983,17 +3962,19 @@ window.renderActivityChart = () => {
       { name: "Inspector", color: PALETTE_ROLES.inspector, values: roleActivity.inspector }
     ];
 
-    for (const s of roleSeries) {
+    for (let si = 0; si < roleSeries.length; si++) {
+      const s = roleSeries[si];
       s.values.forEach((v, i) => {
         const hBar = (v / yMax) * ih;
         const y = pt + ih - hBar;
-        bars += `<rect x="${xPos(i, roleSeries.indexOf(s))}" y="${y}" width="${barWidth}" height="${Math.max(0.5, hBar)}" fill="${s.color}" rx="2"/>`;
+        bars += `<rect x="${xPos(i, si)}" y="${y}" width="${barWidth}" height="${Math.max(0.5, hBar)}" fill="${s.color}" rx="2"/>`;
       });
     }
 
+    const minW = Math.max(W + 60, 1100);
     el.innerHTML = `
       <div class="chart-scroll-wrap">
-        <svg class="chart-svg" viewBox="0 0 ${W} ${H}" style="min-width:${W}px" role="img" aria-label="Actividad de Usuarios (${chartPeriod})">
+        <svg class="chart-svg" viewBox="0 0 ${W} ${H}" style="min-width:${minW}px" role="img" aria-label="Actividad de Usuarios (${chartPeriod})">
           ${grid}
           <line x1="${pl}" y1="${pt}" x2="${pl}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
           <line x1="${pl}" y1="${pt + ih}" x2="${W - pr}" y2="${pt + ih}" stroke="rgba(141,153,255,.22)" stroke-width="1"/>
@@ -4002,7 +3983,7 @@ window.renderActivityChart = () => {
         </svg>
       </div>
       <div class="chart-legend">${roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("")}</div>
-      <div class="chart-note">Actividad por rol · ${periodTxt} · ${logs.length} registros cargados</div>`;
+      <div class="chart-note">Actividad por rol · ${periodTxt} · Cálculo separado: Admin(puntosSub+puntosBaj+ingresos)/3 · Inspector(puntosActuales+puntosSub+puntosBaj+ingresos)/4 · Usuario(puntosActuales+ingresos)/2 · ${logs.length} registros</div>`;
     if (legendEl) legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     return;
   }
@@ -4150,8 +4131,7 @@ window.renderInspectorActivityJow = () => {
       if (target && isInactiveStatus(target.status) && t >= inactiveCutoffMs(target)) return false;
       return true;
     })
-    .sort((a, b) => b.t - a.t)
-    .slice(0, 20);
+    .sort((a, b) => b.t - a.t);
 
   if (!rows.length) {
     tbody.innerHTML = '<tr><td colspan="6" class="t-empty">Sin movimientos recientes de inspectores.</td></tr>';
