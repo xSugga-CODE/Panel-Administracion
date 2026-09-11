@@ -1005,6 +1005,12 @@ li { color: #c2cceb; margin-bottom: 8px; }
   max-width: 100%;
   margin: 0 auto;
 }
+.chart-svg text {
+  font-family: system-ui, -apple-system, sans-serif;
+  dominant-baseline: middle;
+  text-anchor: middle;
+  white-space: nowrap;
+}
 
 .chart-empty {
   color: var(--muted);

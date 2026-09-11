@@ -180,7 +180,6 @@ function startPointDecrementScheduler() {
 }
 
 async function applyPointDecrementTick() {
-  // Eliminar la verificación de rol - debe funcionar sin admin conectado
   if (pointDecrementBusy) return;
   pointDecrementBusy = true;
   try {
@@ -198,17 +197,14 @@ async function applyPointDecrementTick() {
       return;
     }
 
-    // Calcular cuántos intervalos completos han pasado
     const elapsedMs = now - last;
-    const fullIntervals = Math.floor(elapsedMs / totalMs);
-    if (fullIntervals <= 0) return;
+    if (elapsedMs <= 0) return;
 
-    // Calcular la reducción gradual: 1 punto por intervalo completo, pero aplicado gradualmente
-    // Ejemplo: si configuraron 24h, cada 24h se reduce 1 punto total
-    // Se aplica gradualmente durante el intervalo actual
-    const partialMs = elapsedMs % totalMs;
-    const partialRatio = partialMs / totalMs; // 0 a 1, representa progreso del intervalo actual
-    const decrement = fullIntervals + partialRatio; // Intervalos completos + progreso parcial
+    // Bajada PROGRESIVA: decremento = elapsed / totalMs (fracción de punto acumulada)
+    // Ej: 24h totales, han pasado 2.4h → decremento = 0.1 punto
+    // Ej: 24h totales, han pasado 48h → decremento = 2.0 puntos (2 intervalos completos)
+    const decrement = elapsedMs / totalMs;
+    if (decrement <= 0) return;
 
     let changed = 0;
     const usersSnap = await getDocs(collection(db, "users"));
@@ -218,7 +214,6 @@ async function applyPointDecrementTick() {
       if (!u || u.role === "admin") continue;
       const oldP = Number(u.points || 0);
       if (!Number.isFinite(oldP)) continue;
-      // Aplicar reducción calculada
       const newP = clampPts(oldP - decrement);
       if (newP === oldP) continue;
       try {
@@ -226,7 +221,6 @@ async function applyPointDecrementTick() {
         u.points = newP;
         changed++;
 
-        // REGISTRAR LA REDUCCIÓN AUTOMÁTICA EN LOS LOGS
         await writeLog({
           type: "points",
           actorUid: "system",
@@ -235,15 +229,15 @@ async function applyPointDecrementTick() {
           targetUid: u.uid,
           targetName: u.name || "",
           delta: -decrement,
-          reason: `Reducción automática (${cfgToMs(cfg) / (1000 * 60 * 60)}h)`,
+          reason: `Reducción automática progresiva (${(totalMs / 3600000).toFixed(1)}h por punto)`,
           newPoints: newP
         });
-      } catch {}
+      } catch(e) { console.error("Error actualizando usuario:", u.uid, e); }
     }
 
-    // Avanzar el timestamp al inicio del siguiente intervalo completo
-    const newLast = last + (fullIntervals * totalMs);
-    await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: newLast, lastAppliedBy: "system" }, { merge: true });
+    // Guardar lastApplied = AHORA (no al final del intervalo anterior)
+    // Así, el próximo tick calcula el progreso incremental justo desde aquí
+    await setDoc(doc(db, "settings", "pointDecrement"), { lastAppliedClientTs: now, lastAppliedBy: "system" }, { merge: true });
     if (changed) renderAll();
   } catch (e) {
     console.error("Error aplicando decremento:", e);
@@ -1531,29 +1525,61 @@ function chartBuckets(period, now) {
   const buckets = [];
   let step, count, lab;
   if (period === "day") {
+    // Día: de 12 AM a 11 PM (24 horas)
     step = 60 * 60 * 1000; count = 24; lab = (d) => {
       const h = d.getHours();
       const h12 = h % 12 === 0 ? 12 : h % 12;
       return `${h12} ${h < 12 ? "AM" : "PM"}`;
     };
+    
+    // Alinear al inicio del día (12 AM)
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    const dayStart = today.getTime();
+    
+    for (let i = 0; i < count; i++) {
+      const start = dayStart + i * step;
+      const end = start + step;
+      buckets.push({ start, end, label: lab(new Date(start)) });
+    }
   } else if (period === "week") {
     step = 24 * 60 * 60 * 1000; count = 7; lab = (d) => {
       const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       return `${days[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
     };
+    
+    // Alinear al inicio de la semana (Domingo)
+    const today = new Date(now);
+    const dayOfWeek = today.getDay();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - dayOfWeek);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekStartTime = weekStart.getTime();
+    
+    for (let i = 0; i < count; i++) {
+      const start = weekStartTime + i * step;
+      const end = start + step;
+      buckets.push({ start, end, label: lab(new Date(start)) });
+    }
   } else {
-    // Mes: mostrar todos los días del mes actual
+    // Mes: mostrar todos los días del mes actual (del día 1 al último día)
     const today = new Date(now);
     const year = today.getFullYear();
     const month = today.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     step = 24 * 60 * 60 * 1000; count = daysInMonth; 
     lab = (d) => `${d.getDate()}/${d.getMonth() + 1}`;
-  }
-  for (let i = count - 1; i >= 0; i--) {
-    const end = now - i * step;
-    const start = end - step;
-    buckets.push({ start, end, label: lab(new Date(end)) });
+    
+    // Alinear al inicio del mes (día 1)
+    const monthStart = new Date(year, month, 1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthStartTime = monthStart.getTime();
+    
+    for (let i = 0; i < count; i++) {
+      const start = monthStartTime + i * step;
+      const end = start + step;
+      buckets.push({ start, end, label: lab(new Date(start)) });
+    }
   }
   return buckets;
 }
@@ -1639,19 +1665,20 @@ function renderActivityChart() {
       const actor = allMembers.find(u => u.uid === uid) || null;
       if (actor && isInactiveStatus(actor.status)) continue;
       
-      metrics.currentPoints = actor ? Number(actor.points || 0) : 0;
+      // Los admins no tienen puntos
+      metrics.currentPoints = (actor && String(actor.role || "").toLowerCase() !== "admin") ? Number(actor.points || 0) : 0;
       
       if (metrics.role === "admin") {
-        // Admin: promedio entre puntos subidos, puntos bajados e ingresos
-        const avg = (metrics.pointsAdded + metrics.pointsRemoved + metrics.logins) / 3;
+        // Admin: veces que ingresa a la página + puntos que suben y bajan
+        const avg = (metrics.logins + metrics.pointsAdded + metrics.pointsRemoved) / 3;
         adminMetrics.push(avg);
       } else if (metrics.role === "inspector") {
-        // Inspector: promedio entre puntos actuales, puntos subidos, puntos bajados e ingresos
-        const avg = (metrics.currentPoints + metrics.pointsAdded + metrics.pointsRemoved + metrics.logins) / 4;
+        // Inspector: veces que ingresa a la página + puntos que suben + puntos que tienen
+        const avg = (metrics.logins + metrics.pointsAdded + metrics.currentPoints) / 3;
         inspectorMetrics.push(avg);
       } else if (metrics.role === "user") {
-        // Usuario: promedio entre puntos actuales e ingresos
-        const avg = (metrics.currentPoints + metrics.logins) / 2;
+        // Usuario: veces que ingresa a la página + puntos que tienen actualmente
+        const avg = (metrics.logins + metrics.currentPoints) / 2;
         userMetrics.push(avg);
       }
     }
@@ -1680,7 +1707,8 @@ function renderActivityChart() {
 
   // ── Modo lineal: evolución de la actividad de cada rol
   if (mode === "line") {
-    const W = Math.max(900, buckets.length * 50), H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
+    const slotWidth = chartPeriod === "day" ? 65 : chartPeriod === "week" ? 100 : 55;
+    const W = Math.max(1100, buckets.length * slotWidth), H = 460, pl = 46, pr = 20, pt = 22, pb = 54;
     const iw = W - pl - pr, ih = H - pt - pb;
     const yMax = maxVal;
     const n = buckets.length;
@@ -1695,9 +1723,9 @@ function renderActivityChart() {
       grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
       grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
     }
+    const fontSz = n > 20 ? 8 : 9;
     buckets.forEach((b, i) => {
-      if (buckets.length > 12 && i % 2 === 1) return;
-      xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="${buckets.length > 12 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
+      xl += `<text x="${xPos(i)}" y="${H - 18}" text-anchor="end" font-size="${fontSz}" fill="#7c86ad" transform="rotate(-35 ${xPos(i)} ${H - 18})">${b.label}</text>`;
     });
 
     const roleSeries = [
@@ -1724,7 +1752,6 @@ function renderActivityChart() {
           ${series}
         </svg>
       </div>
-      <div class="chart-legend">${roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("")}</div>
       <div class="chart-note">Actividad por rol · ${periodTxt} · ${logs.length} registros cargados</div>`;
     if (legendEl) legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     return;
@@ -1732,14 +1759,15 @@ function renderActivityChart() {
 
   // ── Modo columnas: mostrar actividad por rol
   if (mode === "cols") {
-    const W = Math.max(900, buckets.length * 50), H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
+    const slotWidth = chartPeriod === "day" ? 80 : chartPeriod === "week" ? 120 : 65;
+    const W = Math.max(1100, buckets.length * slotWidth), H = 460, pl = 46, pr = 20, pt = 22, pb = 54;
     const iw = W - pl - pr, ih = H - pt - pb;
     const yMax = maxVal;
     const n = buckets.length;
     const groupWidth = iw / n;
     const rolesCount = 3;
-    const barWidth = Math.max(4, (groupWidth * 0.7) / rolesCount);
-    const barGap = Math.max(2, barWidth * 0.3);
+    const barWidth = Math.max(6, (groupWidth * 0.7) / rolesCount);
+    const barGap = Math.max(3, barWidth * 0.3);
     const groupGap = groupWidth * 0.15;
     const xPos = (periodIdx, roleIdx) => pl + (periodIdx * groupWidth) + groupGap/2 + roleIdx * (barWidth + barGap);
     const yPos = v => pt + ih - (ih * v) / yMax;
@@ -1752,9 +1780,10 @@ function renderActivityChart() {
       grid += `<line x1="${pl}" y1="${gy}" x2="${W - pr}" y2="${gy}" stroke="rgba(141,153,255,.14)" stroke-width="1"/>`;
       grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
     }
+    const fontSz = n > 20 ? 8 : 9;
     buckets.forEach((b, i) => {
-      if (n > 10 && i % 2 === 1) return;
-      xl += `<text x="${pl + (i * groupWidth) + groupWidth/2}" y="${H - 8}" text-anchor="middle" font-size="${n > 10 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
+      const x = pl + (i * groupWidth) + groupWidth/2;
+      xl += `<text x="${x}" y="${H - 18}" text-anchor="end" font-size="${fontSz}" fill="#7c86ad" transform="rotate(-35 ${x} ${H - 18})">${b.label}</text>`;
     });
 
     const roleSeries = [
@@ -1763,11 +1792,12 @@ function renderActivityChart() {
       { name: "Inspector", color: PALETTE_ROLES.inspector, values: roleActivity.inspector }
     ];
 
-    for (const s of roleSeries) {
+    for (let sIdx = 0; sIdx < roleSeries.length; sIdx++) {
+      const s = roleSeries[sIdx];
       s.values.forEach((v, i) => {
         const hBar = (v / yMax) * ih;
         const y = pt + ih - hBar;
-        bars += `<rect x="${xPos(i, roleSeries.indexOf(s))}" y="${y}" width="${barWidth}" height="${Math.max(0.5, hBar)}" fill="${s.color}" rx="2"/>`;
+        bars += `<rect x="${xPos(i, sIdx)}" y="${y}" width="${barWidth}" height="${Math.max(0.5, hBar)}" fill="${s.color}" rx="2"/>`;
       });
     }
 
@@ -1781,7 +1811,6 @@ function renderActivityChart() {
           ${bars}
         </svg>
       </div>
-      <div class="chart-legend">${roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("")}</div>
       <div class="chart-note">Actividad por rol · ${periodTxt} · ${logs.length} registros cargados</div>`;
     if (legendEl) legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     return;
@@ -2380,43 +2409,48 @@ function renderEvolutionPts() {
   const legendEl = document.getElementById("evo-pts-legend");
   if (!el) return;
   const role = currentUser?.role;
-  // Permitir que usuarios admin, inspector y user vean el gráfico
   if (role !== "admin" && role !== "inspector" && role !== "user") return;
 
-  // Incluir inspector y user por defecto (sin admin para la evolución general)
   let team = allMembers.filter(u => ["inspector", "user"].includes(String(u.role || "").toLowerCase()));
 
-  // Apply filters
-  if (filterState.user) {
-    team = team.filter(u => u.uid === filterState.user);
-  }
-  if (filterState.rol) {
-    team = team.filter(u => String(u.role || "").toLowerCase() === filterState.rol);
-  }
-  if (filterState.rango) {
-    team = team.filter(u => normRango(u.rango) === filterState.rango);
-  }
-  if (filterState.cargo) {
-    team = team.filter(u => hasCargo(u, filterState.cargo));
-  }
+  if (filterState.user) team = team.filter(u => u.uid === filterState.user);
+  if (filterState.rol) team = team.filter(u => String(u.role || "").toLowerCase() === filterState.rol);
+  if (filterState.rango) team = team.filter(u => normRango(u.rango) === filterState.rango);
+  if (filterState.cargo) team = team.filter(u => hasCargo(u, filterState.cargo));
   
-  // NO limitar a 8 usuarios - mostrar todos
   team = team.sort((a, b) => (b.points || 0) - (a.points || 0));
   
   if (!team.length) { el.innerHTML = '<div class="chart-empty">Sin miembros del equipo que coincidan con los filtros.</div>'; if (legendEl) legendEl.innerHTML = ""; return; }
 
   const now = Date.now();
+  const today = new Date(now);
   const isDayView = evoTimeState === "7";
-  const step = isDayView ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000; // 1 hora para día, 1 día para otros
-  const count = isDayView ? 24 : (evoTimeState === "14" ? 7 : 30);
+  const isWeekView = evoTimeState === "14";
+  const step = isDayView ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
   
+  let count;
+  if (isDayView) count = 24;
+  else if (isWeekView) count = 7;
+  else {
+    const y = today.getFullYear(), m = today.getMonth();
+    count = new Date(y, m + 1, 0).getDate();
+  }
+  
+  const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   const periods = [];
   for (let i = count - 1; i >= 0; i--) {
     const end = now - i * step, start = end - step;
     const d = new Date(end);
-    const label = isDayView 
-      ? `${d.getHours() % 12 || 12}:00 ${d.getHours() < 12 ? 'AM' : 'PM'}` 
-      : labelShortDay(new Date(end));
+    let label;
+    if (isDayView) {
+      const h = d.getHours();
+      const h12 = h % 12 === 0 ? 12 : h % 12;
+      label = `${h12} ${h < 12 ? "AM" : "PM"}`;
+    } else if (isWeekView) {
+      label = `${dayNames[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
+    } else {
+      label = `${d.getDate()}/${d.getMonth() + 1}`;
+    }
     periods.push({ start, end, label, vals: {} });
   }
 
@@ -2431,20 +2465,17 @@ function renderEvolutionPts() {
     }
     let val = Number(member.points) || 0;
     const factor = Math.pow(10, decimalsCfgJow());
-    const series = new Array(count).fill(0);
+    const seriesArr = new Array(count).fill(0);
     for (let i = count - 1; i >= 0; i--) {
-      series[i] = Math.round(val * factor) / factor;
+      seriesArr[i] = Math.round(val * factor) / factor;
       val -= periodChanges[i];
     }
-    periods.forEach((d, i) => { d.vals[member.uid] = series[i]; });
+    periods.forEach((d, i) => { d.vals[member.uid] = seriesArr[i]; });
   }
 
-  // Paleta de colores para usuarios (asignar color consistente por UID)
   const getUserColor = (uid) => {
     let hash = 0;
-    for (let i = 0; i < uid.length; i++) {
-      hash = uid.charCodeAt(i) + ((hash << 5) - hash);
-    }
+    for (let i = 0; i < uid.length; i++) hash = uid.charCodeAt(i) + ((hash << 5) - hash);
     return PALETTE[Math.abs(hash) % PALETTE.length];
   };
 
@@ -2455,22 +2486,24 @@ function renderEvolutionPts() {
     values: periods.map(d => d.vals[m.uid])
   }));
 
-  // Aumentar ancho para accommodar scrollbar horizontal
-  const W = Math.max(760, count * 50), H = 340, pl = 44, pr = 16, pt = 22, pb = 40;
+  const slotWidth = isDayView ? 65 : isWeekView ? 100 : 55;
+  const W = Math.max(1100, count * slotWidth), H = 380, pl = 50, pr = 20, pt = 22, pb = 56;
   const iw = W - pl - pr, ih = H - pt - pb;
   let maxV = 1;
   for (const s of series) for (const v of s.values) maxV = Math.max(maxV, Number(v) || 0);
   
   const periodCount = periods.length;
   const groupWidth = iw / periodCount;
-  const barWidth = Math.max(4, (groupWidth / team.length) * 0.7);
-  const groupGap = groupWidth * 0.1;
-  const barGap = Math.max(2, (groupWidth - groupGap - (barWidth * team.length)) / (team.length + 1));
+  const userCount = Math.max(1, team.length);
+  const barWidth = Math.max(4, Math.min(18, (groupWidth * 0.7) / userCount));
+  const groupGap = groupWidth * 0.12;
+  const barGap = Math.max(2, barWidth * 0.25);
   
-  const xPos = (periodIdx, userIdx) => pl + (periodIdx * groupWidth) + groupGap/2 + barGap + userIdx * (barWidth + barGap);
+  const xColPos = (periodIdx, userIdx) => pl + (periodIdx * groupWidth) + groupGap/2 + userIdx * (barWidth + barGap);
+  const xLinePos = (i) => (periodCount > 1 ? pl + (iw * i) / (periodCount - 1) : pl + iw / 2);
   const yPos = v => pt + ih - (ih * v) / maxV;
   
-  let grid = "", xl = "", content = "";
+  let grid = "", xl = "";
   const gridCount = 4;
   for (let g = 0; g <= gridCount; g++) {
     const val = Math.round((maxV * g) / gridCount);
@@ -2479,38 +2512,36 @@ function renderEvolutionPts() {
     grid += `<text x="${pl - 6}" y="${gy + 4}" text-anchor="end" font-size="9" fill="#7c86ad">${val}</text>`;
   }
   
+  const fontSz = periodCount > 20 ? 8 : 9;
   periods.forEach((d, i) => {
-    if (periodCount > 10 && i % 2 === 1) return;
-    xl += `<text x="${pl + (i * groupWidth) + groupWidth/2}" y="${H - 8}" text-anchor="middle" font-size="${periodCount > 10 ? 8 : 9}" fill="#7c86ad">${d.label}</text>`;
+    const x = pl + (i * groupWidth) + groupWidth/2;
+    xl += `<text x="${x}" y="${H - 20}" text-anchor="end" font-size="${fontSz}" fill="#7c86ad" transform="rotate(-35 ${x} ${H - 20})">${d.label}</text>`;
   });
   
+  let content = "";
   let svgMinWidth = null;
   
   if (modeStates.evo === "line") {
-    // Líneas: cada usuario con su color
     series.forEach((s) => {
-      const n = periodCount;
-      const xLine = i => (n > 1 ? pl + (iw * i) / (n - 1) : pl + iw / 2);
-      const pts = s.values.map((v, i) => `${xLine(i)},${yPos(v)}`).join(" ");
+      const pts = s.values.map((v, i) => `${xLinePos(i)},${yPos(v)}`).join(" ");
       content += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"/>`;
       s.values.forEach((v, i) => {
-        content += `<circle cx="${xLine(i)}" cy="${yPos(v)}" r="2.5" fill="${s.color}"/>`;
+        content += `<circle cx="${xLinePos(i)}" cy="${yPos(v)}" r="2.5" fill="${s.color}"/>`;
       });
     });
   } else {
-    // Columnas: mostrar una barra por usuario por período
-    for (const s of series) {
+    for (let sIdx = 0; sIdx < series.length; sIdx++) {
+      const s = series[sIdx];
       s.values.forEach((v, i) => {
         const hBar = (Number(v) || 0) / maxV * ih;
         const y = pt + ih - hBar;
-        content += `<rect x="${xPos(i, series.indexOf(s))}" y="${y}" width="${barWidth}" height="${hBar}" fill="${s.color}" rx="2"/>`;
+        content += `<rect x="${xColPos(i, sIdx)}" y="${y}" width="${barWidth}" height="${Math.max(0.5, hBar)}" fill="${s.color}" rx="2"/>`;
       });
     }
-    // Con muchos usuarios se fuerza scroll horizontal
-    svgMinWidth = Math.max(W, Math.ceil(periodCount * (barWidth * team.length + barGap * (team.length + 1) + groupGap)));
+    svgMinWidth = Math.max(W, Math.ceil(periodCount * (barWidth * team.length + barGap * (team.length + 1) + groupGap)) + 40);
   }
   
-  const svgStyle = svgMinWidth ? ` style="min-width:${Math.round(svgMinWidth)}px"` : "";
+  const svgStyle = svgMinWidth ? ` style="min-width:${Math.round(svgMinWidth)}px"` : ` style="min-width:${W}px"`;
   el.innerHTML = `
     <div class="chart-scroll-wrap">
       <svg class="chart-svg" viewBox="0 0 ${W} ${H}"${svgStyle} role="img">
@@ -2523,7 +2554,6 @@ function renderEvolutionPts() {
     </div>`;
   
   if (legendEl) {
-    // Leyenda con nombres de usuario y colores
     legendEl.innerHTML = series.map(s => `<span class="legend-item" title="${esc(s.name)}"><span class="legend-dot" style="background:${s.color}"></span>${esc(s.name)}</span>`).join("");
   }
 }
@@ -2607,7 +2637,11 @@ async function renderPointsTable() {
     }
   }
   
-  const list = [...mcTeam, ...admins].sort((a,b) => (b.points||0)-(a.points||0));
+  const list = [...mcTeam, ...admins].sort((a,b) => {
+    const ptsA = String(a.role || "").toLowerCase() === "admin" ? 0 : (a.points || 0);
+    const ptsB = String(b.role || "").toLowerCase() === "admin" ? 0 : (b.points || 0);
+    return ptsB - ptsA;
+  });
 
   // Actualizar cabecera para mostrar/ocultar columna de acciones (sin rango)
   if (theadRow) {

@@ -1525,29 +1525,61 @@ function chartBuckets(period, now) {
   const buckets = [];
   let step, count, lab;
   if (period === "day") {
+    // Día: de 12 AM a 11 PM (24 horas)
     step = 60 * 60 * 1000; count = 24; lab = (d) => {
       const h = d.getHours();
       const h12 = h % 12 === 0 ? 12 : h % 12;
       return `${h12} ${h < 12 ? "AM" : "PM"}`;
     };
+    
+    // Alinear al inicio del día (12 AM)
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    const dayStart = today.getTime();
+    
+    for (let i = 0; i < count; i++) {
+      const start = dayStart + i * step;
+      const end = start + step;
+      buckets.push({ start, end, label: lab(new Date(start)) });
+    }
   } else if (period === "week") {
     step = 24 * 60 * 60 * 1000; count = 7; lab = (d) => {
       const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       return `${days[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
     };
+    
+    // Alinear al inicio de la semana (Domingo)
+    const today = new Date(now);
+    const dayOfWeek = today.getDay();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - dayOfWeek);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekStartTime = weekStart.getTime();
+    
+    for (let i = 0; i < count; i++) {
+      const start = weekStartTime + i * step;
+      const end = start + step;
+      buckets.push({ start, end, label: lab(new Date(start)) });
+    }
   } else {
-    // Mes: mostrar todos los días del mes actual
+    // Mes: mostrar todos los días del mes actual (del día 1 al último día)
     const today = new Date(now);
     const year = today.getFullYear();
     const month = today.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     step = 24 * 60 * 60 * 1000; count = daysInMonth; 
     lab = (d) => `${d.getDate()}/${d.getMonth() + 1}`;
-  }
-  for (let i = count - 1; i >= 0; i--) {
-    const end = now - i * step;
-    const start = end - step;
-    buckets.push({ start, end, label: lab(new Date(end)) });
+    
+    // Alinear al inicio del mes (día 1)
+    const monthStart = new Date(year, month, 1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthStartTime = monthStart.getTime();
+    
+    for (let i = 0; i < count; i++) {
+      const start = monthStartTime + i * step;
+      const end = start + step;
+      buckets.push({ start, end, label: lab(new Date(start)) });
+    }
   }
   return buckets;
 }
@@ -1633,19 +1665,20 @@ function renderActivityChart() {
       const actor = allMembers.find(u => u.uid === uid) || null;
       if (actor && isInactiveStatus(actor.status)) continue;
       
-      metrics.currentPoints = actor ? Number(actor.points || 0) : 0;
+      // Los admins no tienen puntos
+      metrics.currentPoints = (actor && String(actor.role || "").toLowerCase() !== "admin") ? Number(actor.points || 0) : 0;
       
       if (metrics.role === "admin") {
-        // Admin: promedio entre puntos subidos, puntos bajados e ingresos
-        const avg = (metrics.pointsAdded + metrics.pointsRemoved + metrics.logins) / 3;
+        // Admin: veces que ingresa a la página + puntos que suben y bajan
+        const avg = (metrics.logins + metrics.pointsAdded + metrics.pointsRemoved) / 3;
         adminMetrics.push(avg);
       } else if (metrics.role === "inspector") {
-        // Inspector: promedio entre puntos actuales, puntos subidos, puntos bajados e ingresos
-        const avg = (metrics.currentPoints + metrics.pointsAdded + metrics.pointsRemoved + metrics.logins) / 4;
+        // Inspector: veces que ingresa a la página + puntos que suben + puntos que tienen
+        const avg = (metrics.logins + metrics.pointsAdded + metrics.currentPoints) / 3;
         inspectorMetrics.push(avg);
       } else if (metrics.role === "user") {
-        // Usuario: promedio entre puntos actuales e ingresos
-        const avg = (metrics.currentPoints + metrics.logins) / 2;
+        // Usuario: veces que ingresa a la página + puntos que tienen actualmente
+        const avg = (metrics.logins + metrics.currentPoints) / 2;
         userMetrics.push(avg);
       }
     }
@@ -1719,7 +1752,6 @@ function renderActivityChart() {
           ${series}
         </svg>
       </div>
-      <div class="chart-legend">${roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("")}</div>
       <div class="chart-note">Actividad por rol · ${periodTxt} · ${logs.length} registros cargados</div>`;
     if (legendEl) legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     return;
@@ -1779,7 +1811,6 @@ function renderActivityChart() {
           ${bars}
         </svg>
       </div>
-      <div class="chart-legend">${roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("")}</div>
       <div class="chart-note">Actividad por rol · ${periodTxt} · ${logs.length} registros cargados</div>`;
     if (legendEl) legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     return;
@@ -2606,7 +2637,11 @@ async function renderPointsTable() {
     }
   }
   
-  const list = [...mcTeam, ...admins].sort((a,b) => (b.points||0)-(a.points||0));
+  const list = [...mcTeam, ...admins].sort((a,b) => {
+    const ptsA = String(a.role || "").toLowerCase() === "admin" ? 0 : (a.points || 0);
+    const ptsB = String(b.role || "").toLowerCase() === "admin" ? 0 : (b.points || 0);
+    return ptsB - ptsA;
+  });
 
   // Actualizar cabecera para mostrar/ocultar columna de acciones (sin rango)
   if (theadRow) {

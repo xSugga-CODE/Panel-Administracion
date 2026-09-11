@@ -186,6 +186,12 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .chart-card{min-height:420px}
 .chart-card .chart-container{min-height:380px}
 .chart-svg{width:100%;height:auto;max-width:100%;display:block;margin:0 auto}
+.chart-svg text {
+  font-family: system-ui, -apple-system, sans-serif;
+  dominant-baseline: middle;
+  text-anchor: middle;
+  white-space: nowrap;
+}
 
 /* Estilos para resaltar al usuario actual en tablas */
 tr.my-row td { background: rgba(88,101,242,.06); }
@@ -776,6 +782,18 @@ display: block;
     <div style="padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);">
       <label style="display:block;margin-bottom:10px;font-weight:600;font-size:14px;">Rangos a ocultar</label>
       <div style="display:flex;flex-wrap:wrap;gap:12px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="pts-hide-rango-overlord" style="cursor:pointer;">
+          <span style="font-size:13px;">Overlord</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="pts-hide-rango-owner" style="cursor:pointer;">
+          <span style="font-size:13px;">Owner</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="pts-hide-rango-admin" style="cursor:pointer;">
+          <span style="font-size:13px;">Admin</span>
+        </label>
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
           <input type="checkbox" id="pts-hide-rango-centinela" style="cursor:pointer;">
           <span style="font-size:13px;">Centinela</span>
@@ -1455,6 +1473,9 @@ async function loadPointsTableConfig() {
     document.getElementById("pts-hide-role-user").checked = config.hideRoles?.includes("user") || false;
     
     // Checkboxes de rangos
+    document.getElementById("pts-hide-rango-overlord").checked = config.hideRangos?.includes("overlord") || false;
+    document.getElementById("pts-hide-rango-owner").checked = config.hideRangos?.includes("owner") || false;
+    document.getElementById("pts-hide-rango-admin").checked = config.hideRangos?.includes("admin") || false;
     document.getElementById("pts-hide-rango-centinela").checked = config.hideRangos?.includes("centinela") || false;
     document.getElementById("pts-hide-rango-vigia").checked = config.hideRangos?.includes("vigia") || false;
     
@@ -1589,6 +1610,9 @@ window.savePointsTableConfig = async () => {
     if (document.getElementById("pts-hide-role-user")?.checked) config.hideRoles.push("user");
 
     // Rangos a ocultar
+    if (document.getElementById("pts-hide-rango-overlord")?.checked) config.hideRangos.push("overlord");
+    if (document.getElementById("pts-hide-rango-owner")?.checked) config.hideRangos.push("owner");
+    if (document.getElementById("pts-hide-rango-admin")?.checked) config.hideRangos.push("admin");
     if (document.getElementById("pts-hide-rango-centinela")?.checked) config.hideRangos.push("centinela");
     if (document.getElementById("pts-hide-rango-vigia")?.checked) config.hideRangos.push("vigia");
 
@@ -3445,6 +3469,9 @@ function periodStartMsDash(p) {
 }
 
 function periodPointsForUserDash(u, period) {
+  // Los admins no tienen puntos
+  if (String(u.role || "").toLowerCase() === "admin") return 0;
+  
   if (period === "day") return Number(u.points || 0); // Día → puntos actuales
   const start = periodStartMsDash(period);
   const cutoff = inactiveCutoffMs(u);
@@ -3825,19 +3852,20 @@ window.renderActivityChart = () => {
       const actor = allUsers.find(u => u.uid === uid) || null;
       if (actor && isInactiveStatus(actor.status)) continue;
       
-      metrics.currentPoints = actor ? Number(actor.points || 0) : 0;
+      // Los admins no tienen puntos
+      metrics.currentPoints = (actor && String(actor.role || "").toLowerCase() !== "admin") ? Number(actor.points || 0) : 0;
       
       if (metrics.role === "admin") {
-        // Admin: promedio entre puntos subidos, puntos bajados e ingresos
-        const avg = (metrics.pointsAdded + metrics.pointsRemoved + metrics.logins) / 3;
+        // Admin: veces que ingresa a la página + puntos que suben y bajan
+        const avg = (metrics.logins + metrics.pointsAdded + metrics.pointsRemoved) / 3;
         adminMetrics.push(avg);
       } else if (metrics.role === "inspector") {
-        // Inspector: promedio entre puntos actuales, puntos subidos, puntos bajados e ingresos
-        const avg = (metrics.currentPoints + metrics.pointsAdded + metrics.pointsRemoved + metrics.logins) / 4;
+        // Inspector: veces que ingresa a la página + puntos que suben + puntos que tienen
+        const avg = (metrics.logins + metrics.pointsAdded + metrics.currentPoints) / 3;
         inspectorMetrics.push(avg);
       } else if (metrics.role === "user") {
-        // Usuario: promedio entre puntos actuales e ingresos
-        const avg = (metrics.currentPoints + metrics.logins) / 2;
+        // Usuario: veces que ingresa a la página + puntos que tienen actualmente
+        const avg = (metrics.logins + metrics.currentPoints) / 2;
         userMetrics.push(avg);
       }
     }
@@ -4086,29 +4114,61 @@ function chartBuckets(period, now) {
   const buckets = [];
   let step, count, lab;
   if (period === "day") {
+    // Día: de 12 AM a 11 PM (24 horas)
     step = 60 * 60 * 1000; count = 24; lab = (d) => {
       const h = d.getHours();
       const h12 = h % 12 === 0 ? 12 : h % 12;
       return `${h12} ${h < 12 ? "AM" : "PM"}`;
     };
+    
+    // Alinear al inicio del día (12 AM)
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    const dayStart = today.getTime();
+    
+    for (let i = 0; i < count; i++) {
+      const start = dayStart + i * step;
+      const end = start + step;
+      buckets.push({ start, end, label: lab(new Date(start)) });
+    }
   } else if (period === "week") {
     step = 24 * 60 * 60 * 1000; count = 7; lab = (d) => {
       const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       return `${days[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
     };
+    
+    // Alinear al inicio de la semana (Domingo)
+    const today = new Date(now);
+    const dayOfWeek = today.getDay();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - dayOfWeek);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekStartTime = weekStart.getTime();
+    
+    for (let i = 0; i < count; i++) {
+      const start = weekStartTime + i * step;
+      const end = start + step;
+      buckets.push({ start, end, label: lab(new Date(start)) });
+    }
   } else {
-    // Mes: mostrar todos los días del mes actual
+    // Mes: mostrar todos los días del mes actual (del día 1 al último día)
     const today = new Date(now);
     const year = today.getFullYear();
     const month = today.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     step = 24 * 60 * 60 * 1000; count = daysInMonth; 
     lab = (d) => `${d.getDate()}/${d.getMonth() + 1}`;
-  }
-  for (let i = count - 1; i >= 0; i--) {
-    const end = now - i * step;
-    const start = end - step;
-    buckets.push({ start, end, label: lab(new Date(end)) });
+    
+    // Alinear al inicio del mes (día 1)
+    const monthStart = new Date(year, month, 1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthStartTime = monthStart.getTime();
+    
+    for (let i = 0; i < count; i++) {
+      const start = monthStartTime + i * step;
+      const end = start + step;
+      buckets.push({ start, end, label: lab(new Date(start)) });
+    }
   }
   return buckets;
 }
