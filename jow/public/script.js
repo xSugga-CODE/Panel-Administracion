@@ -1531,11 +1531,24 @@ function chartBuckets(period, now) {
   const buckets = [];
   let step, count, lab;
   if (period === "day") {
-    step = 60 * 60 * 1000; count = 24; lab = label24;
+    step = 60 * 60 * 1000; count = 24; lab = (d) => {
+      const h = d.getHours();
+      const h12 = h % 12 === 0 ? 12 : h % 12;
+      return `${h12} ${h < 12 ? "AM" : "PM"}`;
+    };
   } else if (period === "week") {
-    step = 24 * 60 * 60 * 1000; count = 7; lab = labelShortDay;
+    step = 24 * 60 * 60 * 1000; count = 7; lab = (d) => {
+      const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      return `${days[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
+    };
   } else {
-    step = 3 * 24 * 60 * 60 * 1000; count = 10; lab = labelShortDay;
+    // Mes: mostrar todos los días del mes actual
+    const today = new Date(now);
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    step = 24 * 60 * 60 * 1000; count = daysInMonth; 
+    lab = (d) => `${d.getDate()}/${d.getMonth() + 1}`;
   }
   for (let i = count - 1; i >= 0; i--) {
     const end = now - i * step;
@@ -1571,9 +1584,13 @@ function renderActivityChart() {
   const buckets = chartBuckets(chartPeriod, now);
   let maxVal = 1;
   
-  // Calcular actividad GLOBAL de todos los usuarios (una sola línea agregada)
-  const globalActivity = new Array(buckets.length).fill(0);
-  
+  // Estructura para almacenar actividad por rol con promedios reales
+  const roleActivity = {
+    user: new Array(buckets.length).fill(0),
+    admin: new Array(buckets.length).fill(0),
+    inspector: new Array(buckets.length).fill(0)
+  };
+
   const bucketIndexOf = (t) => {
     if (!t) return -1;
     for (let bi = 0; bi < buckets.length; bi++) {
@@ -1582,8 +1599,8 @@ function renderActivityChart() {
     return -1;
   };
 
-  // Agrupar los logs por (bucket, actor) para computar métricas únicas por actor.
-  const perBucketActors = new Map();
+  // Agrupar métricas por (bucket, actor) para calcular promedios por rol
+  const perBucketMetrics = new Map();
   for (const l of logs) {
     const t = logTime(l);
     if (!t) continue;
@@ -1593,51 +1610,75 @@ function renderActivityChart() {
     if (actorRole !== "admin" && actorRole !== "inspector" && actorRole !== "user") continue;
     const uid = l.actorUid;
     if (!uid) continue;
-    if (!perBucketActors.has(bi)) perBucketActors.set(bi, new Map());
-    const map = perBucketActors.get(bi);
-    let rec = map.get(uid);
-    if (!rec) {
-      rec = { role: actorRole, logins: 0, added: 0, t };
-      map.set(uid, rec);
+    if (!perBucketMetrics.has(bi)) perBucketMetrics.set(bi, new Map());
+    const map = perBucketMetrics.get(bi);
+    
+    if (!map.has(uid)) {
+      map.set(uid, {
+        role: actorRole,
+        pointsAdded: 0,
+        pointsRemoved: 0,
+        logins: 0,
+        currentPoints: 0
+      });
     }
-    if (l.type === "login") rec.logins += 1;
-    if (l.type === "points" && Number(l.delta || 0) > 0) rec.added += Number(l.delta || 0);
-    if (t < rec.t) rec.t = t;
+    
+    const metrics = map.get(uid);
+    if (l.type === "login") metrics.logins += 1;
+    if (l.type === "points") {
+      if (Number(l.delta || 0) > 0) metrics.pointsAdded += Number(l.delta || 0);
+      if (Number(l.delta || 0) < 0) metrics.pointsRemoved += Math.abs(Number(l.delta || 0));
+    }
   }
 
-  for (const [bi, mapActors] of perBucketActors) {
-    let totalActivity = 0;
-    for (const [uid, rec] of mapActors) {
+  // Calcular promedios por rol en cada bucket
+  for (const [bi, metricsMap] of perBucketMetrics) {
+    const adminMetrics = [], inspectorMetrics = [], userMetrics = [];
+    
+    for (const [uid, metrics] of metricsMap) {
       const actor = allMembers.find(u => u.uid === uid) || null;
-      if (actor && isInactiveStatus(actor.status) && rec.t >= inactiveCutoffMs(actor)) continue;
+      if (actor && isInactiveStatus(actor.status)) continue;
       
-      // Calcular actividad por usuario según su rol
-      let userActivity = 0;
-      if (rec.role === "user") {
-        // Usuario: puntos como componente principal + pequeños ingresos como porcentaje
-        const userPoints = actor ? Number(actor.points || 0) : 0;
-        const loginBonus = rec.logins * 0.1; // 10% de peso por login
-        userActivity = userPoints + loginBonus;
-      } else if (rec.role === "inspector") {
-        // Inspector: puntos actuales + puntos que sube + pequeños ingresos
-        const inspectorPoints = Number(actor?.points || 0);
-        const loginBonus = rec.logins * 0.1;
-        userActivity = inspectorPoints + rec.added + loginBonus;
-      } else if (rec.role === "admin") {
-        // Admin: puntos que agrega + pequeños ingresos
-        const loginBonus = rec.logins * 0.1;
-        userActivity = rec.added + loginBonus;
+      metrics.currentPoints = actor ? Number(actor.points || 0) : 0;
+      
+      if (metrics.role === "admin") {
+        // Admin: promedio entre puntos subidos, puntos bajados e ingresos
+        const avg = (metrics.pointsAdded + metrics.pointsRemoved + metrics.logins) / 3;
+        adminMetrics.push(avg);
+      } else if (metrics.role === "inspector") {
+        // Inspector: promedio entre puntos actuales, puntos subidos, puntos bajados e ingresos
+        const avg = (metrics.currentPoints + metrics.pointsAdded + metrics.pointsRemoved + metrics.logins) / 4;
+        inspectorMetrics.push(avg);
+      } else if (metrics.role === "user") {
+        // Usuario: promedio entre puntos actuales e ingresos
+        const avg = (metrics.currentPoints + metrics.logins) / 2;
+        userMetrics.push(avg);
       }
-      totalActivity += userActivity;
     }
-    globalActivity[bi] = totalActivity;
-    maxVal = Math.max(maxVal, totalActivity);
+    
+    // Calcular promedio de cada rol en este bucket
+    if (adminMetrics.length > 0) {
+      roleActivity.admin[bi] = adminMetrics.reduce((a, b) => a + b, 0) / adminMetrics.length;
+    }
+    if (inspectorMetrics.length > 0) {
+      roleActivity.inspector[bi] = inspectorMetrics.reduce((a, b) => a + b, 0) / inspectorMetrics.length;
+    }
+    if (userMetrics.length > 0) {
+      roleActivity.user[bi] = userMetrics.reduce((a, b) => a + b, 0) / userMetrics.length;
+    }
+    
+    maxVal = Math.max(maxVal, roleActivity.user[bi], roleActivity.admin[bi], roleActivity.inspector[bi]);
   }
 
   const mode = modeStates.admin || "line";
   const periodTxt = chartPeriod === "day" ? "últimas 24 horas" : chartPeriod === "week" ? "últimos 7 días" : "últimos 30 días";
+  const PALETTE_ROLES = {
+    user: "#ff6b6b",
+    admin: "#7f8cff", 
+    inspector: "#3ecf8e"
+  };
 
-  // ── Modo lineal: evolución de la actividad global
+  // ── Modo lineal: evolución de la actividad de cada rol
   if (mode === "line") {
     const W = Math.max(900, buckets.length * 50), H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
@@ -1659,13 +1700,19 @@ function renderActivityChart() {
       xl += `<text x="${xPos(i)}" y="${H - 8}" text-anchor="middle" font-size="${buckets.length > 12 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
     });
 
-    // Una sola línea de actividad global
-    const globalColor = "#8d99ff";
-    const pts = globalActivity.map((v, i) => `${xPos(i)},${yPos(v)}`).join(" ");
-    series += `<polyline points="${pts}" fill="none" stroke="${globalColor}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
-    globalActivity.forEach((v, i) => {
-      series += `<circle cx="${xPos(i)}" cy="${yPos(v)}" r="2.6" fill="${globalColor}"/>`;
-    });
+    const roleSeries = [
+      { name: "Usuario", color: PALETTE_ROLES.user, values: roleActivity.user },
+      { name: "Admin", color: PALETTE_ROLES.admin, values: roleActivity.admin },
+      { name: "Inspector", color: PALETTE_ROLES.inspector, values: roleActivity.inspector }
+    ];
+
+    for (const s of roleSeries) {
+      const pts = s.values.map((v, i) => `${xPos(i)},${yPos(v)}`).join(" ");
+      series += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+      s.values.forEach((v, i) => {
+        series += `<circle cx="${xPos(i)}" cy="${yPos(v)}" r="2.6" fill="${s.color}"/>`;
+      });
+    }
 
     el.innerHTML = `
       <div class="chart-scroll-wrap">
@@ -1677,22 +1724,24 @@ function renderActivityChart() {
           ${series}
         </svg>
       </div>
-      <div class="chart-legend"><span class="legend-item"><span class="legend-dot" style="background:${globalColor}"></span>Actividad Global</span></div>
-      <div class="chart-note">Actividad de todos los usuarios · ${periodTxt} · ${logs.length} registros cargados</div>`;
-    if (legendEl) legendEl.innerHTML = `<span class="legend-item"><span class="legend-dot" style="background:${globalColor}"></span>Actividad Global</span>`;
+      <div class="chart-legend">${roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("")}</div>
+      <div class="chart-note">Actividad por rol · ${periodTxt} · ${logs.length} registros cargados</div>`;
+    if (legendEl) legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     return;
   }
 
-  // ── Modo columnas: mostrar actividad global
+  // ── Modo columnas: mostrar actividad por rol
   if (mode === "cols") {
     const W = Math.max(900, buckets.length * 50), H = 450, pl = 40, pr = 16, pt = 22, pb = 40;
     const iw = W - pl - pr, ih = H - pt - pb;
     const yMax = maxVal;
     const n = buckets.length;
     const groupWidth = iw / n;
-    const barWidth = Math.max(4, groupWidth * 0.6);
-    const groupGap = groupWidth * 0.1;
-    const xPos = (periodIdx) => pl + (periodIdx * groupWidth) + groupGap/2 + (groupWidth - groupGap - barWidth)/2;
+    const rolesCount = 3;
+    const barWidth = Math.max(4, (groupWidth * 0.7) / rolesCount);
+    const barGap = Math.max(2, barWidth * 0.3);
+    const groupGap = groupWidth * 0.15;
+    const xPos = (periodIdx, roleIdx) => pl + (periodIdx * groupWidth) + groupGap/2 + roleIdx * (barWidth + barGap);
     const yPos = v => pt + ih - (ih * v) / yMax;
 
     let grid = "", xl = "", bars = "";
@@ -1708,13 +1757,19 @@ function renderActivityChart() {
       xl += `<text x="${pl + (i * groupWidth) + groupWidth/2}" y="${H - 8}" text-anchor="middle" font-size="${n > 10 ? 8 : 9}" fill="#7c86ad">${b.label}</text>`;
     });
 
-    // Una sola barra por período representando la actividad global
-    const globalColor = "#8d99ff";
-    globalActivity.forEach((v, i) => {
-      const hBar = (v / yMax) * ih;
-      const y = pt + ih - hBar;
-      bars += `<rect x="${xPos(i)}" y="${y}" width="${barWidth}" height="${hBar}" fill="${globalColor}" rx="2"/>`;
-    });
+    const roleSeries = [
+      { name: "Usuario", color: PALETTE_ROLES.user, values: roleActivity.user },
+      { name: "Admin", color: PALETTE_ROLES.admin, values: roleActivity.admin },
+      { name: "Inspector", color: PALETTE_ROLES.inspector, values: roleActivity.inspector }
+    ];
+
+    for (const s of roleSeries) {
+      s.values.forEach((v, i) => {
+        const hBar = (v / yMax) * ih;
+        const y = pt + ih - hBar;
+        bars += `<rect x="${xPos(i, roleSeries.indexOf(s))}" y="${y}" width="${barWidth}" height="${Math.max(0.5, hBar)}" fill="${s.color}" rx="2"/>`;
+      });
+    }
 
     el.innerHTML = `
       <div class="chart-scroll-wrap">
@@ -1726,21 +1781,19 @@ function renderActivityChart() {
           ${bars}
         </svg>
       </div>
-      <div class="chart-legend"><span class="legend-item"><span class="legend-dot" style="background:${globalColor}"></span>Actividad Global</span></div>
-      <div class="chart-note">Actividad de todos los usuarios · ${periodTxt} · ${logs.length} registros cargados</div>`;
-    if (legendEl) legendEl.innerHTML = `<span class="legend-item"><span class="legend-dot" style="background:${globalColor}"></span>Actividad Global</span>`;
+      <div class="chart-legend">${roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("")}</div>
+      <div class="chart-note">Actividad por rol · ${periodTxt} · ${logs.length} registros cargados</div>`;
+    if (legendEl) legendEl.innerHTML = roleSeries.map(s => `<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.name}</span>`).join("");
     return;
   }
 
   // ── Modo circular: mostrar distribución de actividad por rol
   if (mode === "pie") {
-    // Calcular totales por rol
+    // Calcular totales por rol a partir de los promedios calculados
     const roleTotals = { user: 0, admin: 0, inspector: 0 };
-    globalActivity.forEach(v => {
-      roleTotals.user += v * 0.7; // Aproximación de distribución
-      roleTotals.admin += v * 0.2;
-      roleTotals.inspector += v * 0.1;
-    });
+    roleActivity.user.forEach(v => roleTotals.user += v);
+    roleActivity.admin.forEach(v => roleTotals.admin += v);
+    roleActivity.inspector.forEach(v => roleTotals.inspector += v);
     
     const total = roleTotals.user + roleTotals.admin + roleTotals.inspector;
     if (total === 0) {
@@ -1752,12 +1805,6 @@ function renderActivityChart() {
     const R = 130, cx = 450, cy = 220;
     let svgContent = "";
     let startAngle = 0;
-    
-    const PALETTE_ROLES = {
-      user: "#ff6b6b",
-      admin: "#7f8cff", 
-      inspector: "#3ecf8e"
-    };
     
     const roles = [
       { name: "Usuario", color: PALETTE_ROLES.user, value: roleTotals.user },
@@ -2527,6 +2574,12 @@ async function renderPointsTable() {
     if (tableConfig.hideUsers && tableConfig.hideUsers.length > 0) {
       mcTeam = mcTeam.filter(u => !tableConfig.hideUsers.includes(u.uid));
       admins = admins.filter(u => !tableConfig.hideUsers.includes(u.uid));
+    }
+    
+    // Filtrar por showUsers (solo mostrar estos)
+    if (tableConfig.showUsers && tableConfig.showUsers.length > 0) {
+      mcTeam = mcTeam.filter(u => tableConfig.showUsers.includes(u.uid));
+      admins = admins.filter(u => tableConfig.showUsers.includes(u.uid));
     }
     
     // Filtrar por roles
